@@ -4,62 +4,47 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { getZainsApiConfig } from '@/lib/zains-api-config'
 
-type SummaryRow = {
+type MonthlyPoint = {
+  month: number
+  sum: number
+}
+
+type PivotRow = {
   label: string
-  value: number
+  monthly: MonthlyPoint[]
 }
 
-type SectionSummary = {
+type PivotGroup = {
   title: string
-  groups: {
-    title: string
-    rows: SummaryRow[]
-  }[]
+  rows: PivotRow[]
 }
 
-function parseDateRange(req: NextRequest): {
-  tgl_awal: string
-  tgl_akhir: string
-  year: number
-  month: number | null
-} {
-  const url = new URL(req.url)
-  const yearParam = url.searchParams.get('year')
-  const monthParam = url.searchParams.get('month')
-  const tglAwalParam = url.searchParams.get('tgl_awal')
-  const tglAkhirParam = url.searchParams.get('tgl_akhir')
-
-  if (tglAwalParam && tglAkhirParam) {
-    const year = new Date(tglAwalParam).getFullYear()
-    return { tgl_awal: tglAwalParam, tgl_akhir: tglAkhirParam, year, month: null }
-  }
-
-  const now = new Date()
-  const year = yearParam ? Number(yearParam) || now.getFullYear() : now.getFullYear()
-  const month = monthParam ? Number(monthParam) || now.getMonth() + 1 : now.getMonth() + 1
-
-  const start = new Date(Date.UTC(year, month - 1, 1))
-  const end = new Date(Date.UTC(year, month, 0))
-
-  const format = (d: Date) => d.toISOString().slice(0, 10)
-
-  return {
-    tgl_awal: format(start),
-    tgl_akhir: format(end),
-    year,
-    month,
-  }
+type PivotSection = {
+  title: string
+  groups: PivotGroup[]
 }
 
-async function fetchZainsTotal(params: {
+const MONTH_LABELS: Record<number, string> = {
+  1: 'Jan',
+  2: 'Feb',
+  3: 'Mar',
+  4: 'Apr',
+  5: 'Mei',
+  6: 'Jun',
+  7: 'Jul',
+  8: 'Agu',
+  9: 'Sep',
+  10: 'Okt',
+  11: 'Nov',
+  12: 'Des',
+}
+
+async function fetchZainsMonthlySeries(params: {
   type: string
-  tgl_awal: string
-  tgl_akhir: string
+  year: number
   onlyCoaDebet: string[]
   onlyCoaKredit: string[]
-  year?: number
-  month?: number | null
-}): Promise<number> {
+}): Promise<MonthlyPoint[]> {
   const { url } = getZainsApiConfig()
   const apiKey = process.env.API_KEY_ZAINS
   if (!url) {
@@ -69,20 +54,11 @@ async function fetchZainsTotal(params: {
     throw new Error('API_KEY_ZAINS tidak dikonfigurasi')
   }
 
-  const useMonthlyGrouping = params.year != null && params.month != null
-
-  const searchParams = new URLSearchParams()
-  searchParams.set('type', params.type)
-
-  if (useMonthlyGrouping) {
-    // Ikuti pola endpoint yang Anda pakai:
-    // type=receipt&group_by=monthly&year=2026&only_coa_...
-    searchParams.set('group_by', 'monthly')
-    searchParams.set('year', String(params.year))
-  } else {
-    searchParams.set('tgl_awal', params.tgl_awal)
-    searchParams.set('tgl_akhir', params.tgl_akhir)
-  }
+  const searchParams = new URLSearchParams({
+    type: params.type,
+    group_by: 'monthly',
+    year: String(params.year),
+  })
 
   if (params.onlyCoaDebet.length > 0) {
     searchParams.set('only_coa_debet', params.onlyCoaDebet.join(','))
@@ -103,53 +79,34 @@ async function fetchZainsTotal(params: {
 
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`Gagal call API Zains: ${res.status} ${text}`)
+    throw new Error(`Gagal call API Zains (yearly monthly): ${res.status} ${text}`)
   }
 
   const json: any = await res.json()
   if (!json || typeof json !== 'object') {
-    throw new Error('Respons API Zains tidak valid (bukan JSON)')
+    throw new Error('Respons API Zains (yearly monthly) tidak valid (bukan JSON)')
   }
 
-  // Jika kita pakai group_by=monthly untuk satu tahun,
-  // ambil sum khusus untuk bulan yang diminta.
-  if (useMonthlyGrouping) {
-    if (!Array.isArray(json.data)) {
-      throw new Error('Respons API Zains (monthly) tidak valid: data bukan array')
-    }
-    const targetMonth = Number(params.month)
-    const item = json.data.find((row: any) => Number(row.month || 0) === targetMonth)
-    if (!item) {
-      return 0
-    }
-    return Number(item.sum || 0)
+  if (json.status === false && !Array.isArray(json.data)) {
+    return []
   }
 
-  const data = json.data
-  const hasDirectSum = data && typeof data.sum === 'number'
-  const hasGrandSum = json.grand_total && typeof json.grand_total.sum === 'number'
-  // Jika status=false dan tidak ada field sum yang bisa dibaca,
-  // anggap saja tidak ada data (return 0) agar summary tetap jalan.
-  if (json.status === false && !hasDirectSum && !hasGrandSum) {
-    return 0
+  if (!Array.isArray(json.data)) {
+    throw new Error('Respons API Zains (yearly monthly) tidak valid: data bukan array')
   }
 
-  // Versi tanpa group_by: data.sum
-  if (hasDirectSum) {
-    return Number(data.sum)
-  }
-
-  // Versi dengan group_by monthly: grand_total.sum
-  if (hasGrandSum) {
-    return Number(json.grand_total.sum)
-  }
-
-  throw new Error('Field sum tidak ditemukan di respons API Zains')
+  return json.data.map((item: any) => ({
+    month: Number(item.month || 0),
+    sum: Number(item.sum || 0),
+  }))
 }
 
 export async function GET(req: NextRequest) {
   try {
-    const { tgl_awal, tgl_akhir, year, month } = parseDateRange(req)
+    const url = new URL(req.url)
+    const yearParam = url.searchParams.get('year')
+    const now = new Date()
+    const year = yearParam ? Number(yearParam) || now.getFullYear() : now.getFullYear()
 
     // Ambil konfigurasi sources
     const sources = await sql`
@@ -185,16 +142,18 @@ export async function GET(req: NextRequest) {
     const clinicRows = Array.isArray(clinics) ? clinics : []
     const sourceRows = Array.isArray(sources) ? sources : []
 
-    const seClinicSource = sourceRows.find((s: any) => s.slug === 'se_klinik' || s.name === 'SE Klinik')
-    const seAmbulanceSource = sourceRows.find((s: any) => s.slug === 'se_ambulance' || s.name === 'SE Ambulance')
+    const seClinicSource = sourceRows.find((s: any) => s.slug === 'se_klinik' || s.name === 'SE Klinik') as any
+    const seAmbulanceSource = sourceRows.find(
+      (s: any) => s.slug === 'se_ambulance' || s.name === 'SE Ambulance',
+    ) as any
     const fundraisingProjectSource = sourceRows.find(
       (s: any) => s.slug === 'fundraising_project' || s.name === 'Fundraising Project',
-    )
+    ) as any
     const fundraisingDigitalSource = sourceRows.find(
       (s: any) => s.slug === 'fundraising_digital' || s.name === 'Fundraising Digital',
-    )
+    ) as any
 
-    const tasks: Array<{
+    type Task = {
       key: string
       label: string
       section: 'SE' | 'FUNDRAISING'
@@ -204,7 +163,9 @@ export async function GET(req: NextRequest) {
         onlyCoaDebet: string[]
         onlyCoaKredit: string[]
       }
-    }> = []
+    }
+
+    const tasks: Task[] = []
 
     // === SE KLINIK: per klinik ===
     if (seClinicSource) {
@@ -216,14 +177,12 @@ export async function GET(req: NextRequest) {
               .filter(Boolean)
           : []
 
-      for (const c of clinicRows) {
+      for (const c of clinicRows as any[]) {
         if (c.include_in_se_summary === false) continue
 
         const alias = c.summary_alias || c.name
-        // COA debet per klinik:
-        // - Jika se_receipt_coa_debet diisi: gunakan persis daftar tersebut (dinamis per klinik).
-        // - Jika tidak, fallback ke kode_coa klinik (single debet).
-        const clinicDebetListRaw: string | null = (c as any).se_receipt_coa_debet ?? null
+
+        const clinicDebetListRaw: string | null = c.se_receipt_coa_debet ?? null
         const clinicCoaDebet =
           clinicDebetListRaw && clinicDebetListRaw.trim().length > 0
             ? String(clinicDebetListRaw)
@@ -234,10 +193,7 @@ export async function GET(req: NextRequest) {
               ? [String(c.kode_coa)]
               : []
 
-        // COA kredit per klinik:
-        // - Jika se_receipt_coa_kredit diisi: gunakan persis daftar tersebut.
-        // - Jika tidak, fallback ke default dari source (jika ada).
-        const clinicKreditListRaw: string | null = (c as any).se_receipt_coa_kredit ?? null
+        const clinicKreditListRaw: string | null = c.se_receipt_coa_kredit ?? null
         const clinicCoaKredit =
           clinicKreditListRaw && clinicKreditListRaw.trim().length > 0
             ? String(clinicKreditListRaw)
@@ -357,63 +313,114 @@ export async function GET(req: NextRequest) {
     }
 
     // Jalankan semua call ke Zains secara paralel
-    const results = await Promise.all(
+    const taskResults = await Promise.all(
       tasks.map(async (t) => {
-        const sum = await fetchZainsTotal({
+        const monthly = await fetchZainsMonthlySeries({
           type: t.params.type,
-          tgl_awal,
-          tgl_akhir,
+          year,
           onlyCoaDebet: t.params.onlyCoaDebet,
           onlyCoaKredit: t.params.onlyCoaKredit,
-          year,
-          month,
         })
-        return { ...t, sum }
+        return { ...t, monthly }
       }),
     )
 
-    // Bangun struktur summary
-    const klinikRows: SummaryRow[] = results
-      .filter((r) => r.section === 'SE' && r.group === 'KLINIK')
-      .map((r) => ({ label: r.label, value: r.sum }))
+    // Kumpulkan semua bulan unik yang punya data di salah satu row
+    const monthSet = new Set<number>()
+    for (const r of taskResults) {
+      for (const p of r.monthly) {
+        if (p.month && p.sum) {
+          monthSet.add(p.month)
+        }
+      }
+    }
+    const months = Array.from(monthSet).sort((a, b) => a - b)
 
-    const totalKlinik = klinikRows.reduce((acc, r) => acc + r.value, 0)
+    // Helper untuk membuat vector nilai per bulan (sesuai daftar months)
+    const toMonthlyVector = (points: MonthlyPoint[]): MonthlyPoint[] => {
+      const map = new Map<number, number>()
+      for (const p of points) {
+        if (!p.month) continue
+        map.set(p.month, (map.get(p.month) || 0) + p.sum)
+      }
+      return months.map((m) => ({
+        month: m,
+        sum: map.get(m) || 0,
+      }))
+    }
 
-    const ambulanRows = results.filter((r) => r.section === 'SE' && r.group === 'AMBULAN')
-    const totalAmbulan = ambulanRows.reduce((acc, r) => acc + r.sum, 0)
+    // Bangun rows per task
+    const klinikRows: { label: string; monthly: MonthlyPoint[] }[] = []
+    const ambulanRows: { label: string; monthly: MonthlyPoint[] }[] = []
+    const fundraisingRows: { label: string; monthly: MonthlyPoint[] }[] = []
 
-    const fundraisingRows: SummaryRow[] = results
-      .filter((r) => r.section === 'FUNDRAISING' && r.group === 'FUNDRAISING')
-      .map((r) => ({ label: r.label, value: r.sum }))
+    for (const r of taskResults) {
+      const vector = toMonthlyVector(r.monthly)
+      if (r.section === 'SE' && r.group === 'KLINIK') {
+        klinikRows.push({ label: r.label, monthly: vector })
+      } else if (r.section === 'SE' && r.group === 'AMBULAN') {
+        ambulanRows.push({ label: r.label, monthly: vector })
+      } else if (r.section === 'FUNDRAISING') {
+        fundraisingRows.push({ label: r.label, monthly: vector })
+      }
+    }
 
-    const totalFundraising = fundraisingRows.reduce((acc, r) => acc + r.value, 0)
+    const sumVectors = (vectors: MonthlyPoint[][]): MonthlyPoint[] => {
+      return months.map((m) => {
+        let total = 0
+        for (const v of vectors) {
+          const p = v.find((x) => x.month === m)
+          if (p) total += p.sum
+        }
+        return { month: m, sum: total }
+      })
+    }
 
-    const totalSE = totalKlinik + totalAmbulan
+    const totalKlinikVector = sumVectors(klinikRows.map((r) => r.monthly))
+    const totalAmbulanVector = sumVectors(ambulanRows.map((r) => r.monthly))
+    const totalSEVector = sumVectors([totalKlinikVector, totalAmbulanVector])
+    const totalFundraisingVector = sumVectors(fundraisingRows.map((r) => r.monthly))
+    const penerimaanLainnyaVector = months.map((m) => ({ month: m, sum: 0 }))
+    const grandTotalVector = sumVectors([totalSEVector, totalFundraisingVector, penerimaanLainnyaVector])
 
-    // Placeholder: penerimaan lainnya bisa diisi nanti
-    const penerimaanLainnya = 0
-    const grandTotal = totalSE + totalFundraising + penerimaanLainnya
-
-    const sections: SectionSummary[] = [
+    const sections: PivotSection[] = [
       {
         title: 'SE',
         groups: [
           {
             title: 'KLINIK',
             rows: [
-              ...klinikRows,
-              { label: 'TOTAL KLINIK', value: totalKlinik },
+              ...klinikRows.map((r) => ({
+                label: r.label,
+                monthly: r.monthly,
+              })),
+              {
+                label: 'TOTAL KLINIK',
+                monthly: totalKlinikVector,
+              },
             ],
           },
           {
             title: 'AMBULAN',
             rows: [
-              { label: 'TOTAL AMBULAN', value: totalAmbulan },
+              ...ambulanRows.map((r) => ({
+                label: r.label,
+                monthly: r.monthly,
+              })),
+              {
+                label: 'TOTAL AMBULAN',
+                monthly: totalAmbulanVector,
+              },
             ],
           },
           {
             title: 'TOTAL SE',
-            rows: [{ label: 'TOTAL SE', value: totalSE }],
+            rows: [
+              {
+                label: 'TOTAL SE',
+                monthly: totalSEVector,
+              },
+            ],
           },
         ],
       },
@@ -423,36 +430,53 @@ export async function GET(req: NextRequest) {
           {
             title: 'FUNDRAISING',
             rows: [
-              ...fundraisingRows,
-              { label: 'TOTAL FUNDRAISING', value: totalFundraising },
+              ...fundraisingRows.map((r) => ({
+                label: r.label,
+                monthly: r.monthly,
+              })),
+              {
+                label: 'TOTAL FUNDRAISING',
+                monthly: totalFundraisingVector,
+              },
             ],
           },
           {
             title: 'LAINNYA',
             rows: [
-              { label: 'PENERIMAAN LAINNYA', value: penerimaanLainnya },
-              { label: 'GRAND TOTAL', value: grandTotal },
+              {
+                label: 'PENERIMAAN LAINNYA',
+                monthly: penerimaanLainnyaVector,
+              },
+              {
+                label: 'GRAND TOTAL',
+                monthly: grandTotalVector,
+              },
             ],
           },
         ],
       },
     ]
 
+    const monthMeta = months.map((m) => ({
+      month: m,
+      label: MONTH_LABELS[m] || String(m),
+    }))
+
     return NextResponse.json(
       {
         success: true,
         year,
-        period: { tgl_awal, tgl_akhir },
+        months: monthMeta,
         sections,
       },
       { status: 200 },
     )
   } catch (error: any) {
-    console.error('Error summary SE:', error)
+    console.error('Error summary SE yearly:', error)
     return NextResponse.json(
       {
         success: false,
-        message: error?.message || 'Gagal mengambil summary SE',
+        message: error?.message || 'Gagal mengambil summary SE yearly',
       },
       { status: 500 },
     )

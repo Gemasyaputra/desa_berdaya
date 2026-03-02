@@ -55,6 +55,97 @@ export function CRUDKlinik({
     se_receipt_coa_kredit: '',
   })
 
+  const normalizeCoaList = (input: string | null | undefined): string | null => {
+    if (!input) return null
+    const cleaned = input
+      .replace(/['"]/g, '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join(',')
+    return cleaned.length > 0 ? cleaned : null
+  }
+
+  const CoaChipsInput = ({
+    value,
+    onChange,
+    placeholder,
+  }: {
+    value: string
+    onChange: (next: string) => void
+    placeholder?: string
+  }) => {
+    const [draft, setDraft] = useState('')
+
+    const items = value
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+
+    const commitDraft = () => {
+      const trimmed = draft.replace(/,/g, '').trim()
+      if (!trimmed) {
+        setDraft('')
+        return
+      }
+      const nextItems = [...items, trimmed]
+      onChange(nextItems.join(','))
+      setDraft('')
+    }
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault()
+        commitDraft()
+      } else if (e.key === 'Backspace' && draft === '' && items.length > 0) {
+        // hapus chip terakhir
+        const nextItems = items.slice(0, items.length - 1)
+        onChange(nextItems.join(','))
+      }
+    }
+
+    const handleBlur = () => {
+      commitDraft()
+    }
+
+    const removeAtIndex = (index: number) => {
+      if (index < 0 || index >= items.length) return
+      const nextItems = items.slice()
+      nextItems.splice(index, 1)
+      onChange(nextItems.join(','))
+    }
+
+    return (
+      <div className="min-h-[42px] w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-xs focus-within:ring-[3px] focus-within:ring-ring/50 flex flex-wrap gap-1">
+        {items.map((coa, idx) => (
+          <Badge
+            key={`${coa}-${idx}`}
+            variant="outline"
+            className="rounded-full px-2 py-0.5 text-xs font-normal flex items-center gap-1"
+          >
+            <span>{coa}</span>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-full hover:bg-slate-200/80"
+              title="Hapus COA"
+              onClick={() => removeAtIndex(idx)}
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </Badge>
+        ))}
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
+          placeholder={items.length === 0 ? placeholder : undefined}
+          className="flex-1 min-w-[80px] border-none bg-transparent text-sm outline-none"
+        />
+      </div>
+    )
+  }
+
   const loadClinics = async () => {
     setLoading(true)
     try {
@@ -89,8 +180,8 @@ export function CRUDKlinik({
       summary_alias: formData.summary_alias || null,
       summary_order: formData.summary_order ? Number(formData.summary_order) : null,
       include_in_se_summary: formData.include_in_se_summary,
-      se_receipt_coa_debet: formData.se_receipt_coa_debet || null,
-      se_receipt_coa_kredit: formData.se_receipt_coa_kredit || null,
+      se_receipt_coa_debet: normalizeCoaList(formData.se_receipt_coa_debet),
+      se_receipt_coa_kredit: normalizeCoaList(formData.se_receipt_coa_kredit),
     }
     const result = editingId
       ? await updateClinic(editingId, payload)
@@ -140,8 +231,8 @@ export function CRUDKlinik({
       summary_alias: clinic.summary_alias || '',
       summary_order: clinic.summary_order != null ? String(clinic.summary_order) : '',
       include_in_se_summary: clinic.include_in_se_summary ?? true,
-      se_receipt_coa_debet: clinic.se_receipt_coa_debet || '',
-      se_receipt_coa_kredit: clinic.se_receipt_coa_kredit || '',
+      se_receipt_coa_debet: (normalizeCoaList(clinic.se_receipt_coa_debet) as string | null) || '',
+      se_receipt_coa_kredit: (normalizeCoaList(clinic.se_receipt_coa_kredit) as string | null) || '',
     })
     setIsOpen(true)
   }
@@ -304,18 +395,18 @@ export function CRUDKlinik({
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label>SE Receipt COA Debet (per klinik, pisahkan dengan koma)</Label>
-                  <Input
+                  <CoaChipsInput
                     value={formData.se_receipt_coa_debet}
-                    onChange={(e) => setFormData({ ...formData, se_receipt_coa_debet: e.target.value })}
-                    placeholder="Contoh: 101.01.002.013,101.02.003.000"
+                    onChange={(v) => setFormData({ ...formData, se_receipt_coa_debet: v })}
+                    placeholder="Contoh: 101.01.002.013"
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label>SE Receipt COA Kredit (per klinik, pisahkan dengan koma)</Label>
-                  <Input
+                  <CoaChipsInput
                     value={formData.se_receipt_coa_kredit}
-                    onChange={(e) => setFormData({ ...formData, se_receipt_coa_kredit: e.target.value })}
-                    placeholder="Contoh: 401.04.002.020,401.04.002.021,..."
+                    onChange={(v) => setFormData({ ...formData, se_receipt_coa_kredit: v })}
+                    placeholder="Contoh: 401.04.002.020"
                   />
                 </div>
               </div>

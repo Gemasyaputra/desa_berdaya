@@ -4,44 +4,14 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
-import { Bar } from 'react-chartjs-2'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js'
-import { getAllClinics } from '@/lib/actions/config'
 import { Spinner } from '@/components/ui/spinner'
 
-type SummaryRow = {
-  label: string
-  value: number
-}
-
-type SectionSummary = {
-  title: string
-  groups: {
-    title: string
-    rows: SummaryRow[]
-  }[]
-}
-
-type SummaryResponse = {
-  success: boolean
-  year: number
-  period: { tgl_awal: string; tgl_akhir: string }
-  sections: SectionSummary[]
-}
-
 type PivotRow = {
-  sectionTitle: string
-  groupTitle: string
   label: string
-  values: number[] // index 0 = Jan, 11 = Des
+  monthly: {
+    month: number
+    sum: number
+  }[]
 }
 
 type PivotSection = {
@@ -55,25 +25,12 @@ type PivotSection = {
 type PivotResponse = {
   success: boolean
   year: number
+  months: {
+    month: number
+    label: string
+  }[]
   sections: PivotSection[]
 }
-
-type MonthlyItem = {
-  month: number
-  month_name: string
-  sum: number
-  count: number
-}
-
-type MonthlyResponse = {
-  success: boolean
-  year: number
-  clinic: { id: number; name: string; alias: string }
-  monthly: MonthlyItem[]
-  grand_total: { sum: number; count: number }
-}
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 function formatRupiah(value: number): string {
   return new Intl.NumberFormat('id-ID', {
@@ -107,132 +64,19 @@ export default function SummaryDashboardPage() {
   const [loadingTable, setLoadingTable] = useState(false)
   const [tableData, setTableData] = useState<PivotResponse | null>(null)
 
-  // State untuk chart SE per klinik per bulan
-  const [clinicId, setClinicId] = useState<string>('')
-  const [clinics, setClinics] = useState<{ id: number; name: string }[]>([])
-  const [loadingChart, setLoadingChart] = useState(false)
-  const [chartData, setChartData] = useState<MonthlyResponse | null>(null)
-
-  // Ambil daftar klinik untuk dropdown chart
-  useEffect(() => {
-    getAllClinics()
-      .then((list) => {
-        const arr = Array.isArray(list) ? list : []
-        setClinics(arr)
-        if (!clinicId && arr.length > 0) {
-          const defaultClinic =
-            arr.find((c) => String(c.name).toLowerCase().includes('jakarta')) ?? arr[0]
-          setClinicId(String(defaultClinic.id))
-        }
-      })
-      .catch((error) => {
-        console.error('Gagal memuat daftar klinik untuk chart SE:', error)
-      })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const buildPivotData = (responses: Array<SummaryResponse | null>, targetYear: number): PivotResponse | null => {
-    const monthCount = monthOptions.length
-    const rowMap = new Map<string, PivotRow>()
-    const sectionOrder: string[] = []
-    const groupOrderBySection = new Map<string, string[]>()
-    const rowOrderByGroup = new Map<string, string[]>()
-
-    const getGroupKey = (sectionTitle: string, groupTitle: string) => `${sectionTitle}||${groupTitle}`
-
-    responses.forEach((res, monthIndex) => {
-      if (!res || !res.success || !Array.isArray(res.sections)) return
-
-      res.sections.forEach((section) => {
-        if (!sectionOrder.includes(section.title)) {
-          sectionOrder.push(section.title)
-        }
-
-        const groupOrderKey = section.title
-        if (!groupOrderBySection.has(groupOrderKey)) {
-          groupOrderBySection.set(groupOrderKey, [])
-        }
-        const groupsOrder = groupOrderBySection.get(groupOrderKey)!
-
-        section.groups.forEach((group) => {
-          const gKey = getGroupKey(section.title, group.title)
-          if (!groupsOrder.includes(group.title)) {
-            groupsOrder.push(group.title)
-          }
-
-          if (!rowOrderByGroup.has(gKey)) {
-            rowOrderByGroup.set(gKey, [])
-          }
-          const rowsOrder = rowOrderByGroup.get(gKey)!
-
-          group.rows.forEach((row) => {
-            const key = `${section.title}||${group.title}||${row.label}`
-            if (!rowMap.has(key)) {
-              rowMap.set(key, {
-                sectionTitle: section.title,
-                groupTitle: group.title,
-                label: row.label,
-                values: Array(monthCount).fill(0),
-              })
-              rowsOrder.push(row.label)
-            }
-            const pivotRow = rowMap.get(key)!
-            pivotRow.values[monthIndex] = row.value
-          })
-        })
-      })
-    })
-
-    if (rowMap.size === 0) {
-      return null
-    }
-
-    const sections: PivotSection[] = sectionOrder.map((sectionTitle) => {
-      const groupTitles = groupOrderBySection.get(sectionTitle) ?? []
-      const groups = groupTitles.map((groupTitle) => {
-        const gKey = getGroupKey(sectionTitle, groupTitle)
-        const rowLabels = rowOrderByGroup.get(gKey) ?? []
-        const rows = rowLabels.map((label) => {
-          const key = `${sectionTitle}||${groupTitle}||${label}`
-          return rowMap.get(key)!
-        })
-        return { title: groupTitle, rows }
-      })
-      return { title: sectionTitle, groups }
-    })
-
-    return {
-      success: true,
-      year: targetYear,
-      sections,
-    }
-  }
-
   const loadTableData = async (options?: { year?: number }) => {
     const y = options?.year ?? year
     setLoadingTable(true)
     try {
-      const monthNumbers = monthOptions.map((m) => Number(m.value))
-      const responses = await Promise.all(
-        monthNumbers.map(async (m) => {
-          try {
-            const params = new URLSearchParams({ year: String(y), month: String(m) })
-            const res = await fetch(`/api/summary/se?${params.toString()}`, { cache: 'no-store' })
-            const json = (await res.json()) as SummaryResponse
-            if (!json.success) {
-              console.error(`Gagal mengambil summary SE untuk bulan ${m}`, json)
-              return null
-            }
-            return json
-          } catch (error) {
-            console.error(`Error fetch summary SE untuk bulan ${m}:`, error)
-            return null
-          }
-        }),
-      )
-
-      const pivot = buildPivotData(responses, y)
-      setTableData(pivot)
+      const params = new URLSearchParams({ year: String(y) })
+      const res = await fetch(`/api/summary/se-yearly?${params.toString()}`, { cache: 'no-store' })
+      const json = (await res.json()) as PivotResponse
+      if (!json.success) {
+        console.error('Gagal mengambil summary SE yearly', json)
+        setTableData(null)
+        return
+      }
+      setTableData(json)
     } catch (error) {
       console.error('Error fetch summary SE:', error)
       setTableData(null)
@@ -241,45 +85,14 @@ export default function SummaryDashboardPage() {
     }
   }
 
-  const loadChartData = async (options?: { year?: number; clinicId?: string }) => {
-    const y = options?.year ?? year
-    const cId = options?.clinicId ?? clinicId
-    if (!cId) return
-    setLoadingChart(true)
-    try {
-      const params = new URLSearchParams({ year: String(y), clinic_id: cId })
-      const res = await fetch(`/api/summary/se-monthly?${params.toString()}`, { cache: 'no-store' })
-      const json = (await res.json()) as MonthlyResponse
-      if (!json.success) {
-        console.error('Gagal mengambil summary SE monthly', json)
-        setChartData(null)
-        return
-      }
-      setChartData(json)
-    } catch (error) {
-      console.error('Error fetch summary SE monthly:', error)
-      setChartData(null)
-    } finally {
-      setLoadingChart(false)
-    }
-  }
-
   useEffect(() => {
     loadTableData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => {
-    if (clinicId) {
-      loadChartData()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clinicId])
-
   const handleApply = () => {
     const y = year
     loadTableData({ year: y })
-    loadChartData({ year: y })
   }
 
   const yearOptions = []
@@ -287,68 +100,6 @@ export default function SummaryDashboardPage() {
   for (let offset = -1; offset <= 1; offset++) {
     yearOptions.push(baseYear + offset)
   }
-
-  const monthSums = useMemo(() => {
-    if (!chartData) return monthOptions.map(() => 0)
-    const map = new Map<number, number>()
-    for (const item of chartData.monthly) {
-      const key = Number(item.month || 0)
-      map.set(key, Number(item.sum || 0))
-    }
-    return monthOptions.map((_, idx) => map.get(idx + 1) ?? 0)
-  }, [chartData])
-
-  const clinicChartData = useMemo(() => {
-    const values = monthSums
-    if (!values.some((v) => v > 0)) return null
-    const labels = monthOptions.map((m) => m.label)
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Capaian SE per Bulan',
-          data: values,
-          backgroundColor: '#0d9488',
-        },
-      ],
-    }
-  }, [monthSums])
-
-  const horizontalBarOptions = (title: string) => ({
-    indexAxis: 'y' as const,
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false,
-      },
-      title: {
-        display: false,
-        text: title,
-      },
-      tooltip: {
-        callbacks: {
-          label: (ctx: any) => {
-            const v = ctx.parsed.x ?? ctx.raw
-            return formatRupiah(Number(v || 0))
-          },
-        },
-      },
-    },
-    scales: {
-      x: {
-        beginAtZero: true,
-        ticks: {
-          callback: (value: any) => formatRupiah(Number(value)),
-        },
-      },
-      y: {
-        ticks: {
-          autoSkip: false,
-        },
-      },
-    },
-  })
 
   return (
     <div className="p-6 space-y-6">
@@ -375,24 +126,12 @@ export default function SummaryDashboardPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={clinicId} onValueChange={(v) => setClinicId(v)}>
-            <SelectTrigger className="w-[220px]">
-              <SelectValue placeholder="Pilih Klinik" />
-            </SelectTrigger>
-            <SelectContent>
-              {clinics.map((c) => (
-                <SelectItem key={c.id} value={String(c.id)}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Button
             onClick={handleApply}
-            disabled={loadingTable || loadingChart}
+            disabled={loadingTable}
             className="bg-teal-600 hover:bg-teal-700 flex items-center gap-2"
           >
-            {loadingTable || loadingChart ? (
+            {loadingTable ? (
               <>
                 <Spinner className="size-5 text-white" />
                 <span>Memuat...</span>
@@ -404,8 +143,8 @@ export default function SummaryDashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 space-y-4">
+      <div className="grid grid-cols-1 gap-6">
+        <div className="space-y-4">
           {tableData ? (
             <Card>
               <CardHeader className="bg-emerald-50 border-b border-emerald-100">
@@ -424,9 +163,9 @@ export default function SummaryDashboardPage() {
                         <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">
                           Keterangan
                         </th>
-                        {monthOptions.map((m) => (
+                        {tableData.months.map((m) => (
                           <th
-                            key={m.value}
+                            key={m.month}
                             className="px-2 py-2 text-right text-xs font-semibold text-slate-600"
                           >
                             {m.label}
@@ -440,7 +179,7 @@ export default function SummaryDashboardPage() {
                           <tr>
                             <td
                               className="px-4 py-2 text-xs font-semibold text-slate-700 uppercase tracking-wide bg-emerald-50 border-t border-emerald-100"
-                              colSpan={1 + monthOptions.length}
+                              colSpan={1 + tableData.months.length}
                             >
                               {section.title}
                             </td>
@@ -451,7 +190,7 @@ export default function SummaryDashboardPage() {
                                 <tr>
                                   <td
                                     className="px-4 py-2 text-xs font-semibold text-slate-600 uppercase tracking-wide bg-slate-50 border-t border-slate-200"
-                                    colSpan={1 + monthOptions.length}
+                                    colSpan={1 + tableData.months.length}
                                   >
                                     {group.title}
                                   </td>
@@ -464,6 +203,10 @@ export default function SummaryDashboardPage() {
                                 const isGrandTotal = row.label
                                   .toUpperCase()
                                   .includes('GRAND TOTAL')
+                                const valueByMonth = new Map<number, number>()
+                                row.monthly.forEach((p) => {
+                                  valueByMonth.set(p.month, p.sum)
+                                })
                                 return (
                                   <tr
                                     key={`row-${section.title}-${group.title}-${row.label}`}
@@ -476,20 +219,23 @@ export default function SummaryDashboardPage() {
                                     >
                                       {row.label}
                                     </td>
-                                    {row.values.map((val, idx) => (
-                                      <td
-                                        key={`cell-${section.title}-${group.title}-${row.label}-${idx}`}
-                                        className={`px-2 py-2 text-right tabular-nums ${
-                                          isGrandTotal
-                                            ? 'font-bold text-emerald-700'
-                                            : isTotal
-                                              ? 'font-semibold text-slate-800'
-                                              : 'text-slate-800'
-                                        }`}
-                                      >
-                                        {formatRupiah(val)}
-                                      </td>
-                                    ))}
+                                    {tableData.months.map((m) => {
+                                      const val = valueByMonth.get(m.month) || 0
+                                      return (
+                                        <td
+                                          key={`cell-${section.title}-${group.title}-${row.label}-${m.month}`}
+                                          className={`px-2 py-2 text-right tabular-nums ${
+                                            isGrandTotal
+                                              ? 'font-bold text-emerald-700'
+                                              : isTotal
+                                                ? 'font-semibold text-slate-800'
+                                                : 'text-slate-800'
+                                          }`}
+                                        >
+                                          {formatRupiah(val)}
+                                        </td>
+                                      )
+                                    })}
                                   </tr>
                                 )
                               })}
@@ -514,7 +260,8 @@ export default function SummaryDashboardPage() {
           )}
         </div>
 
-        <div className="space-y-4">
+        {/* Chart SE per bulan disembunyikan sementara */}
+        {/* <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
@@ -600,7 +347,7 @@ export default function SummaryDashboardPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </div> */}
       </div>
     </div>
   )

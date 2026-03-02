@@ -55,8 +55,20 @@ async function fetchZainsMonthlyTotal(params: {
   }
 
   const json: any = await res.json()
-  if (!json?.status || !Array.isArray(json?.data)) {
-    throw new Error('Respons API Zains (monthly) tidak valid')
+  if (!json || typeof json !== 'object') {
+    throw new Error('Respons API Zains (monthly) tidak valid (bukan JSON)')
+  }
+
+  // Jika status=false dan tidak ada data array, anggap tidak ada data (semua nol)
+  if (json.status === false && !Array.isArray(json.data)) {
+    return {
+      monthly: [],
+      grandTotal: { sum: 0, count: 0 },
+    }
+  }
+
+  if (!Array.isArray(json.data)) {
+    throw new Error('Respons API Zains (monthly) tidak valid: data bukan array')
   }
 
   const monthly: MonthlyItem[] = json.data.map((item: any) => ({

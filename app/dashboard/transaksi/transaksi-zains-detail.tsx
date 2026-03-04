@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { X, Loader2 } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/db'
-import { getTransactionsToZains, syncTransactionsToZainsFromModal } from '@/lib/actions/transactions'
+import { getTransactionsToZains, syncDonaturForTransaction, syncTransactionsToZainsFromModal } from '@/lib/actions/transactions'
 import { toast } from 'sonner'
 
 export function TransaksiZainsDetail({ 
@@ -18,6 +19,7 @@ export function TransaksiZainsDetail({
   transactionNo?: string
   onClose: () => void 
 }) {
+  const router = useRouter()
   const [zainsData, setZainsData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
@@ -30,16 +32,50 @@ export function TransaksiZainsDetail({
     setIsSyncing(true)
     toast.loading('Mengirim ke Zains...', { id: 'zains-sync' })
     try {
+      const needsDonorSync = zainsData.some((item) => !item.id_donatur)
+
+      if (needsDonorSync) {
+        const donorResult = await syncDonaturForTransaction(transactionId)
+        if (!donorResult.success) {
+          toast.error(donorResult.error || 'Gagal sync donatur ke Zains')
+        } else {
+          toast.success(
+            donorResult.message || 'Berhasil sync donatur ke Zains',
+          )
+          // Reload data agar kolom id_donatur di tabel terisi nilai terbaru
+          await loadData()
+          // Refresh datatable utama daftar transaksi
+          router.refresh()
+        }
+      }
+
       const result = await syncTransactionsToZainsFromModal(transactionId)
       toast.dismiss('zains-sync')
       if (result.error) {
         toast.error(result.error)
         return
       }
+
       if (result.total === 0) {
-        toast.info('Semua baris sudah terkirim ke Zains')
+        // Tidak ada data "pending" yang siap dikirim menurut backend.
+        // Kalau di tabel masih ada baris yang belum punya id_transaksi / belum synced,
+        // berarti masalahnya bukan "sudah terkirim", tapi memang tidak ada data yang eligible
+        // (misalnya belum ada ID Donatur atau todo_zains = false).
+        const hasUnsyncedRow = zainsData.some(
+          (item) => !item.synced || !item.id_transaksi,
+        )
+
+        if (hasUnsyncedRow) {
+          toast.info(
+            'Tidak ada data yang siap dikirim ke Zains. Cek kembali ID Donatur / konfigurasi sync.',
+          )
+        } else {
+          toast.info('Semua baris sudah terkirim ke Zains')
+        }
       } else if (result.failedCount === 0) {
         toast.success(`${result.successCount} baris berhasil dikirim ke Zains`)
+        // Berhasil sync transaksi ke Zains → reload daftar transaksi utama
+        router.refresh()
       } else {
         const firstError = result.results?.find((r) => !r.success)?.error
         const detail = firstError ? ` ${String(firstError).slice(0, 80)}${firstError.length > 80 ? '...' : ''}` : ''

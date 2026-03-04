@@ -2,7 +2,10 @@
 
 import { sql, getSqlClient } from "@/lib/db";
 import { cache } from "react";
-import { syncTransactionsToZainsByTransactionIdSequential } from "@/lib/services/zains-sync";
+import {
+  syncPatientToZains,
+  syncTransactionsToZainsByTransactionIdSequential,
+} from "@/lib/services/zains-sync";
 
 // Legacy implementation (masih disimpan jika suatu saat perlu dirujuk kembali)
 // Jangan digunakan langsung di code baru.
@@ -1890,6 +1893,93 @@ export const getTransactionStats = cache(
     }
   },
 );
+
+/**
+ * Server action: pastikan patient/donatur untuk suatu transaksi sudah tersinkron ke Zains.
+ * - Jika patient sudah punya id_donatur_zains: hanya propagate ke transactions_to_zains yang masih kosong.
+ * - Jika belum: panggil syncPatientToZains (langsung hit API Zains, bukan via workflow/QStash).
+ */
+export async function syncDonaturForTransaction(
+  transactionId: number,
+): Promise<{
+  success: boolean;
+  id_donatur?: string;
+  patientId?: number;
+  skipped?: boolean;
+  message?: string;
+  error?: string;
+}> {
+  try {
+    const rows = await sql`
+      SELECT 
+        p.*,
+        t.id AS transaction_id
+      FROM transactions t
+      JOIN patients p ON p.id = t.patient_id
+      WHERE t.id = ${transactionId}
+      LIMIT 1
+    `;
+
+    const row: any = Array.isArray(rows) ? rows[0] : rows;
+
+    if (!row) {
+      return {
+        success: false,
+        error: "Transaksi atau pasien tidak ditemukan",
+      };
+    }
+
+    const patientId = Number(row.id);
+    const existingIdDonatur: string | null =
+      row.id_donatur_zains && row.id_donatur_zains !== ""
+        ? String(row.id_donatur_zains)
+        : null;
+
+    if (existingIdDonatur) {
+      // Pastikan semua baris transactions_to_zains untuk patient ini ikut terisi id_donatur
+      await sql`
+        UPDATE transactions_to_zains tz
+        SET id_donatur = ${existingIdDonatur}
+        FROM transactions t
+        WHERE tz.transaction_id = t.id
+          AND t.patient_id = ${patientId}
+          AND (tz.id_donatur IS NULL OR tz.id_donatur = '')
+      `;
+
+      return {
+        success: true,
+        id_donatur: existingIdDonatur,
+        patientId,
+        skipped: true,
+        message:
+          "Patient sudah memiliki id_donatur_zains, hanya meng-update transaksi yang belum terisi.",
+      };
+    }
+
+    const result = await syncPatientToZains(row);
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || "Gagal sync donatur ke Zains",
+        patientId: result.patientId,
+      };
+    }
+
+    return {
+      success: true,
+      id_donatur: result.id_donatur,
+      patientId: result.patientId,
+      message: "Berhasil sync donatur ke Zains",
+    };
+  } catch (error: any) {
+    console.error("Error syncDonaturForTransaction:", error);
+    return {
+      success: false,
+      error: error?.message || "Error tak terduga saat sync donatur ke Zains",
+    };
+  }
+}
 
 export const getTransactionsToZains = cache(
   async (transactionId: number, dateFrom?: string, dateTo?: string) => {

@@ -96,24 +96,32 @@ export default function DashboardLayout({
 
   const isUserReady = status === 'authenticated' && !!session?.user
   const isRoleReady = isUserReady && !!userRole
-  const isClinicManager = isRoleReady && userRole === 'clinic_manager'
-  const clinicSummaryHref = userClinicId ? `/dashboard/klinik/${userClinicId}` : '/dashboard'
+  const isAdminOrMonev = isRoleReady && (userRole === 'ADMIN' || userRole === 'MONEV' || userRole === 'PROG_HEAD' || userRole === 'FINANCE')
 
-  const menuItems = !isRoleReady
+  type MenuItem = {
+    href: string;
+    label: string;
+    icon: React.ElementType;
+    subItems?: { href: string; label: string }[];
+  }
+
+  const menuItems: MenuItem[] = !isRoleReady
     ? []
-    : isClinicManager
+    : isAdminOrMonev
       ? [
-          { href: clinicSummaryHref, label: 'Summary Klinik', icon: LayoutDashboard },
-          { href: '/dashboard/transaksi', label: 'Data Transaksi', icon: ClipboardList },
-          { href: '/dashboard/pasien', label: 'Data Pasien', icon: Users },
+          { href: '/dashboard', label: 'Summary Dashboard', icon: LayoutDashboard },
+          { href: '/dashboard/desa', label: 'Desa Binaan', icon: Building2 },
+          { href: '/dashboard/pm', label: 'Penerima Manfaat', icon: Users },
+          { href: '/dashboard/keuangan', label: 'Kegiatan & Keuangan', icon: ClipboardList },
+          { href: '/dashboard/monitoring', label: 'Monitoring Bulanan', icon: ClipboardList },
+          { href: '/dashboard/konfigurasi', label: 'Konfigurasi', icon: Settings },
         ]
       : [
-          { href: '/dashboard/yayasan', label: 'Dashboard Lembaga', icon: Building2 },
-          { href: '/dashboard', label: 'Dashboard Klinik', icon: LayoutDashboard },
-          { href: '/dashboard/summary-dashboard', label: 'Summary Dashboard', icon: LayoutDashboard },
-          { href: '/dashboard/transaksi', label: 'Data Transaksi', icon: ClipboardList },
-          { href: '/dashboard/pasien', label: 'Data Pasien', icon: Users },
-          { href: '/dashboard/konfigurasi', label: 'Konfigurasi', icon: Settings },
+          { href: '/dashboard', label: 'Beranda', icon: LayoutDashboard },
+          { href: '/dashboard/desa', label: 'Desa Binaan', icon: Building2 },
+          { href: '/dashboard/pm', label: 'Penerima Manfaat', icon: Users },
+          { href: '/dashboard/keuangan', label: 'Kegiatan & Keuangan', icon: ClipboardList },
+          { href: '/dashboard/monitoring', label: 'Monitoring Bulanan', icon: ClipboardList },
         ]
 
   const isActive = (href: string) => pathname === href

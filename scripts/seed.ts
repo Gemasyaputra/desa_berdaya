@@ -1,1271 +1,197 @@
-import { neon } from '@neondatabase/serverless';
 import * as dotenv from 'dotenv';
+import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import bcrypt from 'bcryptjs';
 
-// Load environment variables
+// Load environment variables (.env)
 dotenv.config({ path: '.env.local' });
+dotenv.config();
 
-const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL!;
+const sql = postgres(connectionString);
+const db = drizzle(sql);
 
-if (!databaseUrl) {
-  console.error('❌ DATABASE_URL atau POSTGRES_URL tidak ditemukan di .env.local');
-  process.exit(1);
-}
+async function runSeed() {
+  console.log('🌱 Memulai proses seeding (Raw Query)...');
 
-const sql = neon(databaseUrl);
-
-async function seed() {
   try {
-    console.log('🌱 Memulai seed database...');
+    const hashedPassword = await bcrypt.hash('password123', 10);
 
-    // A. Insert Clinics (dengan proteksi duplicate berdasarkan name)
-    console.log('📝 Seeding clinics...');
-    
-    const clinicsData = [
-      {
-        name: 'Klinik Cita Sehat Surabaya',
-        location: 'PRATAMA RAWAT INAP CITA SEHAT SURABAYA',
-        login_url: 'https://csf.eclinic.id/login',
-        username: 'harini_t',
-        password_encrypted: 'H4rini0k!_',
-        kode_coa: '101.01.002.030',
-        id_kantor_zains: '107',
-        coa_qris: '101.09.007.000',
-        id_rekening: '10109007000',
-        is_active: true
-      },
-      {
-        name: 'Klinik Cita Sehat Semarang',
-        location: 'PRATAMA CITA SEHAT SEMARANG',
-        login_url: 'https://csf.eclinic.id/login',
-        username: 'hariniiii',
-        password_encrypted: 'H4rini0k!_',
-        kode_coa: '101.01.002.028',
-        id_kantor_zains: '105',
-        coa_qris: '101.09.006.000',
-        id_rekening: '10109006000',
-        is_active: true
-      },
-      {
-        name: 'Klinik Cita Sehat Jakarta',
-        location: 'PRATAMA CITA SEHAT JAKARTA',
-        login_url: 'https://csf.eclinic.id/login',
-        username: 'harini',
-        password_encrypted: 'H4rini0k!_',
-        kode_coa: '101.01.002.013',
-        id_kantor_zains: '97',
-        coa_qris: '101.09.003.000',
-        id_rekening: '10109003000',
-        is_active: true
-      },
-      {
-        name: 'Klinik Cita Sehat Medan',
-        location: 'CITA SEHAT MEDAN',
-        login_url: 'https://csf.eclinic.id/login',
-        username: 'harinii',
-        password_encrypted: 'H4rini0k!_',
-        kode_coa: '101.01.002.023',
-        id_kantor_zains: '101',
-        coa_qris: '101.09.004.000',
-        id_rekening: '10109004000',
-        is_active: true
-      },
-      {
-        name: 'Klinik Cita Sehat Pekanbaru',
-        location: 'CITASEHAT PEKANBARU',
-        login_url: 'https://csf.eclinic.id/login',
-        username: 'harini_t4',
-        password_encrypted: 'H4rini0k!_',
-        kode_coa: '101.01.002.026',
-        id_kantor_zains: '104',
-        coa_qris: '101.09.005.000',
-        id_rekening: '10109005000',
-        is_active: true
-      },
-      {
-        name: 'Klinik Cita Sehat Yogyakarta',
-        location: 'PRATAMA CITA SEHAT YOGYAKARTA - PLERET',
-        login_url: 'https://csf.eclinic.id/login',
-        username: 'harini_t2',
-        password_encrypted: 'H4rini0k!_',
-        kode_coa: '101.01.002.032',
-        id_kantor_zains: '109',
-        coa_qris: '101.09.008.000',
-        id_rekening: '10109008000',
-        is_active: true
-      }
-    ];
-    
-    for (const clinic of clinicsData) {
-      // Check if clinic already exists
-      const existing = await sql`
-        SELECT id FROM clinics WHERE name = ${clinic.name} LIMIT 1
-      `;
-      
-      if (existing.length > 0) {
-        // Update existing clinic
-        await sql`
-          UPDATE clinics 
-          SET 
-            location = ${clinic.location},
-            login_url = ${clinic.login_url},
-            username = ${clinic.username},
-            password_encrypted = ${clinic.password_encrypted},
-            kode_coa = ${clinic.kode_coa},
-            id_kantor_zains = ${clinic.id_kantor_zains},
-            coa_qris = ${clinic.coa_qris || null},
-            id_rekening = ${clinic.id_rekening || null},
-            is_active = ${clinic.is_active},
-            updated_at = NOW()
-          WHERE name = ${clinic.name}
-        `;
-      } else {
-        // Insert new clinic
-        await sql`
-          INSERT INTO clinics (name, location, login_url, username, password_encrypted, kode_coa, id_kantor_zains, coa_qris, id_rekening, is_active)
-          VALUES (
-            ${clinic.name},
-            ${clinic.location},
-            ${clinic.login_url},
-            ${clinic.username},
-            ${clinic.password_encrypted},
-            ${clinic.kode_coa},
-            ${clinic.id_kantor_zains},
-            ${clinic.coa_qris || null},
-            ${clinic.id_rekening || null},
-            ${clinic.is_active}
-          )
-        `;
-      }
-    }
-    
-    console.log('✅ Clinics seeded');
+    // Eksekusi Raw SQL
+    await db.execute(`
+      -- 0. Drop Existing Tables
+      DROP TABLE IF EXISTS penerima_manfaat CASCADE;
+      DROP TABLE IF EXISTS desa_berdaya CASCADE;
+      DROP TABLE IF EXISTS relawan CASCADE;
+      DROP TABLE IF EXISTS monev CASCADE;
+      DROP TABLE IF EXISTS users CASCADE;
+      DROP TABLE IF EXISTS desa_config CASCADE;
+      DROP TABLE IF EXISTS kecamatan CASCADE;
+      DROP TABLE IF EXISTS kota_kabupaten CASCADE;
+      DROP TABLE IF EXISTS provinsi CASCADE;
+      DROP TYPE IF EXISTS user_role CASCADE;
+      DROP TYPE IF EXISTS kategori_pm CASCADE;
 
-    // B. Master Polies (dengan proteksi duplicate)
-    console.log('📝 Seeding master_polies...');
-    await sql`
-      INSERT INTO master_polies (name, code, description) 
-      VALUES 
-        ('Poli Umum', 'GP', 'Layanan Medis Umum, Spesialis, & Gawat Darurat'),
-        ('Poli Gigi', 'DENTAL', 'Kesehatan Gigi & Mulut'),
-        ('Poli KIA', 'KIA', 'Kesehatan Ibu, Anak, KB, & Kandungan'),
-        ('Laboratorium', 'LAB', 'Pemeriksaan Penunjang Laboratorium'),
-        ('Poli Fisioterapi', 'PHYSIO', 'Rehabilitasi Medik & Fisioterapi'),
-        ('Poli Kebugaran', 'WELL', 'Wellness, Akupuntur & Olahraga'),
-        ('Poli Aestetik', 'ESTETIK', 'Kecantikan & Estetika'),
-        ('Khitan', 'CIRCUM', 'Layanan Sirkumsisi'),
-        ('Vaksin', 'VAX', 'Layanan Imunisasi & Vaksinasi'),
-        ('Persalinan', 'DELIV', 'Layanan Persalinan & VK'),
-        ('Kelas / Senam Hamil', 'CLASS', 'Edukasi & Senam Hamil')
-      ON CONFLICT (name) DO NOTHING
-    `;
-    console.log('✅ Master polies seeded');
+      -- 1. Buat Custom Types (Enum)
+      DO $$ BEGIN
+          CREATE TYPE user_role AS ENUM ('ADMIN', 'FINANCE', 'PROG_HEAD', 'MONEV', 'RELAWAN');
+          CREATE TYPE kategori_pm AS ENUM ('LANSIA', 'BUMIL', 'BALITA', 'EKONOMI');
+      EXCEPTION
+          WHEN duplicate_object THEN null;
+      END $$;
 
-    // B0. Master Insurance Types (dengan proteksi duplicate)
-    console.log('📝 Seeding master_insurance_types...');
-    await sql`
-      INSERT INTO master_insurance_types (name, code, description) 
-      VALUES 
-        ('UMUM / PRIBADI', 'GENERAL', 'Pembayaran Mandiri/Tunai'),
-        ('BPJS KESEHATAN', 'BPJS', 'BPJS Kesehatan dan KIS'),
-        ('ASURANSI SWASTA', 'INSURANCE', 'Asuransi Swasta & Corporate (Admedika, Garda, dll)'),
-        ('SOSIAL / MITRA', 'CHARITY', 'Program Member, Zakat, & Bantuan Sosial')
-      ON CONFLICT (name) DO NOTHING
-    `;
-    console.log('✅ Master insurance types seeded');
+      -- 2. Master Data Wilayah
+      CREATE TABLE IF NOT EXISTS provinsi (
+          id BIGSERIAL PRIMARY KEY,
+          nama_provinsi VARCHAR(255) NOT NULL
+      );
 
-    // B1. Master Target Categories (dengan proteksi duplicate)
-    console.log('📝 Seeding master_target_categories...');
-    await sql`
-      INSERT INTO master_target_categories (name, kode_coa, id_program_zains, description) 
-      VALUES 
-        ('Tindakan', '401.04.002.020', '30', ''),
-        ('Laboratorium', '401.04.002.021', '31', ''),
-        ('Obat-obatan', '401.04.002.022', '32', NULL),
-        ('Alat Kesehatan', '401.04.002.023', '33', NULL),
-        ('MCU', '401.04.002.024', '34', NULL),
-        ('Pembulatan', '401.04.002.025', '35', NULL)
-      ON CONFLICT (name) DO UPDATE
-      SET 
-        kode_coa = EXCLUDED.kode_coa,
-        id_program_zains = EXCLUDED.id_program_zains
-    `;
-    console.log('✅ Master target categories seeded');
+      CREATE TABLE IF NOT EXISTS kota_kabupaten (
+          id BIGSERIAL PRIMARY KEY,
+          provinsi_id BIGINT NOT NULL REFERENCES provinsi(id) ON DELETE CASCADE,
+          nama_kota VARCHAR(255) NOT NULL
+      );
 
-    // B2. Sources (Sumber Target Harian)
-    console.log('📝 Seeding sources...');
-    await sql`
-      INSERT INTO sources (name)
-      VALUES 
-        ('SE Klinik'),
-        ('SE Ambulance'),
-        ('Fundraising Project'),
-        ('Fundraising Digital')
-      ON CONFLICT (name) DO NOTHING
-    `;
-    console.log('✅ Sources seeded');
+      CREATE TABLE IF NOT EXISTS kecamatan (
+          id BIGSERIAL PRIMARY KEY,
+          kota_id BIGINT NOT NULL REFERENCES kota_kabupaten(id) ON DELETE CASCADE,
+          nama_kecamatan VARCHAR(255) NOT NULL
+      );
 
-    // C. Clinic Poly Mappings (dengan proteksi duplicate)
-    console.log('📝 Seeding clinic_poly_mappings...');
-    
-    // Get all clinics and polies
-    const allClinics = await sql`
-      SELECT id, name FROM clinics ORDER BY id
-    `;
-    const allPolies = await sql`
-      SELECT id, name FROM master_polies ORDER BY id
-    `;
-    
-    // Mapping polies untuk setiap klinik berdasarkan script SQL
-    const polyMappings = [
-      // KLINIK 1: SURABAYA
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Poli Umum', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'POLI UMUM', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'POLI UMUM 2', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'POLI UMUM 3', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'POLI UMUM 4', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Gawat Darurat', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'HOME VISIT', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'MCU', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Inap Umum', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Gudang Farmasi', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Konseling', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'POLI KHITAN', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'POLI TB', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Poli Gigi', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'POLI GIGI', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'POLI GIGI 2', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Poli KIA', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'POLI KIA', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'POLI KIA 2', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'POLI KB', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Poli KB 2', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'POLI KANDUNGAN', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'IMUNISASI (DPT)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'IMUNISASI (Hep. B)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'IMUNISASI (Polio)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'IMUNISASI (BCG)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'IMUNISASI (Campak)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Laboratorium', master_name: 'Laboratorium' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'LABORATORIUM', master_name: 'Laboratorium' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Apotek', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'FARMASI', master_name: 'Poli Umum' },
+      CREATE TABLE IF NOT EXISTS desa_config (
+          id BIGSERIAL PRIMARY KEY,
+          provinsi_id BIGINT NOT NULL REFERENCES provinsi(id) ON DELETE CASCADE,
+          kota_id BIGINT NOT NULL REFERENCES kota_kabupaten(id) ON DELETE CASCADE,
+          kecamatan_id BIGINT NOT NULL REFERENCES kecamatan(id) ON DELETE CASCADE,
+          nama_desa VARCHAR(255) NOT NULL,
+          latitude DECIMAL(10, 8),
+          longitude DECIMAL(11, 8),
+          potensi_desa TEXT
+      );
 
-      // KLINIK 2: SEMARANG
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Poli Umum', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI UMUM', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI UMUM 3', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI UMUM 4', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI UMUM 5', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Gawat Darurat', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'HOME VISIT', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'MCU', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'MEDICAL CHECK UP', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Konseling', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI JIWA', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI NAPZA', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI SYARAF', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI JANTUNG', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI PENYAKIT DALAM', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI BEDAH', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI WOUNDCARE', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI MATA', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI REFRAKSIONIS', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI THT', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI KULIT KELAMIN', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI PARU', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI TB', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI LANSIA', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI GIZI', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI NUTRISIONIS', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI KHITAN', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Inap Umum', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Gudang Farmasi', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Fisioterapi', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI FISIOTERAPI', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI KEDOKTERAN FISIK DAN REHABILITASI MEDIK', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI KEDOKTERAN OLAHRAGA', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI OLAHRAGA DAN KEBUGARAN', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI AKUPUNTUR', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Poli Gigi', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI GIGI', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI BEDAH MULUT', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI PROSTODONSIA', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI KONSERVASI GIGI', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Poli KIA', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI KIA', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI KB', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI KANDUNGAN', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI RB', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI ANAK', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI LAKTASI', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'IMUNISASI (DPT)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'IMUNISASI (Hep. B)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'IMUNISASI (Polio)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'IMUNISASI (BCG)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'IMUNISASI (Campak)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Laboratorium', master_name: 'Laboratorium' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'LABORATORIUM', master_name: 'Laboratorium' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI PATOLOGI', master_name: 'Laboratorium' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'POLI AESTETIK', master_name: 'Poli Aestetik' },
+      -- 3. Manajemen User & Authentikasi
+      CREATE TABLE IF NOT EXISTS users (
+          id BIGSERIAL PRIMARY KEY,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          password_encrypted VARCHAR(255),
+          role user_role NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
 
-      // KLINIK 3: JAKARTA
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Poli Umum', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI UMUM', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI UMUM 2', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI UMUM 3', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI UMUM 4', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI UMUM 5', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Gawat Darurat', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'HOME VISIT', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Konseling', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'MCU', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'MEDICAL CHECK UP', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Inap Umum', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Gudang Farmasi', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI PENYAKIT DALAM', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI SYARAF', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI JANTUNG', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI MATA', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI THT', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI BEDAH', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI KULIT KELAMIN', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI JIWA', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI NAPZA', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI LANSIA', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI PARU', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI TB', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI GIZI', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI NUTRISIONIS', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI FISIOTERAPI', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI AKUPUNTUR', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI RADIOLOGI', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI RADIOGRAFER', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Poli Gigi', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI GIGI', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI BEDAH MULUT', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI PROSTODONSIA', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI KONSERVASI GIGI', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Poli KIA', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI KIA', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI KB', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI KANDUNGAN', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI ANAK', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI LAKTASI', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI RB', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'IMUNISASI (DPT)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'IMUNISASI (Hep. B)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'IMUNISASI (Polio)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'IMUNISASI (BCG)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'IMUNISASI (Campak)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI KHITAN', master_name: 'Khitan' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Laboratorium', master_name: 'Laboratorium' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'LABORATORIUM', master_name: 'Laboratorium' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'POLI PATOLOGI', master_name: 'Laboratorium' },
+      -- 4. Master Data Pegawai / Operational
+      CREATE TABLE IF NOT EXISTS monev (
+          id BIGSERIAL PRIMARY KEY,
+          user_id BIGINT UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+          nama VARCHAR(255) NOT NULL,
+          hp VARCHAR(50)
+      );
 
-      // KLINIK 4: MEDAN
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Poli Umum', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI UMUM', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI UMUM 2', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI UMUM 3', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI UMUM 4', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI UMUM 5', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Gawat Darurat', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'HOME VISIT', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'MCU', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'MEDICAL CHECK UP', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Konseling', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Inap Umum', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Gudang Farmasi', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI PENYAKIT DALAM', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI JANTUNG', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI SYARAF', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI MATA', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI THT', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI BEDAH', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI KULIT KELAMIN', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI JIWA', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI NAPZA', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI LANSIA', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI PARU', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI TB', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI GIZI', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI NUTRISIONIS', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI RADIOLOGI', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI RADIOGRAFER', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Laboratorium', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'LABORATORIUM', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Poli Gigi', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI GIGI', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI BEDAH MULUT', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI PROSTODONSIA', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI KONSERVASI GIGI', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Poli KIA', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI KIA', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI KB', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI KANDUNGAN', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI ANAK', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI LAKTASI', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI RB', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'IMUNISASI (DPT)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'IMUNISASI (Hep. B)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'IMUNISASI (Polio)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'IMUNISASI (BCG)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'IMUNISASI (Campak)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI KHITAN', master_name: 'Khitan' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI FISIOTERAPI', master_name: 'Poli Fisioterapi' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'FISIOTERAPI', master_name: 'Poli Fisioterapi' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI KEDOKTERAN FISIK DAN REHABILITASI MEDIK', master_name: 'Poli Fisioterapi' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'POLI AKUPUNTUR', master_name: 'Poli Fisioterapi' },
+      CREATE TABLE IF NOT EXISTS relawan (
+          id BIGSERIAL PRIMARY KEY,
+          user_id BIGINT UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+          nama VARCHAR(255) NOT NULL,
+          hp VARCHAR(50),
+          is_korwil BOOLEAN DEFAULT false,
+          monev_id BIGINT REFERENCES monev(id) ON DELETE SET NULL,
+          korwil_id BIGINT REFERENCES relawan(id) ON DELETE SET NULL
+      );
 
-      // KLINIK 5: PEKANBARU
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'Poli Umum', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'POLI UMUM', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'Konseling', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'POLI KHITAN', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'Gudang Farmasi', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'Laboratorium', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'LABORATORIUM', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'Poli Gigi', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'POLI GIGI', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'Poli KIA', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'POLI KIA', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'POLI KB', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'IMUNISASI (DPT)', master_name: 'Vaksin' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'IMUNISASI (Hep. B)', master_name: 'Vaksin' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'IMUNISASI (Polio)', master_name: 'Vaksin' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'IMUNISASI (BCG)', master_name: 'Vaksin' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'IMUNISASI (Campak)', master_name: 'Vaksin' },
+      -- 5. Core Operational
+      CREATE TABLE IF NOT EXISTS desa_berdaya (
+          id BIGSERIAL PRIMARY KEY,
+          provinsi_id BIGINT NOT NULL REFERENCES provinsi(id) ON DELETE CASCADE,
+          kota_id BIGINT NOT NULL REFERENCES kota_kabupaten(id) ON DELETE CASCADE,
+          kecamatan_id BIGINT NOT NULL REFERENCES kecamatan(id) ON DELETE CASCADE,
+          desa_id BIGINT NOT NULL REFERENCES desa_config(id) ON DELETE CASCADE,
+          relawan_id BIGINT NOT NULL REFERENCES relawan(id) ON DELETE CASCADE,
+          status_aktif BOOLEAN DEFAULT true,
+          tanggal_mulai TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
 
-      // KLINIK 6: YOGYAKARTA
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'Poli Umum', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'POLI UMUM', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'GAWAT DARURAT', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'KONSELING', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'Gudang Farmasi', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'POLI KHITAN', master_name: 'Poli Umum' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'Poli Gigi', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'POLI GIGI', master_name: 'Poli Gigi' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'Poli KIA', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'POLI KIA', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'POLI KB', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'IMUNISASI (DPT)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'IMUNISASI (Polio)', master_name: 'Poli KIA' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'Laboratorium', master_name: 'Laboratorium' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'LABORATORIUM', master_name: 'Laboratorium' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'FISIOTERAPI', master_name: 'Poli Fisioterapi' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'POLI FISIOTERAPI', master_name: 'Poli Fisioterapi' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'KEBUGARAN', master_name: 'Poli Kebugaran' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'POLI OLAHRAGA DAN KEBUGARAN', master_name: 'Poli Kebugaran' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'AKUPUNTUR', master_name: 'Poli Kebugaran' },
-    ];
+      CREATE TABLE IF NOT EXISTS penerima_manfaat (
+          id BIGSERIAL PRIMARY KEY,
+          desa_berdaya_id BIGINT NOT NULL REFERENCES desa_berdaya(id) ON DELETE CASCADE,
+          nik VARCHAR(20) UNIQUE NOT NULL,
+          nama VARCHAR(255) NOT NULL,
+          alamat TEXT,
+          kategori_pm kategori_pm NOT NULL,
+          foto_ktp_url VARCHAR(500)
+      );
 
-    for (const mapping of polyMappings) {
-      const clinic = allClinics.find((c: any) => c.name === mapping.clinic_name);
-      const masterPoly = allPolies.find((p: any) => p.name === mapping.master_name);
-      
-      if (clinic && masterPoly) {
-        await sql`
-          INSERT INTO clinic_poly_mappings (clinic_id, raw_poly_name, master_poly_id, is_revenue_center) 
-          VALUES (${clinic.id}, ${mapping.raw_name}, ${masterPoly.id}, true)
-          ON CONFLICT (clinic_id, raw_poly_name) 
-          DO UPDATE SET master_poly_id = EXCLUDED.master_poly_id
-        `;
-      }
-    }
-    console.log('✅ Clinic poly mappings seeded');
+      -- 1. Insert Provinsi
+      INSERT INTO provinsi (nama_provinsi) VALUES
+        ('Jawa Barat'),
+        ('Jawa Tengah'),
+        ('Jawa Timur'),
+        ('Banten');
 
-    // C1. Clinic Insurance Mappings (dengan proteksi duplicate)
-    console.log('📝 Seeding clinic_insurance_mappings...');
-    
-    // Get all clinics and insurance types
-    const allClinicsForInsurance = await sql`
-      SELECT id, name FROM clinics ORDER BY id
-    `;
-    const allInsuranceTypes = await sql`
-      SELECT id, name FROM master_insurance_types ORDER BY id
-    `;
-    
-    // Mapping insurance types untuk setiap klinik berdasarkan script SQL
-    const insuranceMappings = [
-      // KLINIK 1: SURABAYA
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Umum', master_name: 'UMUM / PRIBADI' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Non muslim', master_name: 'UMUM / PRIBADI' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'BPJS', master_name: 'BPJS KESEHATAN' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'bpjs', master_name: 'BPJS KESEHATAN' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'BPJS Kesehatan', master_name: 'BPJS KESEHATAN' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Garda medika', master_name: 'ASURANSI SWASTA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Admedika', master_name: 'ASURANSI SWASTA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'BNI Life', master_name: 'ASURANSI SWASTA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Member - Fakir', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Member - Miskin', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Member - Amil', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Member - Hamba sahaya', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Member - Gharimin', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Member - Fii sabilillah', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Member - Ibnu sabil', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Member - Muallaf', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', raw_name: 'Sahabat Klinik', master_name: 'SOSIAL / MITRA' },
+      -- 2. Insert Kota/Kabupaten
+      INSERT INTO kota_kabupaten (provinsi_id, nama_kota) VALUES
+        (1, 'Kota Bandung'),
+        (1, 'Kabupaten Bogor'),
+        (2, 'Kota Semarang'),
+        (3, 'Kota Surabaya');
 
-      // KLINIK 2: SEMARANG
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Umum', master_name: 'UMUM / PRIBADI' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Non muslim', master_name: 'UMUM / PRIBADI' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'BPJS', master_name: 'BPJS KESEHATAN' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'GARDA MEDIKA', master_name: 'ASURANSI SWASTA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Member - Fakir', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Member - Miskin', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Member - Amil', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Member - Hamba sahaya', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Member - Gharimin', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Member - Fii sabilillah', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Member - Ibnu sabil', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'member - mualaf', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', raw_name: 'Sahabat Klinik', master_name: 'SOSIAL / MITRA' },
+      -- 3. Insert Kecamatan
+      INSERT INTO kecamatan (kota_id, nama_kecamatan) VALUES
+        (1, 'Coblong'),
+        (1, 'Cicendo'),
+        (2, 'Cibinong'),
+        (3, 'Semarang Tengah'),
+        (4, 'Gubeng');
 
-      // KLINIK 3: JAKARTA
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Umum', master_name: 'UMUM / PRIBADI' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Non muslim', master_name: 'UMUM / PRIBADI' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'BPJS', master_name: 'BPJS KESEHATAN' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Member - Fakir', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Member - Miskin', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Member - Amil', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Member - Hamba sahaya', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Member - Gharimin', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Member - Fii sabilillah', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Member - Ibnu sabil', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Member - Muallaf', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', raw_name: 'Sahabat Klinik', master_name: 'SOSIAL / MITRA' },
+      -- 4. Insert Desa Config
+      INSERT INTO desa_config (provinsi_id, kota_id, kecamatan_id, nama_desa, latitude, longitude, potensi_desa) VALUES
+        (1, 1, 1, 'Dago', -6.8741, 107.6186, 'Pariwisata, Kuliner'),
+        (1, 1, 2, 'Arjuna', -6.9080, 107.5950, 'Perdagangan'),
+        (1, 2, 3, 'Cibinong', -6.4833, 106.8500, 'Industri'),
+        (2, 3, 4, 'Sekayu', -6.9786, 110.4136, 'Jasa, Sejarah'),
+        (3, 4, 5, 'Airlangga', -7.2711, 112.7565, 'Pendidikan');
 
-      // KLINIK 4: MEDAN
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Umum', master_name: 'UMUM / PRIBADI' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Non muslim', master_name: 'UMUM / PRIBADI' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'BPJS', master_name: 'BPJS KESEHATAN' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Member - Fakir', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Member - Miskin', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Member - Amil', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Member - Hamba sahaya', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Member - Gharimin', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Member - Fii sabilillah', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Member - Ibnu sabil', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Member - Muallaf', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Medan', raw_name: 'Sahabat Klinik', master_name: 'SOSIAL / MITRA' },
+      -- 5. Insert Users (Auth)
+      INSERT INTO users (email, password_encrypted, role) VALUES
+        ('admin@desaberdaya.id', '${hashedPassword}', 'ADMIN'),
+        ('program@desaberdaya.id', '${hashedPassword}', 'PROG_HEAD'),
+        ('finance@desaberdaya.id', '${hashedPassword}', 'FINANCE'),
+        ('budi.relawan@gmail.com', '${hashedPassword}', 'RELAWAN'),
+        ('siti.relawan@gmail.com', '${hashedPassword}', 'RELAWAN'),
+        ('ageng.monev@gmail.com', '${hashedPassword}', 'MONEV');
 
-      // KLINIK 5: PEKANBARU
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'Umum', master_name: 'UMUM / PRIBADI' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'BPJS', master_name: 'BPJS KESEHATAN' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'Member - Fakir', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'Member - Miskin', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'Member - Amil', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'Member - Hamba sahaya', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'Member - Gharimin', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'Member - Fii sabilillah', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'Member - Ibnu sabil', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'Member - Muallaf', master_name: 'SOSIAL / MITRA' },
-      { clinic_name: 'Klinik Cita Sehat Pekanbaru', raw_name: 'Sahabat Klinik', master_name: 'SOSIAL / MITRA' },
+      -- 5a. Insert Monev
+      INSERT INTO monev (user_id, nama, hp) VALUES
+        (6, 'Ageng Monev', '081600006666');
 
-      // KLINIK 6: YOGYAKARTA
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'Umum', master_name: 'UMUM / PRIBADI' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'BPJS Kesehatan', master_name: 'BPJS KESEHATAN' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'Pemerintah Daerah Kota', master_name: 'BPJS KESEHATAN' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'Member bpjs', master_name: 'BPJS KESEHATAN' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'garda medika', master_name: 'ASURANSI SWASTA' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'admedika', master_name: 'ASURANSI SWASTA' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'BRI LIFE', master_name: 'ASURANSI SWASTA' },
-      { clinic_name: 'Klinik Cita Sehat Yogyakarta', raw_name: 'Member rumah zakat', master_name: 'SOSIAL / MITRA' },
-    ];
+      -- 5b. Insert Relawan & Korwil
+      INSERT INTO relawan (user_id, nama, hp, is_korwil, monev_id) VALUES
+        (2, 'Manajer Program', '081200002222', true, 1), -- Korwil
+        (4, 'Budi Santoso', '081400004444', false, 1),
+        (5, 'Siti Aminah', '081500005555', false, 1);
 
-    for (const mapping of insuranceMappings) {
-      const clinic = allClinicsForInsurance.find((c: any) => c.name === mapping.clinic_name);
-      const masterInsurance = allInsuranceTypes.find((i: any) => i.name === mapping.master_name);
-      
-      if (clinic && masterInsurance) {
-        await sql`
-          INSERT INTO clinic_insurance_mappings (clinic_id, raw_insurance_name, master_insurance_id) 
-          VALUES (${clinic.id}, ${mapping.raw_name}, ${masterInsurance.id})
-          ON CONFLICT (clinic_id, raw_insurance_name) 
-          DO UPDATE SET master_insurance_id = EXCLUDED.master_insurance_id
-        `;
-      }
-    }
-    console.log('✅ Clinic insurance mappings seeded');
+      -- Update korwil_id untuk Relawan (Budi dan Siti)
+      UPDATE relawan SET korwil_id = 1 WHERE is_korwil = false;
 
-    // D. Insert Patients (harus dibuat dulu sebelum transactions)
-    console.log('📝 Seeding patients...');
-    
-    const patientsData = [
-      { clinic_name: 'Klinik Cita Sehat Surabaya', erm_no: '00116909', full_name: 'M. NURHADI', visit_date: '2026-01-20' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', erm_no: '00115853', full_name: 'NIKEN ARDYANA PUSPITA SARI', visit_date: '2026-01-20' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', erm_no: '00200001', full_name: 'SAMPLE PATIENT SEMARANG', visit_date: '2026-01-15' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', erm_no: '00300001', full_name: 'SAMPLE PATIENT JAKARTA', visit_date: '2026-01-18' },
-      { clinic_name: 'Klinik Cita Sehat Medan', erm_no: '00400001', full_name: 'SAMPLE PATIENT MEDAN', visit_date: '2026-01-19' },
-    ];
-    
-    for (const patient of patientsData) {
-      const clinic = await sql`
-        SELECT id FROM clinics WHERE name = ${patient.clinic_name} LIMIT 1
-      `;
-      
-      if (clinic.length > 0) {
-        const clinicId = clinic[0].id
-        const ermNoForZains = `${clinicId}${patient.erm_no}`
-        await sql`
-          INSERT INTO patients (clinic_id, erm_no, full_name, first_visit_at, last_visit_at, visit_count, erm_no_for_zains)
-          VALUES (
-            ${clinicId},
-            ${patient.erm_no},
-            ${patient.full_name},
-            ${patient.visit_date},
-            ${patient.visit_date},
-            1,
-            ${ermNoForZains}
-          )
-          ON CONFLICT (clinic_id, erm_no) DO NOTHING
-        `;
-      }
-    }
-    console.log('✅ Patients seeded');
+      -- Update korwil_id untuk Korwil (dirinya sendiri)
+      UPDATE relawan SET korwil_id = id WHERE is_korwil = true;
 
-    // D1. Insert Transactions (dengan proteksi duplicate)
-    console.log('📝 Seeding transactions...');
-    
-    const transactionsData = [
-      {
-        clinic_name: 'Klinik Cita Sehat Surabaya',
-        trx_date: '2026-01-20',
-        trx_no: 'NT-0000049995',
-        erm_no: '00116909',
-        patient_name: 'M. NURHADI',
-        insurance_type: 'BPJS',
-        polyclinic: 'Poli Umum',
-        payment_method: 'TUNAI',
-        bill_action: 15000,
-        bill_total: 15000,
-        paid_action: 15000,
-        paid_total: 15000,
-        zains_synced: true
-      },
-      {
-        clinic_name: 'Klinik Cita Sehat Surabaya',
-        trx_date: '2026-01-20',
-        trx_no: '-',
-        erm_no: '00115853',
-        patient_name: 'NIKEN ARDYANA PUSPITA SARI',
-        insurance_type: 'BPJS',
-        polyclinic: 'Poli Umum',
-        payment_method: '-',
-        bill_action: 15000,
-        bill_total: 15000,
-        covered_action: 15000,
-        covered_total: 15000,
-        paid_total: 0,
-        zains_synced: false
-      },
-      {
-        clinic_name: 'Klinik Cita Sehat Semarang',
-        trx_date: '2026-01-15',
-        trx_no: 'NT-0000050001',
-        erm_no: '00200001',
-        patient_name: 'SAMPLE PATIENT SEMARANG',
-        insurance_type: 'UMUM',
-        polyclinic: 'Poli Gigi',
-        payment_method: 'TUNAI',
-        bill_action: 25000,
-        bill_total: 25000,
-        paid_action: 25000,
-        paid_total: 25000,
-        zains_synced: true
-      },
-    ];
-    
-    for (const trx of transactionsData) {
-      const clinic = await sql`
-        SELECT id FROM clinics WHERE name = ${trx.clinic_name} LIMIT 1
-      `;
-      
-      if (clinic.length > 0) {
-        const patient = await sql`
-          SELECT id FROM patients WHERE clinic_id = ${clinic[0].id} AND erm_no = ${trx.erm_no} LIMIT 1
-        `;
-        
-        // Get poly_id from master_polies based on polyclinic name
-        const poly = await sql`
-          SELECT mp.id 
-          FROM master_polies mp
-          JOIN clinic_poly_mappings cpm ON cpm.master_poly_id = mp.id
-          WHERE cpm.clinic_id = ${clinic[0].id} 
-            AND cpm.raw_poly_name = ${trx.polyclinic}
-          LIMIT 1
-        `;
-        
-        // Get insurance_type_id from master_insurance_types based on insurance_type name
-        const insurance = await sql`
-          SELECT mit.id 
-          FROM master_insurance_types mit
-          JOIN clinic_insurance_mappings cim ON cim.master_insurance_id = mit.id
-          WHERE cim.clinic_id = ${clinic[0].id} 
-            AND cim.raw_insurance_name = ${trx.insurance_type}
-          LIMIT 1
-        `;
-        
-        const patientId = patient.length > 0 ? patient[0].id : null;
-        const polyId = poly.length > 0 ? poly[0].id : null;
-        const insuranceTypeId = insurance.length > 0 ? insurance[0].id : null;
-        
-        if (trx.covered_action !== undefined) {
-          await sql`
-            INSERT INTO transactions (
-              clinic_id, patient_id, poly_id, insurance_type_id, trx_date, trx_no, erm_no, patient_name, 
-              insurance_type, polyclinic, payment_method, 
-              bill_action, bill_total, covered_action, covered_total, paid_action, paid_total, zains_synced
-            ) 
-            VALUES (
-              ${clinic[0].id},
-              ${patientId},
-              ${polyId},
-              ${insuranceTypeId},
-              ${trx.trx_date},
-              ${trx.trx_no},
-              ${trx.erm_no},
-              ${trx.patient_name},
-              ${trx.insurance_type},
-              ${trx.polyclinic},
-              ${trx.payment_method},
-              ${trx.bill_action},
-              ${trx.bill_total},
-              ${trx.covered_action},
-              ${trx.covered_total},
-              ${trx.paid_action || 0},
-              ${trx.paid_total},
-              ${trx.zains_synced}
-            )
-            ON CONFLICT (clinic_id, erm_no, trx_date, polyclinic, bill_total) DO NOTHING
-          `;
-        } else {
-          await sql`
-            INSERT INTO transactions (
-              clinic_id, patient_id, poly_id, insurance_type_id, trx_date, trx_no, erm_no, patient_name, 
-              insurance_type, polyclinic, payment_method, 
-              bill_action, bill_total, paid_action, paid_total, zains_synced
-            ) 
-            VALUES (
-              ${clinic[0].id},
-              ${patientId},
-              ${polyId},
-              ${insuranceTypeId},
-              ${trx.trx_date},
-              ${trx.trx_no},
-              ${trx.erm_no},
-              ${trx.patient_name},
-              ${trx.insurance_type},
-              ${trx.polyclinic},
-              ${trx.payment_method},
-              ${trx.bill_action},
-              ${trx.bill_total},
-              ${trx.paid_action || 0},
-              ${trx.paid_total},
-              ${trx.zains_synced}
-            )
-            ON CONFLICT (clinic_id, erm_no, trx_date, polyclinic, bill_total) DO NOTHING
-          `;
-        }
-      }
-    }
-    console.log('✅ Transactions seeded');
+      -- 6. Insert Desa Berdaya (Core Operational)
+      INSERT INTO desa_berdaya (provinsi_id, kota_id, kecamatan_id, desa_id, relawan_id, status_aktif) VALUES
+        (1, 1, 1, 1, 2, true), -- Budi di Dago (Budi is id 2 in relawan)
+        (1, 2, 3, 3, 3, true); -- Siti di Cibinong (Siti is id 3 in relawan)
 
-    // E. Insert Target Config & Data (dengan proteksi duplicate)
-    // Sekarang menggunakan master_polies bukan master_target_categories
-    console.log('📝 Seeding clinic_target_configs...');
-    
-    // Get all polies untuk config
-    const polyUmum = await sql`SELECT id FROM master_polies WHERE name = 'Poli Umum' LIMIT 1`;
-    const polyKIA = await sql`SELECT id FROM master_polies WHERE name = 'Poli KIA' LIMIT 1`;
-    const polyLab = await sql`SELECT id FROM master_polies WHERE name = 'Laboratorium' LIMIT 1`;
+      -- 7. Insert Penerima Manfaat
+      INSERT INTO penerima_manfaat (desa_berdaya_id, nik, nama, alamat, kategori_pm) VALUES
+        (1, '1234567890123451', 'Kakek Ahmad', 'Jl. Dago Atas No.1', 'LANSIA'),
+        (1, '1234567890123452', 'Ibu Ratna', 'Jl. Dago Pojok No.2', 'BUMIL'),
+        (2, '1234567890123453', 'Adik Ani', 'Kp. Cibinong RT 01', 'BALITA'),
+        (2, '1234567890123454', 'Bapak Joko', 'Kp. Cibinong RT 02', 'EKONOMI');
+    `);
 
-    // Seed target configs untuk beberapa klinik
-    const targetConfigsData = [
-      { clinic_name: 'Klinik Cita Sehat Surabaya', poly_name: 'Poli Umum', year: 2026, base_rate: 50000 },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', poly_name: 'Poli Umum', year: 2025, base_rate: 45000 },
-      { clinic_name: 'Klinik Cita Sehat Semarang', poly_name: 'Poli Umum', year: 2026, base_rate: 55000 },
-      { clinic_name: 'Klinik Cita Sehat Semarang', poly_name: 'Poli KIA', year: 2026, base_rate: 60000 },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', poly_name: 'Poli Umum', year: 2026, base_rate: 52000 },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', poly_name: 'Laboratorium', year: 2026, base_rate: 75000 },
-    ];
-
-    for (const config of targetConfigsData) {
-      const clinic = await sql`SELECT id FROM clinics WHERE name = ${config.clinic_name} LIMIT 1`;
-      const poly = await sql`SELECT id FROM master_polies WHERE name = ${config.poly_name} LIMIT 1`;
-      
-      if (clinic.length > 0 && poly.length > 0) {
-        try {
-          await sql`
-            INSERT INTO clinic_target_configs (clinic_id, master_poly_id, target_year, base_rate) 
-            VALUES (${clinic[0].id}, ${poly[0].id}, ${config.year}, ${config.base_rate})
-            ON CONFLICT (clinic_id, master_poly_id, target_year) DO NOTHING
-          `;
-        } catch (error: any) {
-          // Skip jika sudah ada (unique constraint)
-          if (!error.message?.includes('unique') && !error.message?.includes('duplicate')) {
-            console.error(`Error seeding target config for ${config.clinic_name} - ${config.poly_name}:`, error.message);
-          }
-        }
-      }
-    }
-    console.log('✅ Target configs seeded');
-
-    // E1. Insert Daily Targets (dengan sumber)
-    console.log('📝 Seeding clinic_daily_targets...');
-    
-    const sources = await sql`SELECT id, name FROM sources ORDER BY id`;
-    
-    const getSourceId = (name: string) => {
-      const s = sources.find((x: any) => x.name === name);
-      return s ? s.id : null;
-    };
-
-    const dailyTargetsData = [
-      // Klinik Surabaya - Poli Umum dengan 4 sumber
-      { clinic_name: 'Klinik Cita Sehat Surabaya', poly_name: 'Poli Umum', source_name: 'SE Klinik',            date: '2026-01-20', visits: 30, revenue: 1500000, tipe_donatur: 'retail' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', poly_name: 'Poli Umum', source_name: 'SE Ambulance',         date: '2026-01-20', visits: 5,  revenue: 250000,  tipe_donatur: 'retail' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', poly_name: 'Poli Umum', source_name: 'Fundraising Project',  date: '2026-01-20', visits: 10, revenue: 500000,  tipe_donatur: 'corporate' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', poly_name: 'Poli Umum', source_name: 'Fundraising Digital',  date: '2026-01-20', visits: 8,  revenue: 400000,  tipe_donatur: 'digital' },
-
-      // Klinik Jakarta - Poli Umum
-      { clinic_name: 'Klinik Cita Sehat Jakarta',  poly_name: 'Poli Umum', source_name: 'SE Klinik',            date: '2026-01-20', visits: 40, revenue: 2080000, tipe_donatur: 'retail' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta',  poly_name: 'Poli Umum', source_name: 'Fundraising Project',  date: '2026-01-20', visits: 15, revenue: 780000,  tipe_donatur: 'corporate' },
-
-      // Klinik Jakarta - Laboratorium
-      { clinic_name: 'Klinik Cita Sehat Jakarta',  poly_name: 'Laboratorium', source_name: 'SE Klinik',         date: '2026-01-20', visits: 20, revenue: 1500000, tipe_donatur: 'retail' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta',  poly_name: 'Laboratorium', source_name: 'Fundraising Digital', date: '2026-01-20', visits: 5, revenue: 400000, tipe_donatur: 'digital' },
-
-      // Klinik Semarang
-      { clinic_name: 'Klinik Cita Sehat Semarang', poly_name: 'Poli Umum', source_name: 'SE Klinik', date: '2026-01-20', visits: 25, revenue: 1375000, tipe_donatur: 'retail' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', poly_name: 'Poli KIA', source_name: 'SE Klinik', date: '2026-01-20', visits: 15, revenue: 900000,  tipe_donatur: 'retail' },
-    ];
-    
-    for (const target of dailyTargetsData) {
-      const clinic = await sql`SELECT id FROM clinics WHERE name = ${target.clinic_name} LIMIT 1`;
-      const poly = await sql`SELECT id FROM master_polies WHERE name = ${target.poly_name} LIMIT 1`;
-      const sourceId = getSourceId(target.source_name);
-      
-      if (clinic.length > 0 && poly.length > 0 && sourceId) {
-        try {
-          // Parse tanggal untuk mendapatkan bulan dan tahun
-          const dateObj = new Date(target.date);
-          const targetMonth = dateObj.getMonth() + 1; // 1-12
-          const targetYear = dateObj.getFullYear();
-          
-          await sql`
-            INSERT INTO clinic_daily_targets (
-              clinic_id, 
-              master_poly_id, 
-              source_id, 
-              target_type,
-              target_date,
-              target_month,
-              target_year,
-              target_visits, 
-              target_revenue, 
-              tipe_donatur
-            )
-            VALUES (
-              ${clinic[0].id}, 
-              ${poly[0].id}, 
-              ${sourceId}, 
-              'daily',
-              ${target.date},
-              ${targetMonth},
-              ${targetYear},
-              ${target.visits}, 
-              ${target.revenue}, 
-              ${target.tipe_donatur}
-            )
-            ON CONFLICT (clinic_id, master_poly_id, target_date, source_id) 
-            WHERE target_type = 'daily' AND target_date IS NOT NULL
-            DO NOTHING
-          `;
-        } catch (error: any) {
-          // Skip jika sudah ada (unique constraint dari partial index)
-          if (!error.message?.includes('unique') && !error.message?.includes('duplicate')) {
-            console.error(`Error seeding daily target for ${target.clinic_name} - ${target.poly_name} - ${target.date}:`, error.message);
-          }
-        }
-      }
-    }
-    console.log('✅ Daily targets seeded');
-
-    // D2. Update transactions untuk link ke patient_id (jika belum ter-link)
-    console.log('📝 Linking transactions dengan patients...');
-    await sql`
-      UPDATE transactions t
-      SET patient_id = p.id
-      FROM patients p
-      WHERE t.clinic_id = p.clinic_id
-        AND t.erm_no = p.erm_no
-        AND t.patient_id IS NULL
-    `;
-    console.log('✅ Transactions linked dengan patients');
-
-    // G. Insert Users (default seed data)
-    console.log('📝 Seeding users...');
-    
-    // Get clinic IDs - menggunakan nama yang sesuai dengan data seed
-    const clinicSurabayaId = await sql`
-      SELECT id FROM clinics WHERE name = 'Klinik Cita Sehat Surabaya' LIMIT 1
-    `;
-    const clinicSemarangId = await sql`
-      SELECT id FROM clinics WHERE name = 'Klinik Cita Sehat Semarang' LIMIT 1
-    `;
-    
-    // Admin Klinik Cita Sehat Surabaya (menggunakan ID 1 sesuai data)
-    // Note: Karena data seed menunjukkan ID 1 untuk Surabaya, kita akan menggunakan ID yang sesuai
-    // Tapi untuk keamanan, kita akan lookup berdasarkan nama
-    if (clinicSurabayaId.length > 0) {
-      await sql`
-        INSERT INTO users (email, full_name, role, clinic_id, google_id, avatar_url)
-        VALUES (
-          'admin_klinik_cita_sehat_bandung@csf.id',
-          'Admin Klinik Cita Sehat Bandung',
-          'clinic_manager',
-          ${clinicSurabayaId[0].id},
-          NULL,
-          NULL
-        )
-        ON CONFLICT (email) DO NOTHING
-      `;
-    }
-    
-    // Admin Klinik Cita Sehat Semarang
-    if (clinicSemarangId.length > 0) {
-      await sql`
-        INSERT INTO users (email, full_name, role, clinic_id, google_id, avatar_url)
-        VALUES (
-          'admin_klinik_cita_sehat_semarang@csf.id',
-          'Admin Klinik Cita Sehat Semarang',
-          'clinic_manager',
-          ${clinicSemarangId[0].id},
-          NULL,
-          NULL
-        )
-        ON CONFLICT (email) DO NOTHING
-      `;
-    }
-    
-    // Finance Admin
-    await sql`
-      INSERT INTO users (email, full_name, role, clinic_id, google_id, avatar_url)
-      VALUES (
-        'finance@csf.id',
-        'Admin Finance',
-        'finance_admin',
-        NULL,
-        NULL,
-        NULL
-      )
-      ON CONFLICT (email) DO NOTHING
-    `;
-    
-    // Super Admin - Irvan
-    await sql`
-      INSERT INTO users (email, full_name, role, clinic_id, google_id, avatar_url)
-      VALUES (
-        'irvan@cnt.id',
-        'Irvan',
-        'super_admin',
-        NULL,
-        NULL,
-        NULL
-      )
-      ON CONFLICT (email) DO NOTHING
-    `;
-    
-    // Super Admin - Regi
-    await sql`
-      INSERT INTO users (email, full_name, role, clinic_id, google_id, avatar_url)
-      VALUES (
-        'regi@cnt.id',
-        'Regi',
-        'super_admin',
-        NULL,
-        NULL,
-        NULL
-      )
-      ON CONFLICT (email) DO NOTHING
-    `;
-    
-    // Super Admin - Dev CNT
-    await sql`
-      INSERT INTO users (email, full_name, role, clinic_id, google_id, avatar_url)
-      VALUES (
-        'dev@cnt.id',
-        'Dev CNT',
-        'super_admin',
-        NULL,
-        NULL,
-        NULL
-      )
-      ON CONFLICT (email) DO NOTHING
-    `;
-    
-    // Super Admin - Nendi
-    await sql`
-      INSERT INTO users (id, email, full_name, role, clinic_id, google_id, avatar_url, created_at)
-      VALUES (
-        7,
-        'nendi.permana@citasehat.org',
-        'Nendi',
-        'super_admin',
-        NULL,
-        NULL,
-        NULL,
-        '2026-01-28 03:01:08.785332+00'
-      )
-      ON CONFLICT (email) DO NOTHING
-    `;
-    
-    // Super Admin - Harini
-    await sql`
-      INSERT INTO users (id, email, full_name, role, clinic_id, google_id, avatar_url, created_at)
-      VALUES (
-        8,
-        'harini.trikusindriwati@citasehat.org',
-        'Harini',
-        'super_admin',
-        NULL,
-        NULL,
-        NULL,
-        '2026-01-28 03:01:24.286451+00'
-      )
-      ON CONFLICT (email) DO NOTHING
-    `;
-    
-    // Super Admin - Eva
-    await sql`
-      INSERT INTO users (id, email, full_name, role, clinic_id, google_id, avatar_url, created_at)
-      VALUES (
-        9,
-        'eva.sitisarah@citasehat.org',
-        'Eva',
-        'super_admin',
-        NULL,
-        NULL,
-        NULL,
-        '2026-01-28 03:08:14.354666+00'
-      )
-      ON CONFLICT (email) DO NOTHING
-    `;
-    
-    console.log('✅ Users seeded');
-
-    // H. Insert System Logs (relate dengan clinics)
-    console.log('📝 Seeding system_logs...');
-    
-    const systemLogsData = [
-      { clinic_name: 'Klinik Cita Sehat Surabaya', process_type: 'scraping', status: 'success', message: 'Data scraping berhasil dilakukan', payload: '{"rows_scraped": 150, "duration_ms": 2500}' },
-      { clinic_name: 'Klinik Cita Sehat Surabaya', process_type: 'zains_sync', status: 'success', message: 'Sinkronisasi ke Zains API berhasil', payload: '{"synced_count": 50, "failed_count": 0}' },
-      { clinic_name: 'Klinik Cita Sehat Semarang', process_type: 'scraping', status: 'success', message: 'Data scraping berhasil dilakukan', payload: '{"rows_scraped": 120, "duration_ms": 2200}' },
-      { clinic_name: 'Klinik Cita Sehat Jakarta', process_type: 'scraping', status: 'error', message: 'Gagal melakukan scraping - timeout', payload: '{"error": "Connection timeout", "retry_count": 3}' },
-      { clinic_name: null, process_type: 'system', status: 'info', message: 'Sistem startup berhasil', payload: '{"version": "3.0.0", "started_at": "2026-01-20T08:00:00Z"}' },
-    ];
-
-    for (const log of systemLogsData) {
-      let clinicId = null;
-      if (log.clinic_name) {
-        const clinic = await sql`SELECT id FROM clinics WHERE name = ${log.clinic_name} LIMIT 1`;
-        if (clinic.length > 0) {
-          clinicId = clinic[0].id;
-        }
-      }
-      
-      await sql`
-        INSERT INTO system_logs (clinic_id, process_type, status, message, payload)
-        VALUES (
-          ${clinicId},
-          ${log.process_type},
-          ${log.status},
-          ${log.message},
-          ${log.payload}::jsonb
-        )
-      `;
-    }
-    console.log('✅ System logs seeded');
-
-    // I. Insert Transactions to Zains (break dari transactions - 1 transaction bisa jadi banyak records)
-    console.log('📝 Seeding transactions_to_zains...');
-    
-    // Get some transactions untuk di-seed ke transactions_to_zains
-    const transactionsForZains = await sql`
-      SELECT t.id, t.clinic_id, t.erm_no, t.patient_name, t.trx_date, t.bill_total, t.zains_synced,
-             t.payment_method,
-             c.id_kantor_zains, c.id_rekening, c.name as clinic_name,
-             t.bill_action, t.bill_lab, t.bill_drug, t.bill_alkes, t.bill_mcu,
-             p.id_donatur_zains
-      FROM transactions t
-      JOIN clinics c ON c.id = t.clinic_id
-      LEFT JOIN patients p ON p.clinic_id = t.clinic_id AND p.erm_no = t.erm_no
-      ORDER BY t.id
-      LIMIT 10
-    `;
-    
-    if (transactionsForZains.length > 0) {
-      // Get semua categories untuk mapping
-      const categories = await sql`
-        SELECT id_program_zains, name FROM master_target_categories
-      `;
-      
-      const categoryMap: Record<string, string> = {}
-      for (const cat of categories) {
-        if (cat.name === 'Tindakan') categoryMap['action'] = cat.id_program_zains
-        if (cat.name === 'Laboratorium') categoryMap['lab'] = cat.id_program_zains
-        if (cat.name === 'Obat-obatan') categoryMap['drug'] = cat.id_program_zains
-        if (cat.name === 'Alat Kesehatan') categoryMap['alkes'] = cat.id_program_zains
-        if (cat.name === 'MCU') categoryMap['mcu'] = cat.id_program_zains
-      }
-      
-      let totalZainsRecords = 0
-      
-      for (const trx of transactionsForZains) {
-        // Break transaction menjadi multiple records berdasarkan bill_* yang > 0
-        const breaks: Array<{program: string | null, amount: number}> = []
-        
-        if (trx.bill_action && Number(trx.bill_action) > 0) {
-          breaks.push({ program: categoryMap['action'] || null, amount: Number(trx.bill_action) })
-        }
-        if (trx.bill_lab && Number(trx.bill_lab) > 0) {
-          breaks.push({ program: categoryMap['lab'] || null, amount: Number(trx.bill_lab) })
-        }
-        if (trx.bill_drug && Number(trx.bill_drug) > 0) {
-          breaks.push({ program: categoryMap['drug'] || null, amount: Number(trx.bill_drug) })
-        }
-        if (trx.bill_alkes && Number(trx.bill_alkes) > 0) {
-          breaks.push({ program: categoryMap['alkes'] || null, amount: Number(trx.bill_alkes) })
-        }
-        if (trx.bill_mcu && Number(trx.bill_mcu) > 0) {
-          breaks.push({ program: categoryMap['mcu'] || null, amount: Number(trx.bill_mcu) })
-        }
-        
-        // Jika tidak ada break, buat 1 record default
-        if (breaks.length === 0) {
-          breaks.push({ program: categoryMap['action'] || null, amount: Number(trx.bill_total) || 0 })
-        }
-        
-        // Insert multiple records untuk 1 transaction
-        // Hanya isi id_rekening jika payment_method adalah QRIS
-        const paymentMethod = (trx as any).payment_method || ''
-        const idRekening = paymentMethod.toUpperCase().includes('QRIS') ? (trx as any).id_rekening : null
-        
-        for (let i = 0; i < breaks.length; i++) {
-          const breakItem = breaks[i]
-          await sql`
-            INSERT INTO transactions_to_zains (
-              transaction_id, id_transaksi, id_program, id_kantor, tgl_transaksi, 
-              id_donatur, nominal_transaksi, id_rekening, synced, nama_pasien, no_erm, created_at, updated_at
-            )
-            VALUES (
-              ${trx.id},
-              ${`TRX-${trx.id}-${i + 1}`},
-              ${breakItem.program},
-              ${trx.id_kantor_zains},
-              ${trx.trx_date},
-              ${trx.id_donatur_zains || null},
-              ${Math.round(breakItem.amount)},
-              ${idRekening},
-              ${trx.zains_synced || false},
-              ${trx.patient_name},
-              ${trx.erm_no},
-              NOW(),
-              NOW()
-            )
-          `
-          totalZainsRecords++
-        }
-      }
-      console.log(`✅ Transactions to Zains seeded (${totalZainsRecords} records from ${transactionsForZains.length} transactions)`);
-    } else {
-      console.log('⚠️  No transactions found, skipping transactions_to_zains seed');
-    }
-
-    // I. Insert Public Holidays (Hari Libur Nasional dan Cuti Bersama 2026)
-    console.log('📝 Seeding public_holidays...');
-    
-    const publicHolidays2026 = [
-      // Hari Libur Nasional
-      { date: '2026-01-01', year: 2026, description: 'Tahun Baru Masehi', is_national_holiday: true },
-      { date: '2026-02-10', year: 2026, description: 'Tahun Baru Imlek 2577 Kongzili', is_national_holiday: true },
-      { date: '2026-03-28', year: 2026, description: 'Hari Raya Nyepi Tahun Baru Saka 1948', is_national_holiday: true },
-      { date: '2026-04-10', year: 2026, description: 'Isra Mi\'raj Nabi Muhammad SAW', is_national_holiday: true },
-      { date: '2026-05-01', year: 2026, description: 'Hari Buruh Internasional', is_national_holiday: true },
-      { date: '2026-05-05', year: 2026, description: 'Hari Raya Waisak 2570', is_national_holiday: true },
-      { date: '2026-05-16', year: 2026, description: 'Kenaikan Isa Almasih', is_national_holiday: true },
-      { date: '2026-06-01', year: 2026, description: 'Hari Lahir Pancasila', is_national_holiday: true },
-      { date: '2026-06-17', year: 2026, description: 'Hari Raya Idul Fitri 1447 Hijriyah', is_national_holiday: true },
-      { date: '2026-06-18', year: 2026, description: 'Hari Raya Idul Fitri 1447 Hijriyah', is_national_holiday: true },
-      { date: '2026-07-09', year: 2026, description: 'Hari Raya Idul Adha 1447 Hijriyah', is_national_holiday: true },
-      { date: '2026-08-17', year: 2026, description: 'Hari Kemerdekaan Republik Indonesia', is_national_holiday: true },
-      { date: '2026-09-01', year: 2026, description: 'Tahun Baru Islam 1448 Hijriyah', is_national_holiday: true },
-      { date: '2026-11-15', year: 2026, description: 'Maulid Nabi Muhammad SAW', is_national_holiday: true },
-      { date: '2026-12-25', year: 2026, description: 'Hari Raya Natal', is_national_holiday: true },
-      
-      // Cuti Bersama (Lengkap 2026)
-      { date: '2026-02-11', year: 2026, description: 'Cuti Bersama Tahun Baru Imlek', is_national_holiday: false },
-      { date: '2026-03-29', year: 2026, description: 'Cuti Bersama Hari Raya Nyepi', is_national_holiday: false },
-      { date: '2026-06-19', year: 2026, description: 'Cuti Bersama Idul Fitri', is_national_holiday: false },
-      { date: '2026-06-20', year: 2026, description: 'Cuti Bersama Idul Fitri', is_national_holiday: false },
-      { date: '2026-06-21', year: 2026, description: 'Cuti Bersama Idul Fitri', is_national_holiday: false },
-      { date: '2026-12-24', year: 2026, description: 'Cuti Bersama Hari Raya Natal', is_national_holiday: false },
-      { date: '2026-12-26', year: 2026, description: 'Cuti Bersama Hari Raya Natal', is_national_holiday: false },
-    ];
-
-    for (const holiday of publicHolidays2026) {
-      try {
-        await sql`
-          INSERT INTO public_holidays (holiday_date, year, description, is_national_holiday)
-          VALUES (${holiday.date}, ${holiday.year}, ${holiday.description}, ${holiday.is_national_holiday})
-          ON CONFLICT (holiday_date) DO NOTHING
-        `;
-      } catch (error: any) {
-        if (!error.message?.includes('unique') && !error.message?.includes('duplicate')) {
-          console.error(`Error seeding holiday ${holiday.date}:`, error.message);
-        }
-      }
-    }
-    console.log(`✅ Public holidays seeded (${publicHolidays2026.length} hari libur)`);
-
-    // J. App Settings (pengaturan dinamisasi: logo, warna sidebar, nama perusahaan, teks login, dll.)
-    console.log('📝 Seeding app_settings...')
-    const defaultLoginContent = `<h2>Kelola Klinik dengan Lebih Efisien</h2>
-<p>Pantau transaksi, kelola pasien, dan optimalkan operasional klinik dalam satu dashboard yang terpadu.</p>
-<ul>
-<li><strong>Monitoring Real-time</strong> — Lihat progres transaksi dan aktivitas klinik secara langsung dengan update real-time.</li>
-<li><strong>Tim Lebih Terkoordinasi</strong> — Berikan akses terkontrol untuk operator dan tim lapangan dengan manajemen peran yang fleksibel.</li>
-<li><strong>Laporan Siap Pakai</strong> — Unduh laporan transaksi dan kehadiran pasien untuk evaluasi dan analisis operasional klinik.</li>
-</ul>`
-    const defaultAppSettings = [
-      { key: 'app_title', value: 'Cita Sehat - Dashboard' },
-      { key: 'app_favicon_url', value: '/favicon.png' },
-      { key: 'app_logo_url', value: '/asset/logo_csf_new.png' },
-      { key: 'app_sidebar_bg_color', value: '#00786F' },
-      { key: 'app_company_name', value: 'Cita Sehat Foundation' },
-      { key: 'app_login_content', value: defaultLoginContent },
-      { key: 'app_login_tone_bg', value: 'linear-gradient(to bottom right, rgba(19,78,74,0.85), rgba(25,58,58,0.75), rgba(30,58,138,0.85))' },
-      { key: 'app_login_bg_image', value: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d' },
-    ]
-    for (const row of defaultAppSettings) {
-      await sql`
-        INSERT INTO app_settings (key, value)
-        VALUES (${row.key}, ${row.value})
-        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
-      `
-    }
-    console.log('✅ app_settings seeded')
-
-    console.log('✅ Seed database berhasil!');
-    process.exit(0);
-  } catch (error: any) {
-    console.error('❌ Error saat seed:', error.message);
-    if (error.message) {
-      console.error('Detail:', error.message);
-    }
-    process.exit(1);
+    console.log('✅ Seeding tabel berhasil diselesaikan!');
+  } catch (error) {
+    console.error('❌ Gagal melakukan seeding:', error);
+  } finally {
+    await sql.end();
   }
 }
 
-seed();
+runSeed();

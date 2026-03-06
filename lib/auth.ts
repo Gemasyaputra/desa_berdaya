@@ -1,69 +1,102 @@
 import NextAuth, { type NextAuthOptions } from 'next-auth'
-import GoogleProvider from 'next-auth/providers/google'
+import CredentialsProvider from 'next-auth/providers/credentials'
 import { sql } from '@/lib/db'
+import bcrypt from 'bcryptjs'
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-    }),
+    CredentialsProvider({
+      name: 'Credentials',
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null
+
+        try {
+          const users = await sql`
+            SELECT id, email, password_encrypted, role
+            FROM users
+            WHERE email = ${credentials.email}
+            LIMIT 1
+          `
+          const dbUser = (Array.isArray(users) ? users[0] : users) as any
+
+          if (!dbUser) return null
+
+          // Verify password
+          const passwordsMatch = await bcrypt.compare(credentials.password, dbUser.password_encrypted)
+          if (!passwordsMatch) return null
+
+          let operatorData: any = {
+            name: dbUser.email,
+            is_korwil: false,
+            operator_id: null,
+            monev_id: null,
+            korwil_id: null
+          }
+
+          if (dbUser.role === 'MONEV') {
+            const monevs = await sql`SELECT id, nama FROM monev WHERE user_id = ${dbUser.id} LIMIT 1`
+            const monev = (Array.isArray(monevs) ? monevs[0] : monevs) as any
+            if (monev) {
+              operatorData.name = monev.nama
+              operatorData.operator_id = String(monev.id)
+            }
+          } else if (dbUser.role === 'RELAWAN' || dbUser.role === 'PROG_HEAD' || dbUser.role === 'ADMIN' || dbUser.role === 'FINANCE') {
+            // Check into relawan table since PROG_HEAD is treated as Korwil in dummy data
+            const relawans = await sql`SELECT id, nama, is_korwil, monev_id, korwil_id FROM relawan WHERE user_id = ${dbUser.id} LIMIT 1`
+            const relawan = (Array.isArray(relawans) ? relawans[0] : relawans) as any
+            if (relawan) {
+              operatorData.name = relawan.nama
+              operatorData.operator_id = String(relawan.id)
+              operatorData.is_korwil = relawan.is_korwil
+              operatorData.monev_id = relawan.monev_id ? String(relawan.monev_id) : null
+              operatorData.korwil_id = relawan.korwil_id ? String(relawan.korwil_id) : null
+            }
+          }
+
+          return {
+            id: String(dbUser.id),
+            email: dbUser.email,
+            role: dbUser.role,
+            ...operatorData
+          }
+        } catch (error) {
+          console.error('Error in authorize callback:', error)
+          return null
+        }
+      }
+    })
   ],
   pages: {
     signIn: '/login',
-    // Error akan di-handle oleh route handler di /app/api/auth/error/route.ts
-    // yang akan redirect ke /login dengan parameter error
+    error: '/login',
   },
   session: {
     strategy: 'jwt',
-    // Session berlaku 8 jam, setelah itu user otomatis logout
-    maxAge: 60 * 60 * 8,
+    maxAge: 60 * 60 * 8, // 8 hours
   },
   callbacks: {
-    // Hanya izinkan login jika email ada di tabel users
-    async signIn({ user }) {
-      if (!user.email) return false
-
-      try {
-        const users = await sql`
-          SELECT id, full_name, role, clinic_id
-          FROM users
-          WHERE email = ${user.email}
-          LIMIT 1
-        `
-        const dbUser = Array.isArray(users) ? users[0] : users
-
-        if (!dbUser) {
-          // Email tidak terdaftar di tabel users
-          return false
-        }
-
-        // Tambahkan info user dari database ke objek user
-        ;(user as any).id = String(dbUser.id)
-        ;(user as any).name = dbUser.full_name || user.name
-        ;(user as any).role = dbUser.role
-        ;(user as any).clinic_id = dbUser.clinic_id
-
-        return true
-      } catch (error) {
-        console.error('Error checking user in signIn callback:', error)
-        return false
-      }
-    },
     async jwt({ token, user }) {
-      // Saat pertama kali login, merge data user ke token
       if (user) {
-        token.role = (user as any).role
-        token.clinic_id = (user as any).clinic_id
+        token.role = user.role
+        token.is_korwil = user.is_korwil
+        token.operator_id = user.operator_id
+        token.monev_id = user.monev_id
+        token.korwil_id = user.korwil_id
       }
       return token
     },
     async session({ session, token }) {
       if (session.user) {
-        // token.sub adalah user.id dari provider
-        ;(session.user as any).id = token.sub
-        ;(session.user as any).role = (token as any).role
-        ;(session.user as any).clinic_id = (token as any).clinic_id
+        session.user.id = token.sub
+        session.user.role = token.role as string
+        session.user.is_korwil = token.is_korwil as boolean
+        session.user.operator_id = token.operator_id as string
+        session.user.monev_id = token.monev_id as string
+        session.user.korwil_id = token.korwil_id as string
       }
       return session
     },

@@ -8,19 +8,30 @@ declare module 'next-auth' {
       name?: string | null
       email?: string | null
       role?: string | null
-      clinic_id?: number | null
+      is_korwil?: boolean | null
+      operator_id?: string | null
+      monev_id?: string | null
+      korwil_id?: string | null
     }
   }
 
   interface User {
+    id?: string
+    name?: string | null
     role?: string | null
-    clinic_id?: number | null
+    is_korwil?: boolean | null
+    operator_id?: string | null
+    monev_id?: string | null
+    korwil_id?: string | null
   }
 }
 
 declare module 'next-auth/jwt' {
   interface JWT {
     role?: string | null
-    clinic_id?: number | null
+    is_korwil?: boolean | null
+    operator_id?: string | null
+    monev_id?: string | null
+    korwil_id?: string | null
   }
 }

@@ -278,7 +278,7 @@ export async function getTeamForMonev(): Promise<TeamForMonev | null> {
   const monevRow = await sql`SELECT nama FROM monev WHERE id = ${monevId} LIMIT 1`
   const monev_nama = (monevRow as any[])[0]?.nama ?? 'Monev'
 
-  // Ambil semua Korwil di bawah monev ini
+  // 1 query: semua Korwil di bawah monev ini
   const korwilRows = await sql`
     SELECT r.id, r.nama,
            COUNT(db.id) as jumlah_desa
@@ -288,29 +288,33 @@ export async function getTeamForMonev(): Promise<TeamForMonev | null> {
     GROUP BY r.id, r.nama
     ORDER BY r.nama`
 
-  const korwils: KorwilInfo[] = await Promise.all(
-    (korwilRows as any[]).map(async (k) => {
-      const relawanRows = await sql`
-        SELECT r.id, r.nama,
-               COUNT(db.id) as jumlah_desa
-        FROM relawan r
-        LEFT JOIN desa_berdaya db ON db.relawan_id = r.id AND db.status_aktif = true
-        WHERE r.korwil_id = ${k.id} AND r.is_korwil = false
-        GROUP BY r.id, r.nama
-        ORDER BY r.nama`
+  const korwilIds = (korwilRows as any[]).map((k) => Number(k.id))
+  if (korwilIds.length === 0) return { monev_nama, korwils: [] }
 
-      return {
-        id: Number(k.id),
-        nama: k.nama,
-        jumlah_desa: Number(k.jumlah_desa),
-        relawans: (relawanRows as any[]).map((r) => ({
-          id: Number(r.id),
-          nama: r.nama,
-          jumlah_desa: Number(r.jumlah_desa),
-        })),
-      }
-    })
-  )
+  // 1 query: semua relawan di bawah korwil-korwil tersebut
+  const relawanRows = await sql`
+    SELECT r.id, r.nama, r.korwil_id,
+           COUNT(db.id) as jumlah_desa
+    FROM relawan r
+    LEFT JOIN desa_berdaya db ON db.relawan_id = r.id AND db.status_aktif = true
+    WHERE r.korwil_id = ANY(${korwilIds}) AND r.is_korwil = false
+    GROUP BY r.id, r.nama, r.korwil_id
+    ORDER BY r.nama`
+
+  // Group relawan per korwil di JavaScript
+  const relawanByKorwil = new Map<number, RelawanInfo[]>()
+  for (const r of relawanRows as any[]) {
+    const kid = Number(r.korwil_id)
+    if (!relawanByKorwil.has(kid)) relawanByKorwil.set(kid, [])
+    relawanByKorwil.get(kid)!.push({ id: Number(r.id), nama: r.nama, jumlah_desa: Number(r.jumlah_desa) })
+  }
+
+  const korwils: KorwilInfo[] = (korwilRows as any[]).map((k) => ({
+    id: Number(k.id),
+    nama: k.nama,
+    jumlah_desa: Number(k.jumlah_desa),
+    relawans: relawanByKorwil.get(Number(k.id)) ?? [],
+  }))
 
   return { monev_nama, korwils }
 }

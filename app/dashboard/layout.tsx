@@ -300,34 +300,38 @@ export default function DashboardLayout({
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <div className="relative w-44 h-12 ml-2">
-                <Image
-                  src={logoUrl}
-                  alt="Logo Mobile"
-                  fill
-                  className="object-contain object-left"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = '/icon.svg';
-                  }}
-                />
-              </div>
+              {logoUrl && (
+                <div className="relative w-44 h-12 ml-2">
+                  <Image
+                    src={logoUrl}
+                    alt="Logo Mobile"
+                    fill
+                    className="object-contain object-left"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/icon.svg';
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Logo Desktop - dari app_settings */}
             <div className="hidden lg:flex items-center mr-4">
-              <div className="relative w-64 h-12 flex-shrink-0 overflow-hidden">
-                <Image
-                  src={logoUrl}
-                  alt="Logo"
-                  fill
-                  className="object-contain object-left"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = '/icon.svg';
-                  }}
-                />
-              </div>
+              {logoUrl && (
+                <div className="relative w-64 h-12 flex-shrink-0 overflow-hidden">
+                  <Image
+                    src={logoUrl}
+                    alt="Logo"
+                    fill
+                    className="object-contain object-left"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/icon.svg';
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Page Title Area - Right Section */}

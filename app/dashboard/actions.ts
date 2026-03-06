@@ -232,3 +232,124 @@ export async function getRankingRelawan(): Promise<RankingRelawan[]> {
     jumlah_desa: Number(r.jumlah_desa),
   }))
 }
+
+// =============================================================
+// Struktur Tim — untuk Monev (lihat Korwil + Relawan bawahan)
+// =============================================================
+export type RelawanInfo = {
+  id: number
+  nama: string
+  jumlah_desa: number
+}
+
+export type KorwilInfo = {
+  id: number
+  nama: string
+  jumlah_desa: number
+  relawans: RelawanInfo[]
+}
+
+export type TeamForMonev = {
+  monev_nama: string
+  korwils: KorwilInfo[]
+}
+
+export async function getTeamForMonev(): Promise<TeamForMonev | null> {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return null
+
+  const role = session.user.role as string
+  const operatorId = session.user.operator_id
+
+  // ADMIN juga bisa lihat struktur global — ambil monev pertama (atau semua)
+  let monevId: number | null = null
+
+  if (role === 'MONEV' && operatorId) {
+    monevId = Number(operatorId)
+  } else if (role === 'ADMIN' || role === 'FINANCE') {
+    const monevRow = await sql`SELECT id, nama FROM monev LIMIT 1`
+    const first = (monevRow as any[])[0]
+    if (!first) return null
+    monevId = Number(first.id)
+  } else {
+    return null
+  }
+
+  const monevRow = await sql`SELECT nama FROM monev WHERE id = ${monevId} LIMIT 1`
+  const monev_nama = (monevRow as any[])[0]?.nama ?? 'Monev'
+
+  // Ambil semua Korwil di bawah monev ini
+  const korwilRows = await sql`
+    SELECT r.id, r.nama,
+           COUNT(db.id) as jumlah_desa
+    FROM relawan r
+    LEFT JOIN desa_berdaya db ON db.relawan_id = r.id AND db.status_aktif = true
+    WHERE r.monev_id = ${monevId} AND r.is_korwil = true
+    GROUP BY r.id, r.nama
+    ORDER BY r.nama`
+
+  const korwils: KorwilInfo[] = await Promise.all(
+    (korwilRows as any[]).map(async (k) => {
+      const relawanRows = await sql`
+        SELECT r.id, r.nama,
+               COUNT(db.id) as jumlah_desa
+        FROM relawan r
+        LEFT JOIN desa_berdaya db ON db.relawan_id = r.id AND db.status_aktif = true
+        WHERE r.korwil_id = ${k.id} AND r.is_korwil = false
+        GROUP BY r.id, r.nama
+        ORDER BY r.nama`
+
+      return {
+        id: Number(k.id),
+        nama: k.nama,
+        jumlah_desa: Number(k.jumlah_desa),
+        relawans: (relawanRows as any[]).map((r) => ({
+          id: Number(r.id),
+          nama: r.nama,
+          jumlah_desa: Number(r.jumlah_desa),
+        })),
+      }
+    })
+  )
+
+  return { monev_nama, korwils }
+}
+
+// =============================================================
+// Struktur Tim — untuk Korwil (lihat Relawan bawahan)
+// =============================================================
+export type TeamForKorwil = {
+  korwil_nama: string
+  relawans: RelawanInfo[]
+}
+
+export async function getTeamForKorwil(): Promise<TeamForKorwil | null> {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return null
+
+  const operatorId = session.user.operator_id
+  if (!operatorId || !session.user.is_korwil) return null
+
+  const korwilId = Number(operatorId)
+  const korwilRow = await sql`SELECT nama FROM relawan WHERE id = ${korwilId} LIMIT 1`
+  const korwil_nama = (korwilRow as any[])[0]?.nama ?? 'Korwil'
+
+  const relawanRows = await sql`
+    SELECT r.id, r.nama,
+           COUNT(db.id) as jumlah_desa
+    FROM relawan r
+    LEFT JOIN desa_berdaya db ON db.relawan_id = r.id AND db.status_aktif = true
+    WHERE r.korwil_id = ${korwilId} AND r.is_korwil = false
+    GROUP BY r.id, r.nama
+    ORDER BY r.nama`
+
+  return {
+    korwil_nama,
+    relawans: (relawanRows as any[]).map((r) => ({
+      id: Number(r.id),
+      nama: r.nama,
+      jumlah_desa: Number(r.jumlah_desa),
+    })),
+  }
+}
+

@@ -8,12 +8,12 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
-import { Building2, Users, TrendingUp, Wallet, RefreshCw, MapPin } from 'lucide-react'
+import { Building2, Users, TrendingUp, Wallet, RefreshCw, MapPin, ChevronDown, ChevronRight, UserCheck, Shield } from 'lucide-react'
 import {
   getDashboardStats, getAnggaranPerDesa, getTrendLaporanBulanan,
-  getSebaranStatusDesa, getRankingRelawan,
+  getSebaranStatusDesa, getRankingRelawan, getTeamForMonev, getTeamForKorwil,
   type DashboardStats, type AnggaranPerDesa, type TrendBulanan,
-  type SebaranStatus, type RankingRelawan,
+  type SebaranStatus, type RankingRelawan, type TeamForMonev, type TeamForKorwil,
 } from './actions'
 
 // =====================================================
@@ -69,23 +69,30 @@ export default function DashboardPage() {
   const [trend, setTrend] = useState<TrendBulanan[]>([])
   const [sebaran, setSebaran] = useState<SebaranStatus[]>([])
   const [ranking, setRanking] = useState<RankingRelawan[]>([])
+  const [teamMonev, setTeamMonev] = useState<TeamForMonev | null>(null)
+  const [teamKorwil, setTeamKorwil] = useState<TeamForKorwil | null>(null)
+  const [expandedKorwils, setExpandedKorwils] = useState<Set<number>>(new Set())
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
       const y = parseInt(tahun)
-      const [s, a, t, se, r] = await Promise.all([
+      const [s, a, t, se, r, tm, tk] = await Promise.all([
         getDashboardStats(y),
         getAnggaranPerDesa(y),
         getTrendLaporanBulanan(y),
         getSebaranStatusDesa(),
         getRankingRelawan(),
+        getTeamForMonev(),
+        getTeamForKorwil(),
       ])
       setStats(s)
       setAnggaran(a)
       setTrend(t)
       setSebaran(se)
       setRanking(r)
+      setTeamMonev(tm)
+      setTeamKorwil(tk)
     } finally {
       setLoading(false)
     }
@@ -335,6 +342,119 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* ── Struktur Tim ── */}
+        {(teamMonev || teamKorwil) && (
+          <div className="mt-2">
+            {/* === Monev: Korwil + Relawan === */}
+            {teamMonev && (
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-red-100 flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-[#7a1200]" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base text-slate-800">Struktur Tim</CardTitle>
+                      <p className="text-xs text-slate-500">Monev: <span className="font-semibold text-[#7a1200]">{teamMonev.monev_nama}</span></p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {teamMonev.korwils.length === 0 ? (
+                    <p className="text-slate-400 text-sm text-center py-4">Belum ada Korwil yang terdaftar</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {teamMonev.korwils.map((korwil) => {
+                        const isExpanded = expandedKorwils.has(korwil.id)
+                        return (
+                          <div key={korwil.id} className="border border-slate-200 rounded-xl overflow-hidden">
+                            <button
+                              type="button"
+                              className="w-full flex items-center justify-between px-4 py-3 bg-red-50 hover:bg-red-100 transition-colors text-left"
+                              onClick={() => {
+                                const next = new Set(expandedKorwils)
+                                if (isExpanded) next.delete(korwil.id)
+                                else next.add(korwil.id)
+                                setExpandedKorwils(next)
+                              }}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-[#7a1200] flex items-center justify-center text-white text-xs font-bold">K</div>
+                                <div>
+                                  <p className="font-semibold text-slate-800 text-sm">{korwil.nama}</p>
+                                  <p className="text-xs text-slate-500">Korwil · {korwil.jumlah_desa} desa · {korwil.relawans.length} relawan</p>
+                                </div>
+                              </div>
+                              {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                            </button>
+                            {isExpanded && (
+                              <div className="divide-y divide-slate-100">
+                                {korwil.relawans.length === 0 ? (
+                                  <p className="px-4 py-3 text-sm text-slate-400 italic">Belum ada relawan di bawah Korwil ini</p>
+                                ) : (
+                                  korwil.relawans.map((r) => (
+                                    <div key={r.id} className="flex items-center gap-3 px-4 py-2.5 pl-14 bg-white hover:bg-slate-50 transition-colors">
+                                      <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 text-xs font-bold flex-shrink-0">R</div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-slate-700 truncate">{r.nama}</p>
+                                        <p className="text-xs text-slate-400">Relawan · {r.jumlah_desa} desa aktif</p>
+                                      </div>
+                                      <div className="flex items-center gap-1 text-xs bg-slate-100 px-2 py-1 rounded-full">
+                                        <Building2 className="w-3 h-3 text-slate-500" />
+                                        <span className="text-slate-600">{r.jumlah_desa}</span>
+                                      </div>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* === Korwil: Relawan bawahannya === */}
+            {teamKorwil && (
+              <Card className="border-0 shadow-sm mt-4">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-red-100 flex items-center justify-center">
+                      <UserCheck className="w-5 h-5 text-[#7a1200]" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base text-slate-800">Tim Saya</CardTitle>
+                      <p className="text-xs text-slate-500">Korwil: <span className="font-semibold text-[#7a1200]">{teamKorwil.korwil_nama}</span> · {teamKorwil.relawans.length} relawan</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {teamKorwil.relawans.length === 0 ? (
+                    <p className="text-slate-400 text-sm text-center py-4">Belum ada relawan di wilayah Anda</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {teamKorwil.relawans.map((r) => (
+                        <div key={r.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-red-200 hover:bg-red-50 transition-colors">
+                          <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-bold text-sm flex-shrink-0">
+                            {r.nama.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-700 truncate">{r.nama}</p>
+                            <p className="text-xs text-slate-500">{r.jumlah_desa} desa aktif</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -154,15 +154,15 @@ export function CRUDPublicHoliday({
           <Button
             variant="outline"
             onClick={() => setShowFilters(!showFilters)}
-            className={showFilters ? 'bg-teal-50 border-teal-600' : ''}
+            className={showFilters ? 'bg-red-50 border-[#7a1200]' : ''}
           >
             <Filter className="w-4 h-4 mr-2" />
             Filter
             {hasActiveFilters && (
-              <Badge className="ml-2 bg-teal-600 text-white">1</Badge>
+              <Badge className="ml-2 bg-[#7a1200] text-white">1</Badge>
             )}
           </Button>
-          <Button onClick={() => setIsOpen(true)} className="bg-teal-600 hover:bg-teal-700">
+          <Button onClick={() => setIsOpen(true)} className="bg-[#7a1200] hover:bg-[#5a0d00]">
             <Plus className="w-4 h-4 mr-2" />
             Tambah
           </Button>
@@ -288,7 +288,7 @@ export function CRUDPublicHoliday({
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button type="submit" className="bg-teal-600 hover:bg-teal-700">
+                <Button type="submit" className="bg-[#7a1200] hover:bg-[#5a0d00]">
                   <Save className="w-4 h-4 mr-2" />
                   Simpan
                 </Button>

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import Link from 'next/link'
 import { PlusCircle, Search, MapPin, UserSquare2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import DeletePMButton from './DeletePMButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,7 +48,7 @@ export default async function PenerimaManfaatPage() {
         
         {(role === 'RELAWAN' || role === 'PROG_HEAD') && (
           <Link href="/dashboard/pm/tambah" className="shrink-0">
-            <Button className="bg-teal-600 hover:bg-teal-700 text-white shadow-sm flex items-center gap-2">
+            <Button className="bg-[#7a1200] hover:bg-[#5a0d00] text-white shadow-sm flex items-center gap-2">
               <PlusCircle className="w-4 h-4" />
               Tambah PM (Scan KTP)
             </Button>
@@ -62,7 +63,7 @@ export default async function PenerimaManfaatPage() {
             <input 
               type="text"
               placeholder="Cari NIK atau Nama..."
-              className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-[#7a1200]"
             />
           </div>
         </div>
@@ -82,7 +83,7 @@ export default async function PenerimaManfaatPage() {
                 <tr key={pm.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 flex-shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-[#7a1200] flex-shrink-0">
                         <UserSquare2 className="w-5 h-5" />
                       </div>
                       <div>
@@ -103,9 +104,19 @@ export default async function PenerimaManfaatPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <Button variant="ghost" size="sm" className="text-teal-600 hover:bg-teal-50">
-                      Detail
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      <Link href={`/dashboard/pm/${pm.id}`}>
+                        <Button variant="ghost" size="sm" className="text-[#7a1200] hover:bg-red-50">
+                          Detail
+                        </Button>
+                      </Link>
+                      <Link href={`/dashboard/pm/${pm.id}/edit`}>
+                        <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100">
+                          Edit
+                        </Button>
+                      </Link>
+                      <DeletePMButton id={pm.id} />
+                    </div>
                   </td>
                 </tr>
               ))}

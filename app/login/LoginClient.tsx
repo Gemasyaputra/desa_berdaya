@@ -33,6 +33,7 @@ export function LoginClient({ settings }: { settings: LoginSettings }) {
   const companyName = settings?.[APP_SETTINGS_KEYS.COMPANY_NAME] || 'Cita Sehat Foundation'
   const bgImage = settings?.[APP_SETTINGS_KEYS.LOGIN_BG_IMAGE] || 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d'
   const toneBg = settings?.[APP_SETTINGS_KEYS.LOGIN_TONE_BG] || 'linear-gradient(to bottom right, rgba(19,78,74,0.85), rgba(25,58,58,0.75), rgba(30,58,138,0.85))'
+  const brandColor = settings?.['app_sidebar_bg_color'] || '#00786F'
   const defaultLoginContent = `<h2>Kelola Klinik dengan Lebih Efisien</h2>
 <p>Pantau transaksi, kelola pasien, dan optimalkan operasional klinik dalam satu dashboard yang terpadu.</p>
 <ul>
@@ -76,11 +77,24 @@ export function LoginClient({ settings }: { settings: LoginSettings }) {
       </Suspense>
 
       <div className="absolute inset-0 z-0">
+        {/* Solid color base fallback */}
+        <div className="absolute inset-0" style={{ backgroundColor: brandColor }} />
+        {/* Background Image layer */}
+        {bgImage && (
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
+            style={{ backgroundImage: `url('${bgImage}')` }}
+          />
+        )}
+        {/* Tone / Overlay layer */}
         <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
-          style={{ backgroundImage: `url('${bgImage}')`, backgroundAttachment: 'fixed' }}
+          className="absolute inset-0"
+          style={{
+            background: toneBg.includes('gradient') || toneBg.includes('rgba')
+              ? toneBg
+              : `${toneBg}CC`
+          }}
         />
-        <div className="absolute inset-0" style={{ background: toneBg }} />
         <div className="absolute inset-0 backdrop-blur-md md:backdrop-blur-sm" />
       </div>
 
@@ -147,7 +161,8 @@ export function LoginClient({ settings }: { settings: LoginSettings }) {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full h-12 md:h-14 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold text-sm md:text-base shadow-sm transition-all duration-200 flex items-center justify-center gap-3 mt-4"
+                    style={{ backgroundColor: brandColor }}
+                    className="w-full h-12 md:h-14 text-white rounded-xl font-semibold text-sm md:text-base shadow-sm transition-all duration-200 flex items-center justify-center gap-3 mt-4 hover:opacity-90"
                   >
                     {loading ? (
                       <>
@@ -164,9 +179,9 @@ export function LoginClient({ settings }: { settings: LoginSettings }) {
                 </form>
                 <p className="text-xs text-center text-slate-500 leading-relaxed px-4">
                   Dengan masuk, Anda menyetujui{' '}
-                  <a href="#" className="text-teal-600 hover:text-teal-700 font-medium underline underline-offset-2">Syarat & Ketentuan</a>
+                  <a href="#" style={{ color: brandColor }} className="font-medium underline underline-offset-2 hover:opacity-80">Syarat &amp; Ketentuan</a>
                   {' '}dan{' '}
-                  <a href="#" className="text-teal-600 hover:text-teal-700 font-medium underline underline-offset-2">Kebijakan Privasi</a>.
+                  <a href="#" style={{ color: brandColor }} className="font-medium underline underline-offset-2 hover:opacity-80">Kebijakan Privasi</a>.
                 </p>
               </div>
               <p className="text-center text-white/90 text-sm mt-6 lg:hidden">

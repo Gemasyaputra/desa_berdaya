@@ -236,7 +236,7 @@ export default function SummarySEPage() {
           <Button
             onClick={handleApply}
             disabled={loading}
-            className="bg-teal-600 hover:bg-teal-700"
+            className="bg-[#7a1200] hover:bg-[#5a0d00]"
           >
             {loading ? 'Memuat...' : 'Terapkan'}
           </Button>
@@ -246,7 +246,7 @@ export default function SummarySEPage() {
       {loading && (
         <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
           <div
-            className="h-full bg-teal-500 transition-all duration-300"
+            className="h-full bg-red-500 transition-all duration-300"
             style={{ width: `${Math.round(progress)}%` }}
           />
         </div>

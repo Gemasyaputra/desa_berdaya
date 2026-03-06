@@ -129,7 +129,7 @@ export default function SummaryDashboardPage() {
           <Button
             onClick={handleApply}
             disabled={loadingTable}
-            className="bg-teal-600 hover:bg-teal-700 flex items-center gap-2"
+            className="bg-[#7a1200] hover:bg-[#5a0d00] flex items-center gap-2"
           >
             {loadingTable ? (
               <>
@@ -250,7 +250,7 @@ export default function SummaryDashboardPage() {
             </Card>
           ) : loadingTable ? (
             <div className="flex flex-col items-center justify-center gap-3 py-12 text-slate-400 text-sm">
-              <Spinner className="size-6 text-teal-600" />
+              <Spinner className="size-6 text-[#7a1200]" />
               <span>Memuat data summary...</span>
             </div>
           ) : (
@@ -275,7 +275,7 @@ export default function SummaryDashboardPage() {
                     <Bar data={clinicChartData} options={horizontalBarOptions('Capaian SE per Klinik')} />
                   ) : loadingChart ? (
                     <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400 text-sm">
-                      <Spinner className="size-6 text-teal-600" />
+                      <Spinner className="size-6 text-[#7a1200]" />
                       <span>Memuat grafik...</span>
                     </div>
                   ) : (
@@ -335,7 +335,7 @@ export default function SummaryDashboardPage() {
                     </table>
                   ) : loadingChart ? (
                     <div className="flex flex-col items-center justify-center gap-3 py-6 text-slate-400 text-xs">
-                      <Spinner className="size-5 text-teal-600" />
+                      <Spinner className="size-5 text-[#7a1200]" />
                       <span>Memuat ringkasan grafik...</span>
                     </div>
                   ) : (

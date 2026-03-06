@@ -136,7 +136,7 @@ export function CRUDUser({
     <div>
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Manajemen User</h3>
-        <Button onClick={() => setIsOpen(true)} className="bg-teal-600 hover:bg-teal-700">
+        <Button onClick={() => setIsOpen(true)} className="bg-[#7a1200] hover:bg-[#5a0d00]">
           <Plus className="w-4 h-4 mr-2" />
           Tambah User
         </Button>
@@ -219,7 +219,7 @@ export function CRUDUser({
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button type="submit" className="bg-teal-600 hover:bg-teal-700">
+                <Button type="submit" className="bg-[#7a1200] hover:bg-[#5a0d00]">
                   <Save className="w-4 h-4 mr-2" />
                   Simpan
                 </Button>
@@ -254,7 +254,7 @@ export function CRUDUser({
                             ? 'bg-purple-100 text-purple-700'
                             : user.role === 'finance_admin'
                               ? 'bg-blue-100 text-blue-700'
-                              : 'bg-teal-100 text-teal-700'
+                              : 'bg-red-100 text-red-800'
                         }
                       >
                         {user.role}
@@ -315,7 +315,7 @@ export function CRUDUser({
                                 ? 'bg-purple-100 text-purple-700'
                                 : user.role === 'finance_admin'
                                   ? 'bg-blue-100 text-blue-700'
-                                  : 'bg-teal-100 text-teal-700'
+                                  : 'bg-red-100 text-red-800'
                             }
                           >
                             {user.role}

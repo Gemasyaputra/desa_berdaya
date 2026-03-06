@@ -6,11 +6,11 @@
 import * as dotenv from 'dotenv'
 import postgres from 'postgres'
 
-dotenv.config({ path: '.env.local' })
+dotenv.config()
 
 const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL
 if (!databaseUrl) {
-  console.error('❌ DATABASE_URL atau POSTGRES_URL tidak ditemukan di .env.local')
+  console.error('❌ DATABASE_URL atau POSTGRES_URL tidak ditemukan di .env')
   process.exit(1)
 }
 

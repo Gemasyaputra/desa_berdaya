@@ -187,7 +187,7 @@ export function CRUDBpjsRealization({
               non_pbi_count: '',
             })
             setIsOpen(true)
-          }} className="bg-teal-600 hover:bg-teal-700"
+          }} className="bg-[#7a1200] hover:bg-[#5a0d00]"
           >
             <Plus className="w-4 h-4 mr-2" />
             Tambah Realisasi
@@ -362,7 +362,7 @@ export function CRUDBpjsRealization({
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button type="submit" className="bg-teal-600 hover:bg-teal-700">
+                <Button type="submit" className="bg-[#7a1200] hover:bg-[#5a0d00]">
                   <Save className="w-4 h-4 mr-2" />
                   Simpan
                 </Button>

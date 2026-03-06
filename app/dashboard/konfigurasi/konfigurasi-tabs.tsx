@@ -94,7 +94,7 @@ export function KonfigurasiTabs({
             onClick={() => setActiveTab('zains-sync')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'zains-sync'
-                ? 'border-teal-600 text-teal-600'
+                ? 'border-[#7a1200] text-[#7a1200]'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -104,7 +104,7 @@ export function KonfigurasiTabs({
             onClick={() => setActiveTab('mapping')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'mapping'
-                ? 'border-teal-600 text-teal-600'
+                ? 'border-[#7a1200] text-[#7a1200]'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -114,7 +114,7 @@ export function KonfigurasiTabs({
             onClick={() => setActiveTab('insurance-mapping')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'insurance-mapping'
-                ? 'border-teal-600 text-teal-600'
+                ? 'border-[#7a1200] text-[#7a1200]'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -124,7 +124,7 @@ export function KonfigurasiTabs({
             onClick={() => setActiveTab('insurance-type')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'insurance-type'
-                ? 'border-teal-600 text-teal-600'
+                ? 'border-[#7a1200] text-[#7a1200]'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -134,7 +134,7 @@ export function KonfigurasiTabs({
             onClick={() => setActiveTab('klinik')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'klinik'
-                ? 'border-teal-600 text-teal-600'
+                ? 'border-[#7a1200] text-[#7a1200]'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -144,7 +144,7 @@ export function KonfigurasiTabs({
             onClick={() => setActiveTab('poli')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'poli'
-                ? 'border-teal-600 text-teal-600'
+                ? 'border-[#7a1200] text-[#7a1200]'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -154,7 +154,7 @@ export function KonfigurasiTabs({
             onClick={() => setActiveTab('source')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'source'
-                ? 'border-teal-600 text-teal-600'
+                ? 'border-[#7a1200] text-[#7a1200]'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -164,7 +164,7 @@ export function KonfigurasiTabs({
             onClick={() => setActiveTab('kategori')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'kategori'
-                ? 'border-teal-600 text-teal-600'
+                ? 'border-[#7a1200] text-[#7a1200]'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -174,7 +174,7 @@ export function KonfigurasiTabs({
             onClick={() => setActiveTab('target')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'target'
-                ? 'border-teal-600 text-teal-600'
+                ? 'border-[#7a1200] text-[#7a1200]'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -184,7 +184,7 @@ export function KonfigurasiTabs({
             onClick={() => setActiveTab('daily-target')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'daily-target'
-                ? 'border-teal-600 text-teal-600'
+                ? 'border-[#7a1200] text-[#7a1200]'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -194,7 +194,7 @@ export function KonfigurasiTabs({
             onClick={() => setActiveTab('bpjs-realization')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'bpjs-realization'
-                ? 'border-teal-600 text-teal-600'
+                ? 'border-[#7a1200] text-[#7a1200]'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -204,7 +204,7 @@ export function KonfigurasiTabs({
             onClick={() => setActiveTab('users')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'users'
-                ? 'border-teal-600 text-teal-600'
+                ? 'border-[#7a1200] text-[#7a1200]'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -214,7 +214,7 @@ export function KonfigurasiTabs({
             onClick={() => setActiveTab('holidays')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'holidays'
-                ? 'border-teal-600 text-teal-600'
+                ? 'border-[#7a1200] text-[#7a1200]'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -224,7 +224,7 @@ export function KonfigurasiTabs({
             onClick={() => setActiveTab('logs')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'logs'
-                ? 'border-teal-600 text-teal-600'
+                ? 'border-[#7a1200] text-[#7a1200]'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >

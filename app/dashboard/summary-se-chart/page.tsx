@@ -215,7 +215,7 @@ export default function SummarySEChartPage() {
           <Button
             onClick={loadData}
             disabled={loading}
-            className="bg-teal-600 hover:bg-teal-700"
+            className="bg-[#7a1200] hover:bg-[#5a0d00]"
           >
             {loading ? 'Memuat...' : 'Terapkan'}
           </Button>

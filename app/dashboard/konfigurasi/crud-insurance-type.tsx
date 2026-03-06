@@ -99,7 +99,7 @@ export function CRUDInsuranceType({
     <div>
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Master Insurance Type</h3>
-        <Button onClick={() => setIsOpen(true)} className="bg-teal-600 hover:bg-teal-700">
+        <Button onClick={() => setIsOpen(true)} className="bg-[#7a1200] hover:bg-[#5a0d00]">
           <Plus className="w-4 h-4 mr-2" />
           Tambah Insurance Type
         </Button>
@@ -144,7 +144,7 @@ export function CRUDInsuranceType({
                 />
               </div>
               <div className="flex gap-2">
-                <Button type="submit" className="bg-teal-600 hover:bg-teal-700">
+                <Button type="submit" className="bg-[#7a1200] hover:bg-[#5a0d00]">
                   <Save className="w-4 h-4 mr-2" />
                   Simpan
                 </Button>

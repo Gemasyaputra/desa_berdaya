@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
+import { put } from '@vercel/blob'
 
 const apiKey = process.env.GEMINI_API_KEY
 // Inisialisasi Google Gen AI Client
@@ -34,8 +35,19 @@ export async function POST(req: Request) {
     Tugas Anda adalah membaca gambar KTP yang diberikan dan mengembalikan data yang diekstrak secara akurat dalam format JSON persis seperti berikut:
     {
       "nik": "string 16 karakter numerik",
-      "nama": "string nama lengkap tanpa gelar",
-      "alamat": "string alamat lengkap (jalan, gang, rt, rw, desa, kecamatan)"
+      "nama": "string nama lengkap",
+      "tempat_lahir": "string tempat lahir",
+      "tanggal_lahir": "YYYY-MM-DD",
+      "jenis_kelamin": "LAKI-LAKI / PEREMPUAN",
+      "golongan_darah": "string (A/B/O/AB/-)",
+      "alamat": "string nama jalan/dusun",
+      "rt_rw": "string format RT/RW (contoh 001/002)",
+      "kel_desa": "string nama desa/kelurahan",
+      "kecamatan": "string nama kecamatan",
+      "agama": "string",
+      "status_perkawinan": "string",
+      "pekerjaan": "string",
+      "kewarganegaraan": "WNI / WNA"
     }
     Pastikan hanya mereturn format JSON yang di minta, jangan ada markup \`\`\`json. Jika gagal mengenali NIK atau Nama berikan string kosong.
     `
@@ -68,7 +80,7 @@ export async function POST(req: Request) {
       // Validasi panjang NIK (seharusnya 16 karakter)
       if (result.nik && result.nik.length !== 16) {
         // Hilangkan spasi atau tanda baca tambahan jika terbawa OCR
-        result.nik = result.nik.replace(/\\D/g, '').substring(0, 16)
+        result.nik = result.nik.replace(/\D/g, '').substring(0, 16)
       }
     } catch (parseError) {
       console.error('Failed to parse Gemini JSON output:', textResponse)
@@ -78,7 +90,20 @@ export async function POST(req: Request) {
       )
     }
 
-    return NextResponse.json({ success: true, data: result })
+    // Process Vercel Blob Upload Concurrent with OCR Result Parsing
+    let photoUrl = ''
+    try {
+      const blob = await put(`ktp/${image.name || 'ktp-scan.jpg'}`, buffer, {
+        access: 'public',
+        contentType: image.type,
+      })
+      photoUrl = blob.url
+    } catch (uploadError) {
+      console.error('Vercel Blob Upload Error:', uploadError)
+      // Jangan return error 500 jika upload gagal, lanjutkan saja form.
+    }
+
+    return NextResponse.json({ success: true, data: { ...result, foto_ktp_url: photoUrl } })
   } catch (error) {
     console.error('Error scanning KTP via Gemini:', error)
     return NextResponse.json(

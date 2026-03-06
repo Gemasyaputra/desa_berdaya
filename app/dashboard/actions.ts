@@ -1,0 +1,234 @@
+'use server'
+
+import { sql } from '@/lib/db'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+
+// =============================================================
+// Tipe data
+// =============================================================
+export type DashboardStats = {
+  totalDesaAktif: number
+  totalDesaAll: number
+  totalPenerimaManfaat: number
+  totalRelawan: number
+  totalRealisasi: number
+  totalAlokasi: number
+  peresenRealisasi: number
+}
+
+export type AnggaranPerDesa = {
+  nama_desa: string
+  alokasi: number
+  realisasi: number
+}
+
+export type TrendBulanan = {
+  bulan: string
+  jumlah_laporan: number
+  total_realisasi: number
+}
+
+export type SebaranStatus = {
+  label: string
+  value: number
+}
+
+export type RankingRelawan = {
+  nama: string
+  jumlah_desa: number
+}
+
+// =============================================================
+// Helper: role filter
+// =============================================================
+async function getRoleFilter() {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return null
+  return {
+    role: session.user.role as string,
+    operatorId: session.user.operator_id as number | null,
+    isKorwil: session.user.is_korwil as boolean,
+  }
+}
+
+// =============================================================
+// KPI Cards
+// =============================================================
+export async function getDashboardStats(tahun: number): Promise<DashboardStats> {
+  const auth = await getRoleFilter()
+  if (!auth) return { totalDesaAktif: 0, totalDesaAll: 0, totalPenerimaManfaat: 0, totalRelawan: 0, totalRealisasi: 0, totalAlokasi: 0, peresenRealisasi: 0 }
+
+  const isAdmin = auth.role === 'ADMIN' || auth.role === 'MONEV' || auth.role === 'FINANCE'
+
+  // Total desa
+  const desaRows = isAdmin
+    ? await sql`SELECT COUNT(*) FILTER (WHERE status_aktif) as aktif, COUNT(*) as semua FROM desa_berdaya`
+    : auth.isKorwil && auth.operatorId
+    ? await sql`SELECT COUNT(*) FILTER (WHERE db.status_aktif) as aktif, COUNT(*) as semua FROM desa_berdaya db JOIN relawan r ON db.relawan_id = r.id WHERE r.korwil_id = ${auth.operatorId}`
+    : auth.operatorId
+    ? await sql`SELECT COUNT(*) FILTER (WHERE status_aktif) as aktif, COUNT(*) as semua FROM desa_berdaya WHERE relawan_id = ${auth.operatorId}`
+    : await sql`SELECT 0 as aktif, 0 as semua`
+
+  // Total PM
+  const pmRows = isAdmin
+    ? await sql`SELECT COUNT(*) as total FROM penerima_manfaat`
+    : auth.isKorwil && auth.operatorId
+    ? await sql`SELECT COUNT(*) as total FROM penerima_manfaat pm JOIN desa_berdaya db ON pm.desa_berdaya_id = db.id JOIN relawan r ON db.relawan_id = r.id WHERE r.korwil_id = ${auth.operatorId}`
+    : auth.operatorId
+    ? await sql`SELECT COUNT(*) as total FROM penerima_manfaat pm JOIN desa_berdaya db ON pm.desa_berdaya_id = db.id WHERE db.relawan_id = ${auth.operatorId}`
+    : await sql`SELECT 0 as total`
+
+  // Total relawan
+  const relawanRows = isAdmin
+    ? await sql`SELECT COUNT(*) as total FROM relawan`
+    : await sql`SELECT COUNT(*) as total FROM relawan WHERE korwil_id = ${auth.operatorId}`
+
+  // Laporan keuangan tahun ini
+  const laporanRows = isAdmin
+    ? await sql`SELECT COALESCE(SUM(total_realisasi),0) as realisasi FROM laporan_kegiatan WHERE EXTRACT(YEAR FROM created_at) = ${tahun}`
+    : auth.operatorId
+    ? await sql`SELECT COALESCE(SUM(lk.total_realisasi),0) as realisasi FROM laporan_kegiatan lk JOIN desa_berdaya db ON lk.desa_berdaya_id = db.id WHERE db.relawan_id = ${auth.operatorId} AND EXTRACT(YEAR FROM lk.created_at) = ${tahun}`
+    : await sql`SELECT 0 as realisasi`
+
+  const desaAktif = Number((desaRows as any[])[0]?.aktif ?? 0)
+  const desaAll = Number((desaRows as any[])[0]?.semua ?? 0)
+  const pm = Number((pmRows as any[])[0]?.total ?? 0)
+  const relawan = Number((relawanRows as any[])[0]?.total ?? 0)
+  const realisasi = Number((laporanRows as any[])[0]?.realisasi ?? 0)
+
+  return {
+    totalDesaAktif: desaAktif,
+    totalDesaAll: desaAll,
+    totalPenerimaManfaat: pm,
+    totalRelawan: relawan,
+    totalRealisasi: realisasi,
+    totalAlokasi: 0,
+    peresenRealisasi: 0,
+  }
+}
+
+// =============================================================
+// Anggaran per Desa
+// =============================================================
+export async function getAnggaranPerDesa(tahun: number): Promise<AnggaranPerDesa[]> {
+  const auth = await getRoleFilter()
+  if (!auth) return []
+
+  const isAdmin = auth.role === 'ADMIN' || auth.role === 'MONEV' || auth.role === 'FINANCE'
+
+  const rows = isAdmin
+    ? await sql`
+        SELECT dc.nama_desa,
+               COALESCE(SUM(lk.total_realisasi),0) as realisasi
+        FROM desa_berdaya db
+        JOIN desa_config dc ON db.desa_id = dc.id
+        LEFT JOIN laporan_kegiatan lk ON lk.desa_berdaya_id = db.id AND EXTRACT(YEAR FROM lk.created_at) = ${tahun}
+        WHERE db.status_aktif = true
+        GROUP BY dc.nama_desa
+        ORDER BY realisasi DESC
+        LIMIT 10`
+    : auth.operatorId
+    ? await sql`
+        SELECT dc.nama_desa,
+               COALESCE(SUM(lk.total_realisasi),0) as realisasi
+        FROM desa_berdaya db
+        JOIN desa_config dc ON db.desa_id = dc.id
+        LEFT JOIN laporan_kegiatan lk ON lk.desa_berdaya_id = db.id AND EXTRACT(YEAR FROM lk.created_at) = ${tahun}
+        WHERE db.relawan_id = ${auth.operatorId} AND db.status_aktif = true
+        GROUP BY dc.nama_desa
+        ORDER BY realisasi DESC`
+    : []
+
+  return (rows as any[]).map((r) => ({
+    nama_desa: r.nama_desa,
+    alokasi: 0,
+    realisasi: Number(r.realisasi),
+  }))
+}
+
+// =============================================================
+// Tren Laporan Bulanan
+// =============================================================
+export async function getTrendLaporanBulanan(tahun: number): Promise<TrendBulanan[]> {
+  const auth = await getRoleFilter()
+  if (!auth) return []
+
+  const isAdmin = auth.role === 'ADMIN' || auth.role === 'MONEV' || auth.role === 'FINANCE'
+
+  const rows = isAdmin
+    ? await sql`
+        SELECT TO_CHAR(created_at, 'Mon') as bulan,
+               EXTRACT(MONTH FROM created_at) as bulan_num,
+               COUNT(*) as jumlah_laporan,
+               COALESCE(SUM(total_realisasi),0) as total_realisasi
+        FROM laporan_kegiatan
+        WHERE EXTRACT(YEAR FROM created_at) = ${tahun}
+        GROUP BY TO_CHAR(created_at, 'Mon'), EXTRACT(MONTH FROM created_at)
+        ORDER BY bulan_num`
+    : auth.operatorId
+    ? await sql`
+        SELECT TO_CHAR(lk.created_at, 'Mon') as bulan,
+               EXTRACT(MONTH FROM lk.created_at) as bulan_num,
+               COUNT(*) as jumlah_laporan,
+               COALESCE(SUM(lk.total_realisasi),0) as total_realisasi
+        FROM laporan_kegiatan lk
+        JOIN desa_berdaya db ON lk.desa_berdaya_id = db.id
+        WHERE EXTRACT(YEAR FROM lk.created_at) = ${tahun} AND db.relawan_id = ${auth.operatorId}
+        GROUP BY TO_CHAR(lk.created_at, 'Mon'), EXTRACT(MONTH FROM lk.created_at)
+        ORDER BY bulan_num`
+    : []
+
+  const monthMap: Record<string, string> = { Jan:'Jan', Feb:'Feb', Mar:'Mar', Apr:'Apr', May:'Mei', Jun:'Jun', Jul:'Jul', Aug:'Agt', Sep:'Sep', Oct:'Okt', Nov:'Nov', Dec:'Des' }
+
+  return (rows as any[]).map((r) => ({
+    bulan: monthMap[r.bulan] ?? r.bulan,
+    jumlah_laporan: Number(r.jumlah_laporan),
+    total_realisasi: Number(r.total_realisasi),
+  }))
+}
+
+// =============================================================
+// Sebaran Status Desa
+// =============================================================
+export async function getSebaranStatusDesa(): Promise<SebaranStatus[]> {
+  const auth = await getRoleFilter()
+  if (!auth) return []
+
+  const isAdmin = auth.role === 'ADMIN' || auth.role === 'MONEV' || auth.role === 'FINANCE'
+
+  const rows = isAdmin
+    ? await sql`SELECT status_aktif, COUNT(*) as total FROM desa_berdaya GROUP BY status_aktif`
+    : auth.operatorId
+    ? await sql`SELECT status_aktif, COUNT(*) as total FROM desa_berdaya WHERE relawan_id = ${auth.operatorId} GROUP BY status_aktif`
+    : []
+
+  return (rows as any[]).map((r) => ({
+    label: r.status_aktif ? 'Aktif' : 'Tidak Aktif',
+    value: Number(r.total),
+  }))
+}
+
+// =============================================================
+// Ranking Relawan by jumlah desa
+// =============================================================
+export async function getRankingRelawan(): Promise<RankingRelawan[]> {
+  const auth = await getRoleFilter()
+  if (!auth) return []
+
+  const isAdmin = auth.role === 'ADMIN' || auth.role === 'MONEV' || auth.role === 'FINANCE'
+  if (!isAdmin) return []
+
+  const rows = await sql`
+    SELECT r.nama, COUNT(db.id) as jumlah_desa
+    FROM relawan r
+    LEFT JOIN desa_berdaya db ON db.relawan_id = r.id AND db.status_aktif = true
+    GROUP BY r.nama
+    ORDER BY jumlah_desa DESC
+    LIMIT 8`
+
+  return (rows as any[]).map((r) => ({
+    nama: r.nama,
+    jumlah_desa: Number(r.jumlah_desa),
+  }))
+}

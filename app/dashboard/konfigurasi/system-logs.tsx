@@ -105,7 +105,7 @@ export function SystemLogs({ clinics, initialData }: SystemLogsProps) {
               onChange={(e) => setFilters({ ...filters, search: e.target.value })}
               className="flex-1"
             />
-            <Button type="submit" className="bg-teal-600 hover:bg-teal-700" disabled={isPending}>
+            <Button type="submit" className="bg-[#7a1200] hover:bg-[#5a0d00]" disabled={isPending}>
               <Search className="w-4 h-4 mr-1" />
               Cari
             </Button>
@@ -300,7 +300,7 @@ export function SystemLogs({ clinics, initialData }: SystemLogsProps) {
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="text-teal-600 hover:text-teal-700"
+                            className="text-[#7a1200] hover:text-[#5a0d00]"
                             onClick={() => setDetailLog(log)}
                           >
                             <Eye className="w-4 h-4 mr-1 inline" />

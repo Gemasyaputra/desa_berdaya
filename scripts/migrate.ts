@@ -17,6 +17,7 @@ async function runMigration() {
     // Eksekusi Raw SQL
     await db.execute(`
       -- 0. Drop Existing Tables
+      DROP TABLE IF EXISTS laporan_kegiatan CASCADE;
       DROP TABLE IF EXISTS penerima_manfaat CASCADE;
       DROP TABLE IF EXISTS desa_berdaya CASCADE;
       DROP TABLE IF EXISTS relawan CASCADE;
@@ -60,10 +61,7 @@ async function runMigration() {
           provinsi_id BIGINT NOT NULL REFERENCES provinsi(id) ON DELETE CASCADE,
           kota_id BIGINT NOT NULL REFERENCES kota_kabupaten(id) ON DELETE CASCADE,
           kecamatan_id BIGINT NOT NULL REFERENCES kecamatan(id) ON DELETE CASCADE,
-          nama_desa VARCHAR(255) NOT NULL,
-          latitude DOUBLE PRECISION,
-          longitude DOUBLE PRECISION,
-          potensi_desa TEXT
+          nama_desa VARCHAR(255) NOT NULL
       );
 
       -- 3. Manajemen User & Authentikasi
@@ -101,6 +99,9 @@ async function runMigration() {
           kecamatan_id BIGINT NOT NULL REFERENCES kecamatan(id) ON DELETE CASCADE,
           desa_id BIGINT NOT NULL REFERENCES desa_config(id) ON DELETE CASCADE,
           relawan_id BIGINT NOT NULL REFERENCES relawan(id) ON DELETE CASCADE,
+          latitude DOUBLE PRECISION,
+          longitude DOUBLE PRECISION,
+          potensi_desa TEXT,
           status_aktif BOOLEAN DEFAULT true,
           tanggal_mulai TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -110,9 +111,31 @@ async function runMigration() {
           desa_berdaya_id BIGINT NOT NULL REFERENCES desa_berdaya(id) ON DELETE CASCADE,
           nik VARCHAR(20) UNIQUE NOT NULL,
           nama VARCHAR(255) NOT NULL,
+          tempat_lahir VARCHAR(100),
+          tanggal_lahir DATE,
+          jenis_kelamin VARCHAR(20),
+          golongan_darah VARCHAR(5),
           alamat TEXT,
+          rt_rw VARCHAR(20),
+          kel_desa VARCHAR(100),
+          kecamatan VARCHAR(100),
+          agama VARCHAR(50),
+          status_perkawinan VARCHAR(50),
+          pekerjaan VARCHAR(100),
+          kewarganegaraan VARCHAR(50),
           kategori_pm kategori_pm NOT NULL,
           foto_ktp_url VARCHAR(500)
+      );
+
+      CREATE TABLE IF NOT EXISTS laporan_kegiatan (
+          id BIGSERIAL PRIMARY KEY,
+          desa_berdaya_id BIGINT NOT NULL REFERENCES desa_berdaya(id) ON DELETE CASCADE,
+          jenis_kegiatan VARCHAR(50) NOT NULL,
+          judul_kegiatan VARCHAR(255) NOT NULL,
+          deskripsi TEXT,
+          total_realisasi BIGINT NOT NULL,
+          bukti_url VARCHAR(500),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 

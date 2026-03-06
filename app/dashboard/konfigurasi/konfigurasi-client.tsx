@@ -170,12 +170,12 @@ export function KonfigurasiClient({
           <Button
             variant="outline"
             onClick={() => setShowFilters(!showFilters)}
-            className={showFilters ? 'bg-teal-50 border-teal-600' : ''}
+            className={showFilters ? 'bg-red-50 border-[#7a1200]' : ''}
           >
             <Filter className="w-4 h-4 mr-2" />
             Filter
             {hasActiveFilters && (
-              <Badge className="ml-2 bg-teal-600 text-white">{Object.values(filters).filter(Boolean).length}</Badge>
+              <Badge className="ml-2 bg-[#7a1200] text-white">{Object.values(filters).filter(Boolean).length}</Badge>
             )}
           </Button>
         </div>
@@ -263,7 +263,7 @@ export function KonfigurasiClient({
       )}
 
       {/* Form Add/Edit */}
-      <div className="p-4 border border-teal-200 rounded-lg bg-teal-50">
+      <div className="p-4 border border-red-200 rounded-lg bg-red-50">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-semibold text-slate-800">
             {editingId ? 'Edit Mapping' : 'Tambah Mapping Baru'}
@@ -325,7 +325,7 @@ export function KonfigurasiClient({
         <div className="flex gap-2 mt-4">
           <Button
             onClick={() => handleSaveMapping(null)}
-            className="bg-teal-600 hover:bg-teal-700"
+            className="bg-[#7a1200] hover:bg-[#5a0d00]"
           >
             <Save className="w-4 h-4 mr-2" />
             {editingId ? 'Update' : 'Simpan'}

@@ -20,6 +20,7 @@ async function runSeed() {
     // Eksekusi Raw SQL
     await db.execute(`
       -- 0. Drop Existing Tables
+      DROP TABLE IF EXISTS laporan_kegiatan CASCADE;
       DROP TABLE IF EXISTS penerima_manfaat CASCADE;
       DROP TABLE IF EXISTS desa_berdaya CASCADE;
       DROP TABLE IF EXISTS relawan CASCADE;
@@ -63,10 +64,7 @@ async function runSeed() {
           provinsi_id BIGINT NOT NULL REFERENCES provinsi(id) ON DELETE CASCADE,
           kota_id BIGINT NOT NULL REFERENCES kota_kabupaten(id) ON DELETE CASCADE,
           kecamatan_id BIGINT NOT NULL REFERENCES kecamatan(id) ON DELETE CASCADE,
-          nama_desa VARCHAR(255) NOT NULL,
-          latitude DECIMAL(10, 8),
-          longitude DECIMAL(11, 8),
-          potensi_desa TEXT
+          nama_desa VARCHAR(255) NOT NULL
       );
 
       -- 3. Manajemen User & Authentikasi
@@ -104,6 +102,9 @@ async function runSeed() {
           kecamatan_id BIGINT NOT NULL REFERENCES kecamatan(id) ON DELETE CASCADE,
           desa_id BIGINT NOT NULL REFERENCES desa_config(id) ON DELETE CASCADE,
           relawan_id BIGINT NOT NULL REFERENCES relawan(id) ON DELETE CASCADE,
+          latitude DECIMAL(10, 8),
+          longitude DECIMAL(11, 8),
+          potensi_desa TEXT,
           status_aktif BOOLEAN DEFAULT true,
           tanggal_mulai TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -113,9 +114,31 @@ async function runSeed() {
           desa_berdaya_id BIGINT NOT NULL REFERENCES desa_berdaya(id) ON DELETE CASCADE,
           nik VARCHAR(20) UNIQUE NOT NULL,
           nama VARCHAR(255) NOT NULL,
+          tempat_lahir VARCHAR(100),
+          tanggal_lahir DATE,
+          jenis_kelamin VARCHAR(20),
+          golongan_darah VARCHAR(5),
           alamat TEXT,
+          rt_rw VARCHAR(20),
+          kel_desa VARCHAR(100),
+          kecamatan VARCHAR(100),
+          agama VARCHAR(50),
+          status_perkawinan VARCHAR(50),
+          pekerjaan VARCHAR(100),
+          kewarganegaraan VARCHAR(50),
           kategori_pm kategori_pm NOT NULL,
           foto_ktp_url VARCHAR(500)
+      );
+
+      CREATE TABLE IF NOT EXISTS laporan_kegiatan (
+          id BIGSERIAL PRIMARY KEY,
+          desa_berdaya_id BIGINT NOT NULL REFERENCES desa_berdaya(id) ON DELETE CASCADE,
+          jenis_kegiatan VARCHAR(50) NOT NULL,
+          judul_kegiatan VARCHAR(255) NOT NULL,
+          deskripsi TEXT,
+          total_realisasi BIGINT NOT NULL,
+          bukti_url VARCHAR(500),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
       -- 1. Insert Provinsi
@@ -141,12 +164,12 @@ async function runSeed() {
         (4, 'Gubeng');
 
       -- 4. Insert Desa Config
-      INSERT INTO desa_config (provinsi_id, kota_id, kecamatan_id, nama_desa, latitude, longitude, potensi_desa) VALUES
-        (1, 1, 1, 'Dago', -6.8741, 107.6186, 'Pariwisata, Kuliner'),
-        (1, 1, 2, 'Arjuna', -6.9080, 107.5950, 'Perdagangan'),
-        (1, 2, 3, 'Cibinong', -6.4833, 106.8500, 'Industri'),
-        (2, 3, 4, 'Sekayu', -6.9786, 110.4136, 'Jasa, Sejarah'),
-        (3, 4, 5, 'Airlangga', -7.2711, 112.7565, 'Pendidikan');
+      INSERT INTO desa_config (provinsi_id, kota_id, kecamatan_id, nama_desa) VALUES
+        (1, 1, 1, 'Dago'),
+        (1, 1, 2, 'Arjuna'),
+        (1, 2, 3, 'Cibinong'),
+        (2, 3, 4, 'Sekayu'),
+        (3, 4, 5, 'Airlangga');
 
       -- 5. Insert Users (Auth)
       INSERT INTO users (email, password_encrypted, role) VALUES
@@ -174,16 +197,21 @@ async function runSeed() {
       UPDATE relawan SET korwil_id = id WHERE is_korwil = true;
 
       -- 6. Insert Desa Berdaya (Core Operational)
-      INSERT INTO desa_berdaya (provinsi_id, kota_id, kecamatan_id, desa_id, relawan_id, status_aktif) VALUES
-        (1, 1, 1, 1, 2, true), -- Budi di Dago (Budi is id 2 in relawan)
-        (1, 2, 3, 3, 3, true); -- Siti di Cibinong (Siti is id 3 in relawan)
+      INSERT INTO desa_berdaya (provinsi_id, kota_id, kecamatan_id, desa_id, relawan_id, latitude, longitude, potensi_desa, status_aktif) VALUES
+        (1, 1, 1, 1, 2, -6.8741, 107.6186, 'Pariwisata, Kuliner', true), -- Budi di Dago (Budi is id 2 in relawan)
+        (1, 2, 3, 3, 3, -6.4833, 106.8500, 'Industri', true); -- Siti di Cibinong (Siti is id 3 in relawan)
 
       -- 7. Insert Penerima Manfaat
-      INSERT INTO penerima_manfaat (desa_berdaya_id, nik, nama, alamat, kategori_pm) VALUES
-        (1, '1234567890123451', 'Kakek Ahmad', 'Jl. Dago Atas No.1', 'LANSIA'),
-        (1, '1234567890123452', 'Ibu Ratna', 'Jl. Dago Pojok No.2', 'BUMIL'),
-        (2, '1234567890123453', 'Adik Ani', 'Kp. Cibinong RT 01', 'BALITA'),
-        (2, '1234567890123454', 'Bapak Joko', 'Kp. Cibinong RT 02', 'EKONOMI');
+      INSERT INTO penerima_manfaat (desa_berdaya_id, nik, nama, tempat_lahir, tanggal_lahir, jenis_kelamin, golongan_darah, alamat, rt_rw, kel_desa, kecamatan, agama, status_perkawinan, pekerjaan, kewarganegaraan, kategori_pm) VALUES
+        (1, '1234567890123451', 'Kakek Ahmad', 'Bandung', '1950-01-01', 'LAKI-LAKI', 'O', 'Jl. Dago Atas No.1', '001/002', 'Dago', 'Coblong', 'ISLAM', 'CERAI MATI', 'TIDAK BEKERJA', 'WNI', 'LANSIA'),
+        (1, '1234567890123452', 'Ibu Ratna', 'Sumedang', '1995-05-15', 'PEREMPUAN', 'A', 'Jl. Dago Pojok No.2', '003/004', 'Dago', 'Coblong', 'ISLAM', 'KAWIN', 'MENGURUS RUMAH TANGGA', 'WNI', 'BUMIL'),
+        (2, '1234567890123454', 'Bapak Joko', 'Jakarta', '1980-08-08', 'LAKI-LAKI', 'B', 'Kp. Cibinong RT 02', '002/001', 'Cibinong', 'Cibinong', 'ISLAM', 'KAWIN', 'WIRASWASTA', 'WNI', 'EKONOMI');
+
+      -- 8. Insert Laporan Keuangan
+      INSERT INTO laporan_kegiatan (desa_berdaya_id, jenis_kegiatan, judul_kegiatan, deskripsi, total_realisasi, bukti_url) VALUES
+        (1, 'EKONOMI', 'Pemberian Modal Usaha Tani', 'Pemberian modal usaha benih padi untuk kelompok tani Desa Dago tahap 1.', 1500000, 'https://example.com/kwitansi1.jpg'),
+        (1, 'KESEHATAN', 'Pemberian Makanan Tambahan Balita', 'Penyaluran PMT untuk 20 balita stunting posyandu.', 500000, 'https://example.com/kwitansi2.jpg'),
+        (2, 'EKONOMI', 'Pelatihan UMKM Menjahit', 'Sewa mesin jahit dan pelatihan UMKM.', 2000000, 'https://example.com/kwitansi3.jpg');
     `);
 
     console.log('✅ Seeding tabel berhasil diselesaikan!');

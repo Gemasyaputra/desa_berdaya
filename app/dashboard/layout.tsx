@@ -42,8 +42,9 @@ export default function DashboardLayout({
   const [userName, setUserName] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userClinicId, setUserClinicId] = useState<number | null>(null)
-  const [brandColor, setBrandColor] = useState('#00786F')
-  const [logoUrl, setLogoUrl] = useState('/asset/logo_csf_new.png')
+  const [brandColor, setBrandColor] = useState('#7a1200')
+  const [logoUrl, setLogoUrl] = useState('')
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false)
 
   useEffect(() => {
     // Redirect ke login jika belum autentikasi
@@ -74,14 +75,15 @@ export default function DashboardLayout({
     fetch('/api/settings/app')
       .then((r) => r.json())
       .then((data: Record<string, string>) => {
-        const color = data?.app_sidebar_bg_color?.trim() || '#00786F'
+        const color = data?.app_sidebar_bg_color?.trim() || '#7a1200'
         setBrandColor(color)
         document.documentElement.style.setProperty('--brand-primary', color)
         const darker = hexDarken(color, 0.1)
         document.documentElement.style.setProperty('--brand-primary-hover', darker)
         if (data?.app_logo_url) setLogoUrl(data.app_logo_url)
+        setIsSettingsLoaded(true)
       })
-      .catch(() => {})
+      .catch(() => { setIsSettingsLoaded(true) })
   }, [status])
 
   const toggleSidebar = () => {
@@ -115,6 +117,7 @@ export default function DashboardLayout({
           { href: '/dashboard/keuangan', label: 'Kegiatan & Keuangan', icon: ClipboardList },
           { href: '/dashboard/monitoring', label: 'Monitoring Bulanan', icon: ClipboardList },
           { href: '/dashboard/konfigurasi', label: 'Konfigurasi', icon: Settings },
+          ...(session?.user?.role === 'ADMIN' ? [{ href: '/dashboard/settings', label: 'App Settings (Super)', icon: Settings }] : [])
         ]
       : [
           { href: '/dashboard', label: 'Beranda', icon: LayoutDashboard },
@@ -137,31 +140,32 @@ export default function DashboardLayout({
       >
         <div className={`flex flex-col h-full transition-all duration-300 ${sidebarCollapsed ? 'lg:w-0 lg:overflow-hidden' : 'w-64'}`}>
           {/* Logo Section */}
-          <div className="p-4 border-b border-white/20">
-            <div className="relative flex items-center justify-center">
-              <div className={`flex items-center justify-center transition-opacity duration-300 lg:hidden ${sidebarCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
-                <div className="relative w-28 h-28 flex-shrink-0">
+          <div className="p-5 border-b border-white/20 min-h-[5rem] flex items-center justify-center relative">
+            <div className={`transition-all duration-500 ${sidebarCollapsed ? 'opacity-0 scale-95' : isSettingsLoaded ? 'opacity-100 scale-100' : 'opacity-0'}`}>
+              {logoUrl && (
+                <div className="relative w-44 h-12 flex-shrink-0">
                   <Image
                     src={logoUrl}
                     alt="Logo"
                     fill
-                    className="object-contain brightness-0 invert"
+                    className="object-contain object-center invert"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.src = '/icon.svg';
                     }}
                   />
                 </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden text-white hover:opacity-80 absolute right-2 top-2"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <X className="h-5 w-5" />
-              </Button>
+              )}
             </div>
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden text-white hover:opacity-80 absolute right-3 top-4"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <X className="h-5 w-5" />
+            </Button>
           </div>
 
           {/* User Info */}
@@ -286,24 +290,38 @@ export default function DashboardLayout({
               <Menu className="h-5 w-5" />
             </Button>
 
-            {/* Hamburger Button - Mobile */}
-            <Button
-              onClick={() => setSidebarOpen(true)}
-              style={{ backgroundColor: brandColor }}
-              className="lg:hidden mr-3 text-white shadow-sm hover:opacity-90"
-              size="icon"
-            >
-          <Menu className="h-5 w-5" />
-        </Button>
+            {/* Hamburger & Logo (Mobile / Tablet) */}
+            <div className="flex items-center gap-2 lg:hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-slate-600 hover:bg-slate-100"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              <div className="relative w-44 h-12 ml-2">
+                <Image
+                  src={logoUrl}
+                  alt="Logo Mobile"
+                  fill
+                  className="object-contain object-left"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = '/icon.svg';
+                  }}
+                />
+              </div>
+            </div>
 
             {/* Logo Desktop - dari app_settings */}
-            <div className="hidden lg:flex items-center mr-6">
-              <div className="relative w-28 h-28 flex-shrink-0">
+            <div className="hidden lg:flex items-center mr-4">
+              <div className="relative w-64 h-12 flex-shrink-0 overflow-hidden">
                 <Image
                   src={logoUrl}
                   alt="Logo"
                   fill
-                  className="object-contain"
+                  className="object-contain object-left"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.src = '/icon.svg';

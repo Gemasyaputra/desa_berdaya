@@ -4,6 +4,32 @@ import { sql } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
+export async function getPenerimaManfaatList() {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return []
+
+  const role = session.user.role
+  const operatorId = session.user.operator_id
+
+  if (role === 'RELAWAN' || role === 'PROG_HEAD') {
+    return (await sql`
+      SELECT pm.*, dc.nama_desa
+      FROM penerima_manfaat pm
+      JOIN desa_berdaya db ON pm.desa_berdaya_id = db.id
+      JOIN desa_config dc ON db.desa_id = dc.id
+      WHERE db.relawan_id = ${operatorId}
+      ORDER BY pm.id DESC
+    `) as any[]
+  }
+  return (await sql`
+    SELECT pm.*, dc.nama_desa
+    FROM penerima_manfaat pm
+    JOIN desa_berdaya db ON pm.desa_berdaya_id = db.id
+    JOIN desa_config dc ON db.desa_id = dc.id
+    ORDER BY pm.id DESC
+  `) as any[]
+}
+
 export async function getDesaBerdayaOptions() {
   const session = await getServerSession(authOptions)
   if (!session?.user) return []

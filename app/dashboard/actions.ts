@@ -254,23 +254,32 @@ export type TeamForMonev = {
   korwils: KorwilInfo[]
 }
 
-export async function getTeamForMonev(): Promise<TeamForMonev | null> {
+export async function getMonevListSimple(): Promise<{ id: number; nama: string }[]> {
+  const rows = await sql`SELECT id, nama FROM monev ORDER BY nama`
+  return (rows as any[]).map((r) => ({ id: Number(r.id), nama: r.nama }))
+}
+
+export async function getTeamForMonev(selectedMonevId?: number | null): Promise<TeamForMonev | null> {
   const session = await getServerSession(authOptions)
   if (!session?.user) return null
 
   const role = session.user.role as string
   const operatorId = session.user.operator_id
 
-  // ADMIN juga bisa lihat struktur global — ambil monev pertama (atau semua)
   let monevId: number | null = null
 
   if (role === 'MONEV' && operatorId) {
     monevId = Number(operatorId)
   } else if (role === 'ADMIN' || role === 'FINANCE') {
-    const monevRow = await sql`SELECT id, nama FROM monev LIMIT 1`
-    const first = (monevRow as any[])[0]
-    if (!first) return null
-    monevId = Number(first.id)
+    if (selectedMonevId) {
+      monevId = selectedMonevId
+    } else {
+      // Default: ambil monev pertama
+      const monevRow = await sql`SELECT id, nama FROM monev ORDER BY id LIMIT 1`
+      const first = (monevRow as any[])[0]
+      if (!first) return null
+      monevId = Number(first.id)
+    }
   } else {
     return null
   }
@@ -279,11 +288,13 @@ export async function getTeamForMonev(): Promise<TeamForMonev | null> {
   const monev_nama = (monevRow as any[])[0]?.nama ?? 'Monev'
 
   // 1 query: semua Korwil di bawah monev ini
+  // jumlah_desa = total desa yang dikelola relawan-relawan di bawah korwil
   const korwilRows = await sql`
     SELECT r.id, r.nama,
            COUNT(db.id) as jumlah_desa
     FROM relawan r
-    LEFT JOIN desa_berdaya db ON db.relawan_id = r.id AND db.status_aktif = true
+    LEFT JOIN relawan sub ON sub.korwil_id = r.id AND sub.is_korwil = false
+    LEFT JOIN desa_berdaya db ON db.relawan_id = sub.id AND db.status_aktif = true
     WHERE r.monev_id = ${monevId} AND r.is_korwil = true
     GROUP BY r.id, r.nama
     ORDER BY r.nama`

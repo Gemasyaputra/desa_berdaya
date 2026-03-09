@@ -5,10 +5,17 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, Activity, User, Home, Map as MapIcon, Navigation } from 'lucide-react'
 import MapWrapper from './MapWrapper'
+import { GantiRelawanInline } from './GantiRelawanInline'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 export default async function DetailDesaBinaanPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params
-  const desa = await getDesaBinaanById(Number(resolvedParams.id))
+  const [desa, session] = await Promise.all([
+    getDesaBinaanById(Number(resolvedParams.id)),
+    getServerSession(authOptions),
+  ])
+  const canChangeRelawan = session?.user?.role === 'ADMIN' || !!(session?.user as any)?.is_korwil
   
   if (!desa) {
     notFound()
@@ -70,6 +77,13 @@ export default async function DetailDesaBinaanPage({ params }: { params: Promise
                    <p className="text-sm text-slate-500">{desa.relawan?.email || '-'}</p>
                  </div>
                </div>
+                {canChangeRelawan && (
+                  <GantiRelawanInline
+                    desaId={desa.id}
+                    currentRelawanId={desa.relawan_id ? Number(desa.relawan_id) : null}
+                    currentRelawanNama={desa.relawan?.nama_lengkap ?? null}
+                  />
+                )}
              </div>
           </div>
 

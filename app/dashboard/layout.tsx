@@ -26,6 +26,8 @@ import {
   LogOut,
   ChevronDown,
   ChevronRight,
+  GitBranch,
+  UsersRound,
 } from 'lucide-react'
 
 export default function DashboardLayout({
@@ -107,6 +109,8 @@ export default function DashboardLayout({
     subItems?: { href: string; label: string }[];
   }
 
+  const isKorwil = !!(session?.user as any)?.is_korwil
+
   const menuItems: MenuItem[] = !isRoleReady
     ? []
     : isAdminOrMonev
@@ -116,8 +120,9 @@ export default function DashboardLayout({
           { href: '/dashboard/pm', label: 'Penerima Manfaat', icon: Users },
           { href: '/dashboard/keuangan', label: 'Kegiatan & Keuangan', icon: ClipboardList },
           { href: '/dashboard/monitoring', label: 'Monitoring Bulanan', icon: ClipboardList },
+          { href: '/dashboard/manajemen-tim', label: 'Manajemen Tim', icon: UsersRound },
+          { href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch },
           { href: '/dashboard/konfigurasi', label: 'Konfigurasi', icon: Settings },
-          ...(session?.user?.role === 'ADMIN' ? [{ href: '/dashboard/settings', label: 'App Settings (Super)', icon: Settings }] : [])
         ]
       : [
           { href: '/dashboard', label: 'Beranda', icon: LayoutDashboard },
@@ -125,6 +130,8 @@ export default function DashboardLayout({
           { href: '/dashboard/pm', label: 'Penerima Manfaat', icon: Users },
           { href: '/dashboard/keuangan', label: 'Kegiatan & Keuangan', icon: ClipboardList },
           { href: '/dashboard/monitoring', label: 'Monitoring Bulanan', icon: ClipboardList },
+          ...(isKorwil ? [{ href: '/dashboard/manajemen-tim', label: 'Manajemen Tim', icon: UsersRound }] : []),
+          ...(isKorwil ? [{ href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch }] : []),
         ]
 
   const isActive = (href: string) => pathname === href
@@ -139,29 +146,12 @@ export default function DashboardLayout({
         } ${sidebarCollapsed ? 'lg:w-0 lg:overflow-hidden' : 'lg:w-64'}`}
       >
         <div className={`flex flex-col h-full transition-all duration-300 ${sidebarCollapsed ? 'lg:w-0 lg:overflow-hidden' : 'w-64'}`}>
-          {/* Logo Section */}
-          <div className="p-5 border-b border-white/20 min-h-[5rem] flex items-center justify-center relative">
-            <div className={`transition-all duration-500 ${sidebarCollapsed ? 'opacity-0 scale-95' : isSettingsLoaded ? 'opacity-100 scale-100' : 'opacity-0'}`}>
-              {logoUrl && (
-                <div className="relative w-44 h-12 flex-shrink-0">
-                  <Image
-                    src={logoUrl}
-                    alt="Logo"
-                    fill
-                    className="object-contain object-center invert"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = '/icon.svg';
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-            
+          {/* Mobile close button */}
+          <div className="lg:hidden flex justify-end p-3">
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden text-white hover:opacity-80 absolute right-3 top-4"
+              className="text-white hover:opacity-80"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="h-5 w-5" />

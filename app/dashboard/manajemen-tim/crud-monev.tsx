@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Trash2, Edit, X, Save, RefreshCw, KeyRound, Shield } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, Trash2, Edit, X, Save, RefreshCw, KeyRound, Shield, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   getMonevList, createMonev, updateMonev, deleteMonev, resetPasswordMonev,
   type MonevRow,
 } from './actions'
-import { MonevWilayahSheet } from './wilayah-sheet'
 
 function emptyForm() {
   return { nama: '', hp: '', email: '' }
@@ -170,7 +170,11 @@ export function CRUDMonev() {
                           <Button size="sm" variant="outline" onClick={() => openEdit(row)} className="h-7 px-2 text-xs">
                             <Edit className="w-3 h-3 mr-1" /> Edit
                           </Button>
-                          <MonevWilayahSheet monevId={row.id} monevNama={row.nama} />
+                          <Link href={`/dashboard/manajemen-tim/wilayah/monev/${row.id}`}>
+                            <Button size="sm" variant="outline" className="h-7 px-2 text-xs text-emerald-700 border-emerald-200 hover:bg-emerald-50">
+                              <MapPin className="w-3 h-3 mr-1" /> Wilayah
+                            </Button>
+                          </Link>
                           <Button size="sm" variant="outline" onClick={() => handleReset(row)} className="h-7 px-2 text-xs text-amber-600 border-amber-200 hover:bg-amber-50">
                             <KeyRound className="w-3 h-3 mr-1" /> Reset
                           </Button>

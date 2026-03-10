@@ -39,6 +39,22 @@ export type RankingRelawan = {
   jumlah_desa: number
 }
 
+export type VillageMapPoint = {
+  id: number
+  nama_desa: string
+  latitude: number
+  longitude: number
+  nama_provinsi: string
+  nama_kota: string
+}
+
+export type DistributionStats = {
+  totalProvinsi: number
+  totalKota: number
+  totalKecamatan: number
+  totalDesa: number
+}
+
 // =============================================================
 // Helper: role filter
 // =============================================================
@@ -365,6 +381,63 @@ export async function getTeamForKorwil(): Promise<TeamForKorwil | null> {
       nama: r.nama,
       jumlah_desa: Number(r.jumlah_desa),
     })),
+  }
+}
+
+// =============================================================
+// Map & Geography Stats (Super Admin)
+// =============================================================
+export async function getVillageMapPoints(): Promise<VillageMapPoint[]> {
+  const auth = await getRoleFilter()
+  if (!auth || (auth.role !== 'ADMIN' && auth.role !== 'MONEV')) return []
+
+  const rows = await sql`
+    SELECT
+      db.id,
+      dc.nama_desa,
+      db.latitude,
+      db.longitude,
+      prov.nama_provinsi,
+      kota.nama_kota
+    FROM desa_berdaya db
+    JOIN desa_config dc ON db.desa_id = dc.id
+    JOIN provinsi prov ON db.provinsi_id = prov.id
+    JOIN kota_kabupaten kota ON db.kota_id = kota.id
+    WHERE db.status_aktif = true
+      AND db.latitude IS NOT NULL
+      AND db.longitude IS NOT NULL
+  `
+
+  return (rows as any[]).map((r) => ({
+    id: Number(r.id),
+    nama_desa: r.nama_desa,
+    latitude: Number(r.latitude),
+    longitude: Number(r.longitude),
+    nama_provinsi: r.nama_provinsi,
+    nama_kota: r.nama_kota,
+  }))
+}
+
+export async function getVillageDistributionStats(): Promise<DistributionStats> {
+  const auth = await getRoleFilter()
+  if (!auth || (auth.role !== 'ADMIN' && auth.role !== 'MONEV')) {
+    return { totalProvinsi: 0, totalKota: 0, totalKecamatan: 0, totalDesa: 0 }
+  }
+
+  const rows = await sql`
+    SELECT
+      (SELECT COUNT(DISTINCT provinsi_id) FROM desa_berdaya WHERE status_aktif = true) as total_provinsi,
+      (SELECT COUNT(DISTINCT kota_id) FROM desa_berdaya WHERE status_aktif = true) as total_kota,
+      (SELECT COUNT(DISTINCT kecamatan_id) FROM desa_berdaya WHERE status_aktif = true) as total_kecamatan,
+      (SELECT COUNT(*) FROM desa_berdaya WHERE status_aktif = true) as total_desa
+  `
+
+  const r = (rows as any[])[0]
+  return {
+    totalProvinsi: Number(r?.total_provinsi ?? 0),
+    totalKota: Number(r?.total_kota ?? 0),
+    totalKecamatan: Number(r?.total_kecamatan ?? 0),
+    totalDesa: Number(r?.total_desa ?? 0),
   }
 }
 

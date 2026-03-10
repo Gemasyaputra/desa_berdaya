@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,14 +10,13 @@ import { Badge } from '@/components/ui/badge'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Plus, Trash2, Edit, X, Save, RefreshCw, KeyRound, Users } from 'lucide-react'
+import { Plus, Trash2, Edit, X, Save, RefreshCw, KeyRound, Users, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   getRelawanList, createRelawan, updateRelawan, deleteRelawan, resetPasswordRelawan,
   getKorwilOptions,
   type RelawanRow, type OptionItem,
 } from './actions'
-import { RelawanWilayahSheet } from './wilayah-sheet'
 import { KelolaDesaRelawanSheet, GantiRelawanDesaSheet } from './desa-assign-sheet'
 
 function emptyForm() {
@@ -41,6 +41,7 @@ export function CRUDRelawan({
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState(emptyForm())
+  const [sortBy, setSortBy] = useState('default')
 
   const canSelectKorwil = isAdmin || isMonev
 
@@ -115,15 +116,29 @@ export function CRUDRelawan({
     else toast.error(result.error || 'Gagal reset password')
   }
 
+  const filteredList = list.filter((row) => {
+    if (sortBy === 'tanpa-desa') return row.jumlah_desa === 0
+    return true
+  })
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Users className="w-5 h-5 text-[#7a1200]" />
           <h3 className="text-base font-semibold text-slate-800">Daftar Relawan</h3>
-          <Badge className="bg-blue-100 text-blue-700">{list.length}</Badge>
+          <Badge className="bg-blue-100 text-blue-700">{filteredList.length}</Badge>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[140px] h-9">
+              <SelectValue placeholder="Sortir" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">Semua Relawan</SelectItem>
+              <SelectItem value="tanpa-desa">Tanpa Desa</SelectItem>
+            </SelectContent>
+          </Select>
           {(isAdmin || isMonev) && <GantiRelawanDesaSheet />}
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -204,7 +219,7 @@ export function CRUDRelawan({
                   </tr>
                 </thead>
                 <tbody>
-                  {list.map((row, i) => (
+                  {filteredList.map((row, i) => (
                     <tr key={row.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                       <td className="py-3 px-4 text-sm text-center text-slate-400">{i + 1}</td>
                       <td className="py-3 px-4">
@@ -227,7 +242,11 @@ export function CRUDRelawan({
                             <Edit className="w-3 h-3 mr-1" /> Edit
                           </Button>
                           <KelolaDesaRelawanSheet relawanId={row.id} relawanNama={row.nama} onRefresh={load} />
-                          <RelawanWilayahSheet relawanId={row.id} relawanNama={row.nama} />
+                          <Link href={`/dashboard/manajemen-tim/wilayah/relawan/${row.id}`}>
+                            <Button size="sm" variant="outline" className="h-7 px-2 text-xs text-emerald-700 border-emerald-200 hover:bg-emerald-50">
+                              <MapPin className="w-3 h-3 mr-1" /> Wilayah
+                            </Button>
+                          </Link>
                           <Button size="sm" variant="outline" onClick={() => handleReset(row)} className="h-7 px-2 text-xs text-amber-600 border-amber-200 hover:bg-amber-50">
                             <KeyRound className="w-3 h-3 mr-1" /> Reset
                           </Button>

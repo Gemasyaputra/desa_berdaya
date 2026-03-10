@@ -1,12 +1,10 @@
 'use client'
 
 import React, { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { deletePenerimaManfaat } from './actions'
 
-export default function DeletePMButton({ id }: { id: number }) {
-  const router = useRouter()
+export default function DeletePMButton({ id, onDeleted }: { id: number; onDeleted?: (id: number) => void }) {
   const [loading, setLoading] = useState(false)
 
   const handleDelete = async () => {
@@ -14,7 +12,9 @@ export default function DeletePMButton({ id }: { id: number }) {
       try {
         setLoading(true)
         await deletePenerimaManfaat(id)
-        router.refresh()
+        if (onDeleted) {
+          onDeleted(id)
+        }
       } catch (error: any) {
         alert(error.message || 'Gagal menghapus data')
       } finally {

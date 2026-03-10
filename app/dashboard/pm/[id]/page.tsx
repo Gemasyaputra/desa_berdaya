@@ -5,7 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, UserSquare2, MapPin, Calendar, Briefcase, FileText } from 'lucide-react'
+import { ArrowLeft, UserSquare2, MapPin, Calendar, Briefcase, FileText, Users } from 'lucide-react'
+import { getKelompokByPmId } from '@/lib/actions/kelompok'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,10 +47,12 @@ export default async function DetailPMPage({
   }
 
   let pmDetail: any = null
+  let kelompokList: any[] = []
   let errorMessage = ''
 
   try {
     pmDetail = await getPenerimaManfaatById(id)
+    kelompokList = await getKelompokByPmId(id)
   } catch (error: any) {
     errorMessage = error.message
   }
@@ -216,6 +219,46 @@ export default async function DetailPMPage({
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Kewarganegaraan</p>
                 <p className="text-sm font-semibold text-slate-800">{pmDetail.kewarganegaraan || '-'}</p>
               </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="font-semibold text-slate-700 flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#7a1200]" />
+                Kelompok PM
+              </h3>
+            </div>
+            <div className="p-5">
+              {kelompokList.length > 0 ? (
+                <div className="space-y-3">
+                  {kelompokList.map(kel => (
+                    <div key={kel.id} className="border border-slate-100 rounded-lg p-3 bg-slate-50/50">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-semibold text-slate-800">{kel.nama_kelompok}</h4>
+                        <span className="text-xs text-slate-500 font-medium bg-white px-2 py-1 rounded border border-slate-200">{kel.tahun}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        {kel.nama_program && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                            {kel.nama_program} <span className="opacity-70 ml-1">({kel.nama_kategori})</span>
+                          </span>
+                        )}
+                        <span className="inline-flex items-center px-2 py-0.5 rounded font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                          Desa: {kel.nama_desa}
+                        </span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                          Pembina: {kel.nama_pembina}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-slate-500 text-sm">
+                  Belum dimasukkan ke kelompok manapun.
+                </div>
+              )}
             </div>
           </div>
 

@@ -30,6 +30,21 @@ export async function getPenerimaManfaatList() {
   `) as any[]
 }
 
+export async function getPenerimaManfaatByDesaId(desaId: number) {
+  try {
+    const list = await sql`
+      SELECT id, nama, nik
+      FROM penerima_manfaat
+      WHERE desa_berdaya_id = ${desaId}
+      ORDER BY nama ASC
+    `
+    return Array.isArray(list) ? list : []
+  } catch (error) {
+    console.error('Error fetching PM by desa:', error)
+    return []
+  }
+}
+
 export async function getDesaBerdayaOptions() {
   const session = await getServerSession(authOptions)
   if (!session?.user) return []
@@ -43,18 +58,20 @@ export async function getDesaBerdayaOptions() {
   if (role === 'RELAWAN' || role === 'PROG_HEAD') {
     if (operatorId) {
       options = (await sql`
-        SELECT db.id, dc.nama_desa 
+        SELECT db.id, dc.nama_desa, r.nama as nama_relawan
         FROM desa_berdaya db
         JOIN desa_config dc ON db.desa_id = dc.id
+        LEFT JOIN relawan r ON db.relawan_id = r.id
         WHERE db.relawan_id = ${operatorId} AND db.status_aktif = true
       `) as any[]
     }
   } else if (role === 'ADMIN' || role === 'MONEV') {
     // Admin dan Monev bisa lihat semua desa
     options = (await sql`
-      SELECT db.id, dc.nama_desa 
+      SELECT db.id, dc.nama_desa, r.nama as nama_relawan
       FROM desa_berdaya db
       JOIN desa_config dc ON db.desa_id = dc.id
+      LEFT JOIN relawan r ON db.relawan_id = r.id
       WHERE db.status_aktif = true
     `) as any[]
   }
@@ -171,6 +188,7 @@ export async function getPenerimaManfaatById(id: number) {
 }
 
 export async function updatePenerimaManfaat(id: number, data: {
+  desa_berdaya_id?: number;
   nik: string;
   nama: string;
   tempat_lahir?: string;
@@ -202,6 +220,7 @@ export async function updatePenerimaManfaat(id: number, data: {
   try {
     const result = await sql`
       UPDATE penerima_manfaat SET 
+        desa_berdaya_id = COALESCE(${data.desa_berdaya_id || null}, desa_berdaya_id),
         nik = ${data.nik}, 
         nama = ${data.nama}, 
         tempat_lahir = ${data.tempat_lahir || null}, 
@@ -231,6 +250,27 @@ export async function updatePenerimaManfaat(id: number, data: {
   }
 }
 
+export async function updateKtpUrlPenerimaManfaat(id: number, url: string) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) throw new Error('Unauthorized')
+
+  if (!id || !url) {
+    throw new Error('ID dan URL wajib diisi')
+  }
+
+  try {
+    await sql`
+      UPDATE penerima_manfaat SET 
+        foto_ktp_url = ${url}
+      WHERE id = ${id}
+    `
+    return { success: true }
+  } catch (error: any) {
+    console.error('Update KTP URL error:', error)
+    throw new Error('Gagal memperbarui foto KTP.')
+  }
+}
+
 export async function deletePenerimaManfaat(id: number) {
   const session = await getServerSession(authOptions)
   if (!session?.user) throw new Error('Unauthorized')
@@ -243,5 +283,104 @@ export async function deletePenerimaManfaat(id: number) {
   } catch (error: any) {
     console.error('Delete PM error:', error)
     throw new Error('Gagal menghapus data penerima manfaat.')
+  }
+}
+
+export async function importPemerimaManfaatExcel(
+  data: {
+    desa_berdaya_id: number;
+    nik: string;
+    nama: string;
+    tempat_lahir?: string;
+    tanggal_lahir?: string | Date | null;
+    jenis_kelamin?: string;
+    golongan_darah?: string;
+    alamat?: string;
+    rt_rw?: string;
+    kel_desa?: string;
+    kecamatan?: string;
+    agama?: string;
+    status_perkawinan?: string;
+    pekerjaan?: string;
+    kewarganegaraan?: string;
+    kategori_pm?: string;
+  }[]
+) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) throw new Error('Unauthorized')
+
+  if (!data || data.length === 0) {
+    throw new Error('Data import kosong')
+  }
+
+  let successCount = 0
+  let errorCount = 0
+  const errors: string[] = []
+
+  // Insert sequentially to handle duplicate NIK errors individually without failing the whole batch
+  for (const row of data) {
+    try {
+      if (!row.desa_berdaya_id || !row.nik || !row.nama) {
+        throw new Error('Desa Berdaya ID, NIK, dan Nama wajib diisi')
+      }
+      
+      if (row.nik.length !== 16) {
+        throw new Error('NIK harus terdiri dari 16 karakter')
+      }
+
+      // Kategori PM enum requires: 'LANSIA', 'BUMIL', 'BALITA', 'EKONOMI'
+      // Since it's omitted in the new template, default to 'EKONOMI' (as it's the most general one among choices)
+      let kategori_pm = row.kategori_pm?.toUpperCase() || 'EKONOMI'
+      if (!['LANSIA', 'BUMIL', 'BALITA', 'EKONOMI'].includes(kategori_pm)) {
+        kategori_pm = 'EKONOMI' // Fallback to avoid breaking enum validation
+      }
+
+      let tgl_lahir = null
+      if (row.tanggal_lahir) {
+         try {
+           tgl_lahir = new Date(row.tanggal_lahir)
+         } catch(e) {}
+      }
+
+      await sql`
+        INSERT INTO penerima_manfaat (
+          desa_berdaya_id, nik, nama, tempat_lahir, tanggal_lahir, jenis_kelamin, 
+          golongan_darah, alamat, rt_rw, kel_desa, kecamatan, agama, 
+          status_perkawinan, pekerjaan, kewarganegaraan, kategori_pm
+        ) VALUES (
+          ${row.desa_berdaya_id},
+          ${row.nik},
+          ${row.nama},
+          ${row.tempat_lahir || null},
+          ${tgl_lahir},
+          ${row.jenis_kelamin || null},
+          ${row.golongan_darah || null},
+          ${row.alamat || null},
+          ${row.rt_rw || null},
+          ${row.kel_desa || null},
+          ${row.kecamatan || null},
+          ${row.agama || null},
+          ${row.status_perkawinan || null},
+          ${row.pekerjaan || null},
+          ${row.kewarganegaraan || null},
+          ${kategori_pm}
+        )
+      `
+      successCount++
+    } catch (error: any) {
+      errorCount++
+      if (error.code === '23505') { 
+        errors.push(`Garis dengan NIK ${row.nik} gagal: NIK sudah terdaftar.`)
+      } else {
+        errors.push(`Gagal memproses baris NIK ${row.nik}: ${error.message}`)
+      }
+    }
+  }
+
+  return { 
+    success: errorCount === 0 || successCount > 0, 
+    successCount, 
+    errorCount, 
+    errors 
   }
 }

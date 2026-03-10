@@ -11,9 +11,11 @@ import { authOptions } from '@/lib/auth'
 
 export default async function DetailDesaBinaanPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params
+  const desaId = Number(resolvedParams.id)
+  
   const [desa, session] = await Promise.all([
-    getDesaBinaanById(Number(resolvedParams.id)),
-    getServerSession(authOptions),
+    getDesaBinaanById(desaId),
+    getServerSession(authOptions)
   ])
   const canChangeRelawan = session?.user?.role === 'ADMIN' || !!(session?.user as any)?.is_korwil
   
@@ -143,6 +145,7 @@ export default async function DetailDesaBinaanPage({ params }: { params: Promise
         </div>
 
       </div>
+
     </div>
   )
 }

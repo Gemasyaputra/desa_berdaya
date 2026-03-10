@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,14 +10,13 @@ import { Badge } from '@/components/ui/badge'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Plus, Trash2, Edit, X, Save, RefreshCw, KeyRound, UserCheck } from 'lucide-react'
+import { Plus, Trash2, Edit, X, Save, RefreshCw, KeyRound, UserCheck, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   getKorwilList, createKorwil, updateKorwil, deleteKorwil, resetPasswordKorwil,
   getMonevOptions,
   type KorwilRow, type OptionItem,
 } from './actions'
-import { KorwilWilayahSheet } from './wilayah-sheet'
 
 function emptyForm() {
   return { nama: '', hp: '', email: '', monev_id: '' }
@@ -212,7 +212,11 @@ export function CRUDKorwil({ isAdmin, isMonev }: { isAdmin: boolean; isMonev: bo
                           <Button size="sm" variant="outline" onClick={() => openEdit(row)} className="h-7 px-2 text-xs">
                             <Edit className="w-3 h-3 mr-1" /> Edit
                           </Button>
-                          <KorwilWilayahSheet korwilId={row.id} korwilNama={row.nama} />
+                          <Link href={`/dashboard/manajemen-tim/wilayah/korwil/${row.id}`}>
+                            <Button size="sm" variant="outline" className="h-7 px-2 text-xs text-emerald-700 border-emerald-200 hover:bg-emerald-50">
+                              <MapPin className="w-3 h-3 mr-1" /> Wilayah
+                            </Button>
+                          </Link>
                           <Button size="sm" variant="outline" onClick={() => handleReset(row)} className="h-7 px-2 text-xs text-amber-600 border-amber-200 hover:bg-amber-50">
                             <KeyRound className="w-3 h-3 mr-1" /> Reset
                           </Button>

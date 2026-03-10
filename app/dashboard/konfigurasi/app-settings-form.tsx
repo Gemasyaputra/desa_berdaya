@@ -371,7 +371,7 @@ export function AppSettingsForm() {
           </div>
         </div>
 
-        <Button onClick={handleSave} disabled={saving} className="bg-[var(--brand-primary,#00786F)] hover:opacity-90">
+        <Button onClick={handleSave} disabled={saving} className="!bg-[var(--brand-primary)] hover:brightness-90 text-white transition-all">
           {saving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -6,12 +6,22 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Upload, Loader2, Camera, CheckCircle2 } from 'lucide-react'
 import { createPenerimaManfaat, getDesaBerdayaOptions } from '../actions'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Checkbox } from '@/components/ui/checkbox'
+import { getKelompokByDesaId, updateKelompok } from '@/lib/actions/kelompok'
 
 export default function TambahPMPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'success' | 'error'>('idle')
   const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const [isPostCreateDialogOpen, setIsPostCreateDialogOpen] = useState(false)
+  const [lastCreatedPM, setLastCreatedPM] = useState<{ id: number; desaId: number } | null>(null)
+  const [isSelectKelompokDialogOpen, setIsSelectKelompokDialogOpen] = useState(false)
+  const [kelompokOptions, setKelompokOptions] = useState<any[]>([])
+  const [selectedKelompokIds, setSelectedKelompokIds] = useState<number[]>([])
+  const [loadingKelompok, setLoadingKelompok] = useState(false)
+  const [savingKelompok, setSavingKelompok] = useState(false)
   
   const [desaOptions, setDesaOptions] = useState<{id: number, nama_desa: string}[]>([])
   const [formData, setFormData] = useState({
@@ -108,14 +118,126 @@ export default function TambahPMPage() {
     
     try {
       setLoading(true)
-      await createPenerimaManfaat(formData)
-      alert('Data Penerima Manfaat berhasil disimpan!')
-      router.push('/dashboard/pm')
+      const res = await createPenerimaManfaat(formData)
+      if (res && res.success && res.data?.id) {
+        setLastCreatedPM({ id: res.data.id, desaId: formData.desa_berdaya_id })
+        setIsPostCreateDialogOpen(true)
+      } else {
+        alert('Data Penerima Manfaat berhasil disimpan, namun terjadi kendala pada respon server.')
+        router.push('/dashboard/pm')
+      }
     } catch (error: any) {
       console.error(error)
       alert(error.message || 'Gagal menyimpan data')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleOpenSelectKelompok = async () => {
+    if (!lastCreatedPM?.desaId) {
+      alert('Desa binaan untuk Penerima Manfaat ini tidak ditemukan.')
+      return
+    }
+
+    setIsPostCreateDialogOpen(false)
+    setIsSelectKelompokDialogOpen(true)
+    setLoadingKelompok(true)
+    setSelectedKelompokIds([])
+
+    try {
+      const kelompoks = await getKelompokByDesaId(lastCreatedPM.desaId)
+      setKelompokOptions(kelompoks || [])
+
+      // Jika suatu saat PM ini sudah menjadi anggota, bisa preselect di sini.
+      setSelectedKelompokIds([])
+    } catch (error) {
+      console.error(error)
+      alert('Gagal memuat daftar kelompok untuk desa ini.')
+      setIsSelectKelompokDialogOpen(false)
+    } finally {
+      setLoadingKelompok(false)
+    }
+  }
+
+  const handleToggleKelompok = (kelompokId: number) => {
+    setSelectedKelompokIds(prev =>
+      prev.includes(kelompokId) ? prev.filter(id => id !== kelompokId) : [...prev, kelompokId]
+    )
+  }
+
+  const handleSaveKelompokSelection = async () => {
+    if (!lastCreatedPM) {
+      alert('Data Penerima Manfaat tidak ditemukan.')
+      return
+    }
+    if (selectedKelompokIds.length === 0) {
+      setIsSelectKelompokDialogOpen(false)
+      return
+    }
+
+    try {
+      setSavingKelompok(true)
+
+      for (const kel of kelompokOptions) {
+        if (!selectedKelompokIds.includes(kel.id)) {
+          // Lewati kelompok yang tidak dipilih
+          continue
+        }
+
+        const existingAnggota = Array.isArray(kel.anggota) ? kel.anggota : []
+        const anggotaIds: number[] = [
+          ...new Set([
+            ...existingAnggota.map((a: any) => a.id),
+            lastCreatedPM.id,
+          ]),
+        ]
+
+        await updateKelompok(
+          kel.id,
+          kel.desa_berdaya_id,
+          kel.nama_kelompok,
+          kel.nama_pembina,
+          kel.tahun,
+          kel.program_id,
+          kel.master_kelompok_id,
+          anggotaIds
+        )
+      }
+
+      alert('Penerima Manfaat berhasil dimasukkan ke kelompok terpilih.')
+      setIsSelectKelompokDialogOpen(false)
+
+      // Reset form & state supaya halaman seperti kondisi awal (tanpa perlu refresh manual)
+      setFormData(prev => ({
+        desa_berdaya_id: prev.desa_berdaya_id,
+        nik: '',
+        nama: '',
+        tempat_lahir: '',
+        tanggal_lahir: '',
+        jenis_kelamin: '',
+        golongan_darah: '',
+        alamat: '',
+        rt_rw: '',
+        kel_desa: '',
+        kecamatan: '',
+        agama: '',
+        status_perkawinan: '',
+        pekerjaan: '',
+        kewarganegaraan: '',
+        kategori_pm: 'EKONOMI',
+        foto_ktp_url: '',
+      }))
+      setPreviewImage(null)
+      setScanStatus('idle')
+      setLastCreatedPM(null)
+      setKelompokOptions([])
+      setSelectedKelompokIds([])
+    } catch (error: any) {
+      console.error(error)
+      alert(error.message || 'Gagal memasukkan Penerima Manfaat ke kelompok.')
+    } finally {
+      setSavingKelompok(false)
     }
   }
 
@@ -415,6 +537,129 @@ export default function TambahPMPage() {
           </form>
         </div>
       </div>
+
+      <Dialog open={isPostCreateDialogOpen} onOpenChange={setIsPostCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Penerima Manfaat tersimpan</DialogTitle>
+            <DialogDescription>
+              Data Penerima Manfaat berhasil disimpan. Apa langkah selanjutnya?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsPostCreateDialogOpen(false)
+                router.push('/dashboard/pm')
+              }}
+            >
+              Close
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsPostCreateDialogOpen(false)
+                setFormData(prev => ({
+                  desa_berdaya_id: prev.desa_berdaya_id,
+                  nik: '',
+                  nama: '',
+                  tempat_lahir: '',
+                  tanggal_lahir: '',
+                  jenis_kelamin: '',
+                  golongan_darah: '',
+                  alamat: '',
+                  rt_rw: '',
+                  kel_desa: '',
+                  kecamatan: '',
+                  agama: '',
+                  status_perkawinan: '',
+                  pekerjaan: '',
+                  kewarganegaraan: '',
+                  kategori_pm: 'EKONOMI',
+                  foto_ktp_url: '',
+                }))
+                setPreviewImage(null)
+                setScanStatus('idle')
+              }}
+            >
+              Tambah penerima baru
+            </Button>
+            <Button
+              onClick={() => {
+                handleOpenSelectKelompok()
+              }}
+            >
+              Masukkan penerima ke kelompok
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isSelectKelompokDialogOpen} onOpenChange={setIsSelectKelompokDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pilih Kelompok</DialogTitle>
+            <DialogDescription>
+              Pilih kelompok mana saja di desa ini yang ingin dimasukkan Penerima Manfaat baru.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[320px] overflow-y-auto space-y-2 py-2">
+            {loadingKelompok ? (
+              <p className="text-sm text-slate-500 text-center py-4">Memuat daftar kelompok...</p>
+            ) : kelompokOptions.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-4">
+                Belum ada kelompok di desa binaan ini.
+              </p>
+            ) : (
+              kelompokOptions.map((kel) => (
+                <div
+                  key={kel.id}
+                  className="flex items-start gap-3 border border-slate-200 rounded-lg p-3 bg-slate-50"
+                >
+                  <Checkbox
+                    id={`kelompok-${kel.id}`}
+                    checked={selectedKelompokIds.includes(kel.id)}
+                    onCheckedChange={() => handleToggleKelompok(kel.id)}
+                  />
+                  <label
+                    htmlFor={`kelompok-${kel.id}`}
+                    className="flex-1 cursor-pointer"
+                  >
+                    <p className="text-sm font-semibold text-slate-800">
+                      {kel.nama_kelompok}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Program: {kel.nama_program || '-'}
+                      {kel.nama_kategori_kelompok && ` • ${kel.nama_kategori_kelompok}`}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Anggota saat ini: {kel.anggota?.length || 0}
+                    </p>
+                  </label>
+                </div>
+              ))
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsSelectKelompokDialogOpen(false)}
+              disabled={savingKelompok}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleSaveKelompokSelection}
+              disabled={savingKelompok || loadingKelompok || kelompokOptions.length === 0}
+            >
+              {savingKelompok ? 'Menyimpan...' : 'Simpan Pilihan'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -3,18 +3,23 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  Area, AreaChart, LabelList
 } from 'recharts'
 import { Building2, Users, TrendingUp, Wallet, RefreshCw, MapPin, ChevronDown, ChevronRight, UserCheck, Shield } from 'lucide-react'
 import {
   getDashboardStats, getAnggaranPerDesa, getTrendLaporanBulanan,
   getSebaranStatusDesa, getRankingRelawan, getTeamForMonev, getTeamForKorwil,
+  getVillageMapPoints, getVillageDistributionStats,
   type DashboardStats, type AnggaranPerDesa, type TrendBulanan,
   type SebaranStatus, type RankingRelawan, type TeamForMonev, type TeamForKorwil,
+  type VillageMapPoint, type DistributionStats,
 } from './actions'
+import { SuperAdminMap } from './super-admin-map'
 
 // =====================================================
 // Helpers
@@ -59,8 +64,54 @@ function SkeletonCard() {
 }
 
 // =====================================================
-// Komponen utama
+// KPICard Component - Minimalist
 // =====================================================
+function KPICard({ 
+  title, 
+  value, 
+  subValue, 
+  icon: Icon, 
+  progress 
+}: { 
+  title: string
+  value: string | number
+  subValue?: string
+  icon: any
+  progress?: number
+}) {
+  return (
+    <Card className="border-0 shadow-[0_4px_20px_rgba(0,0,0,0.03)] bg-white rounded-2xl overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] transition-all duration-300 ring-1 ring-slate-100">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-2">{title}</p>
+            <p className="text-3xl font-black text-slate-800 tracking-tight">{value}</p>
+            {subValue && <p className="text-slate-400 text-[10px] mt-1.5 font-medium">{subValue}</p>}
+          </div>
+          <div className="w-11 h-11 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100 group-hover:bg-red-50 group-hover:border-red-100 transition-colors duration-300">
+            <Icon className="w-5 h-5 text-slate-400 group-hover:text-[#7a1200] transition-colors" />
+          </div>
+        </div>
+        
+        {progress !== undefined && (
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Realisasi</span>
+              <span className="text-[10px] font-black text-[#7a1200] bg-red-50 px-1.5 py-0.5 rounded-md">{progress.toFixed(0)}%</span>
+            </div>
+            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-[#7a1200] rounded-full transition-all duration-1000 ease-out" 
+                style={{ width: `${progress}%` }} 
+              />
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function DashboardPage() {
   const [tahun, setTahun] = useState(String(currentYear))
   const [loading, setLoading] = useState(true)
@@ -71,13 +122,15 @@ export default function DashboardPage() {
   const [ranking, setRanking] = useState<RankingRelawan[]>([])
   const [teamMonev, setTeamMonev] = useState<TeamForMonev | null>(null)
   const [teamKorwil, setTeamKorwil] = useState<TeamForKorwil | null>(null)
+  const [mapPoints, setMapPoints] = useState<VillageMapPoint[]>([])
+  const [distStats, setDistStats] = useState<DistributionStats | null>(null)
   const [expandedKorwils, setExpandedKorwils] = useState<Set<number>>(new Set())
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
       const y = parseInt(tahun)
-      const [s, a, t, se, r, tm, tk] = await Promise.all([
+      const [s, a, t, se, r, tm, tk, mp, ds] = await Promise.all([
         getDashboardStats(y),
         getAnggaranPerDesa(y),
         getTrendLaporanBulanan(y),
@@ -85,6 +138,8 @@ export default function DashboardPage() {
         getRankingRelawan(),
         getTeamForMonev(),
         getTeamForKorwil(),
+        getVillageMapPoints(),
+        getVillageDistributionStats(),
       ])
       setStats(s)
       setAnggaran(a)
@@ -93,6 +148,8 @@ export default function DashboardPage() {
       setRanking(r)
       setTeamMonev(tm)
       setTeamKorwil(tk)
+      setMapPoints(mp)
+      setDistStats(ds)
     } finally {
       setLoading(false)
     }
@@ -103,275 +160,372 @@ export default function DashboardPage() {
   const pctRealisasi = stats?.peresenRealisasi ?? 0
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Summary Dashboard</h1>
-            <p className="text-slate-500 text-sm">Monitoring Program Pemberdayaan Desa Berdaya</p>
+    <div className="min-h-screen bg-[#F8F9FA]">
+      {/* Premium Header */}
+      <header className="bg-white/80 backdrop-blur-xl border-b border-slate-200/50 px-8 py-6 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+          <div className="space-y-0.5">
+            <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+              Summary Dashboard
+              <span className="px-2.5 py-0.5 bg-[#7a1200]/5 text-[#7a1200] text-[10px] font-bold rounded-full uppercase tracking-widest border border-red-100">Analytics</span>
+            </h1>
+            <p className="text-slate-400 text-xs font-medium">Monitoring Program Pemberdayaan <span className="text-slate-500 font-bold">Desa Berdaya</span></p>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <Select value={tahun} onValueChange={setTahun}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {yearOptions.map((y) => (
-                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
+              <Select value={tahun} onValueChange={setTahun}>
+                <SelectTrigger className="w-[100px] border-0 bg-transparent shadow-none focus:ring-0 font-bold text-slate-600">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-200">
+                  {yearOptions.map((y) => (
+                    <SelectItem key={y} value={String(y)} className="font-medium">{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button
               onClick={fetchAll}
               disabled={loading}
-              className="gap-2 text-white"
+              className="px-6 h-11 rounded-2xl gap-2 text-white font-bold shadow-lg shadow-[#7a1200]/20 hover:shadow-[#7a1200]/30 transition-all active:scale-95"
               style={{ backgroundColor: '#7a1200' }}
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
+              Refresh Data
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="p-6 space-y-6">
-        {/* ── KPI Cards ── */}
-        {loading && !stats ? (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {Array(4).fill(0).map((_, i) => <SkeletonCard key={i} />)}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Desa Aktif */}
-            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-gradient-to-br from-rose-900 to-rose-700 text-white">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-rose-200 text-xs font-medium">Desa Binaan Aktif</p>
-                    <p className="text-3xl font-bold mt-1">{stats?.totalDesaAktif ?? 0}</p>
-                    <p className="text-rose-200 text-xs mt-1">dari {stats?.totalDesaAll ?? 0} total desa</p>
-                  </div>
-                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                    <Building2 className="w-5 h-5 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Penerima Manfaat */}
-            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-gradient-to-br from-amber-600 to-amber-500 text-white">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-amber-100 text-xs font-medium">Penerima Manfaat</p>
-                    <p className="text-3xl font-bold mt-1">{stats?.totalPenerimaManfaat?.toLocaleString('id-ID') ?? 0}</p>
-                    <p className="text-amber-100 text-xs mt-1">total terdaftar</p>
-                  </div>
-                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                    <Users className="w-5 h-5 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Realisasi Anggaran */}
-            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-gradient-to-br from-emerald-700 to-emerald-500 text-white">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-emerald-100 text-xs font-medium">Realisasi {tahun}</p>
-                    <p className="text-2xl font-bold mt-1">{formatRupiah(stats?.totalRealisasi ?? 0)}</p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <div className="flex-1 bg-white/30 rounded-full h-1.5">
-                        <div className="bg-white h-full rounded-full" style={{ width: `${pctRealisasi}%` }} />
-                      </div>
-                      <span className="text-emerald-100 text-xs">{pctRealisasi.toFixed(0)}%</span>
-                    </div>
-                  </div>
-                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                    <Wallet className="w-5 h-5 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Relawan */}
-            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-gradient-to-br from-blue-700 to-blue-500 text-white">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-blue-100 text-xs font-medium">Total Relawan</p>
-                    <p className="text-3xl font-bold mt-1">{stats?.totalRelawan ?? 0}</p>
-                    <p className="text-blue-100 text-xs mt-1">relawan terdaftar</p>
-                  </div>
-                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                    <MapPin className="w-5 h-5 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+      <div className="max-w-[1600px] mx-auto px-8 py-10 space-y-10">
+        {/* ── Section 1: Map ── */}
+        {(mapPoints.length > 0 || (distStats && distStats.totalDesa > 0)) && (
+          <section className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center border border-red-100">
+                <MapPin className="w-4 h-4 text-[#7a1200]" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-800 tracking-tight">Geographical Overview</h2>
+            </div>
+            <SuperAdminMap points={mapPoints} stats={distStats} />
+          </section>
         )}
 
-        {/* ── Baris 1: Tren Bulanan + Sebaran Status ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Line Chart — Tren Laporan & Realisasi */}
-          <Card className="lg:col-span-2 border-0 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base text-slate-800">Tren Laporan Kegiatan Bulanan</CardTitle>
-              <p className="text-xs text-slate-500">Jumlah laporan dan realisasi anggaran per bulan — {tahun}</p>
+        {/* ── Section 2: KPIs ── */}
+        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          {loading && !stats ? (
+            Array(4).fill(0).map((_, i) => <SkeletonCard key={i} />)
+          ) : (
+            <>
+              <KPICard 
+                title="Desa Binaan Aktif" 
+                value={stats?.totalDesaAktif ?? 0}
+                subValue={`dari ${stats?.totalDesaAll ?? 0} total desa`}
+                icon={Building2}
+              />
+              <KPICard 
+                title="Penerima Manfaat" 
+                value={stats?.totalPenerimaManfaat?.toLocaleString('id-ID') ?? 0}
+                subValue="Penerima Manfaat Terdaftar"
+                icon={Users}
+              />
+              <KPICard 
+                title={`Realisasi ${tahun}`} 
+                value={formatRupiah(stats?.totalRealisasi ?? 0)}
+                icon={Wallet}
+                progress={pctRealisasi}
+              />
+              <KPICard 
+                title="Total Relawan" 
+                value={stats?.totalRelawan ?? 0}
+                subValue="Relawan Desa Berpijak"
+                icon={UserCheck}
+              />
+            </>
+          )}
+        </section>
+
+        {/* ── Section 3: Charts Bento Grid ── */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Main Trend Chart */}
+          <Card className="lg:col-span-8 border-0 shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-2xl bg-white overflow-hidden ring-1 ring-slate-100">
+            <CardHeader className="p-8 pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg font-bold text-slate-800 tracking-tight">Tren Laporan Bulanan</CardTitle>
+                  <p className="text-xs text-slate-400 font-medium italic mt-1">Monitoring pergerakan laporan & realisasi anggaran — {tahun}</p>
+                </div>
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                  <TrendingUp className="w-5 h-5 text-slate-400" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-8 pt-4">
               {trend.length > 0 ? (
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={trend} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="bulan" tick={{ fontSize: 12 }} />
-                    <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
-                    <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => formatRupiah(v)} tick={{ fontSize: 10 }} />
+                <ResponsiveContainer width="100%" height={320}>
+                  <LineChart data={trend} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorRealisasi" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#fbbf24" stopOpacity={0.15}/>
+                        <stop offset="95%" stopColor="#fbbf24" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="5 5" stroke="#f1f5f9" vertical={false} />
+                    <XAxis 
+                      dataKey="bulan" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 12, fontWeight: 700, fill: '#94a3b8' }} 
+                      dy={10}
+                    />
+                    <YAxis 
+                      yAxisId="left" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 12, fontWeight: 600, fill: '#94a3b8' }} 
+                    />
+                    <YAxis 
+                      yAxisId="right" 
+                      orientation="right" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tickFormatter={(v) => formatRupiah(v)} 
+                      tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }} 
+                    />
                     <Tooltip content={<CustomBarTooltip />} />
-                    <Legend />
-                    <Line yAxisId="left" type="monotone" dataKey="jumlah_laporan" name="Jml Laporan" stroke="#7a1200" strokeWidth={2} dot={{ r: 4 }} />
-                    <Line yAxisId="right" type="monotone" dataKey="total_realisasi" name="Realisasi (Rp)" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} />
+                    <Legend verticalAlign="top" align="right" height={36} iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontWeight: 600, fontSize: '11px', color: '#64748b' }} />
+                    <Area 
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="total_realisasi"
+                      stroke="none"
+                      fill="url(#colorRealisasi)"
+                    />
+                    <Line 
+                      yAxisId="left" 
+                      type="monotone" 
+                      dataKey="jumlah_laporan" 
+                      name="Laporan" 
+                      stroke="#7a1200" 
+                      strokeWidth={3} 
+                      dot={{ r: 4, fill: '#7a1200', strokeWidth: 2, stroke: '#fff' }} 
+                      activeDot={{ r: 6 }}
+                    />
+                    <Line 
+                      yAxisId="right" 
+                      type="monotone" 
+                      dataKey="total_realisasi" 
+                      name="Realisasi" 
+                      stroke="#fbbf24" 
+                      strokeWidth={3} 
+                      dot={{ r: 4, fill: '#fbbf24', strokeWidth: 2, stroke: '#fff' }} 
+                      activeDot={{ r: 6 }}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm">
-                  Belum ada data laporan di tahun {tahun}
+                <div className="h-[320px] flex flex-col items-center justify-center text-slate-300 gap-4">
+                   <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center border border-slate-100 italic">?</div>
+                   <p className="text-sm font-bold">Belum ada data laporan di tahun {tahun}</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Pie Chart — Sebaran Status */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base text-slate-800">Sebaran Status Desa</CardTitle>
-              <p className="text-xs text-slate-500">Aktif vs Tidak Aktif</p>
+          {/* Status Distribution */}
+          <Card className="lg:col-span-4 border-0 shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-2xl bg-white ring-1 ring-slate-100">
+            <CardHeader className="p-8 pb-4">
+              <CardTitle className="text-lg font-bold text-slate-800 tracking-tight">Status Desa</CardTitle>
+              <p className="text-xs text-slate-400 font-medium">Komposisi Aktifitas Program</p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-8 pt-4">
               {sebaran.length > 0 ? (
-                <>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <PieChart>
-                      <Pie data={sebaran} dataKey="value" nameKey="label" cx="50%" cy="50%" outerRadius={70} label={({ label, value }) => `${label}: ${value}`} labelLine={false}>
-                        {sebaran.map((_, i) => (
-                          <Cell key={i} fill={i === 0 ? '#7a1200' : '#cbd5e1'} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="mt-3 space-y-2">
+                <div className="flex flex-col h-full justify-between gap-8">
+                  <div className="relative">
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie 
+                          data={sebaran} 
+                          dataKey="value" 
+                          nameKey="label" 
+                          cx="50%" 
+                          cy="50%" 
+                          innerRadius={65}
+                          outerRadius={90} 
+                          paddingAngle={8}
+                        >
+                          {sebaran.map((_, i) => (
+                            <Cell key={i} fill={i === 0 ? '#7a1200' : '#334155'} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+                      <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Total</p>
+                      <p className="text-xl font-black text-slate-800">{stats?.totalDesaAll ?? 0}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3">
                     {sebaran.map((s, i) => (
-                      <div key={i} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: i === 0 ? '#7a1200' : '#cbd5e1' }} />
-                          <span className="text-slate-600">{s.label}</span>
+                      <div key={i} className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: i === 0 ? '#7a1200' : '#e2e8f0' }} />
+                          <span className="text-[13px] font-semibold text-slate-600">{s.label}</span>
                         </div>
-                        <span className="font-semibold text-slate-800">{s.value} desa</span>
+                        <span className="text-sm font-bold text-slate-800">{s.value}</span>
                       </div>
                     ))}
                   </div>
-                </>
-              ) : (
-                <div className="h-[180px] flex items-center justify-center text-slate-400 text-sm">
-                  Belum ada data
                 </div>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-white/20 italic font-medium">No Data Available</div>
               )}
             </CardContent>
           </Card>
-        </div>
+        </section>
 
-        {/* ── Baris 2: Anggaran per Desa + Ranking Relawan ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Bar Chart — Realisasi vs Alokasi per Desa */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base text-slate-800">Realisasi vs Alokasi per Desa</CardTitle>
-              <p className="text-xs text-slate-500">Top 10 desa berdasarkan realisasi — {tahun}</p>
+        {/* ── Section 4: Rankings & Data ── */}
+        <section className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          {/* Anggaran per Desa */}
+          <Card className="border-0 shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-2xl bg-white ring-1 ring-slate-100">
+            <CardHeader className="p-8">
+              <CardTitle className="text-lg font-bold text-slate-800 tracking-tight">Leaderboard Desa</CardTitle>
+              <p className="text-xs text-slate-400 font-medium italic mt-1">Top 10 desa berdasarkan serapan realisasi</p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 pb-8">
               {anggaran.length > 0 ? (
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={anggaran} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={anggaran} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                    <XAxis type="number" tickFormatter={(v) => formatRupiah(v)} tick={{ fontSize: 10 }} />
-                    <YAxis type="category" dataKey="nama_desa" tick={{ fontSize: 11 }} width={90} />
+                    <XAxis type="number" hide />
+                    <YAxis 
+                      type="category" 
+                      dataKey="nama_desa" 
+                      tick={{ fontSize: 11, fontWeight: 700, fill: '#475569' }} 
+                      width={120} 
+                      axisLine={false}
+                      tickLine={false}
+                    />
                     <Tooltip content={<CustomBarTooltip />} />
-                    <Legend />
-                    <Bar dataKey="alokasi" name="Alokasi" fill="#e2e8f0" radius={[0, 3, 3, 0]} />
-                    <Bar dataKey="realisasi" name="Realisasi" fill="#7a1200" radius={[0, 3, 3, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-[280px] flex items-center justify-center text-slate-400 text-sm">
-                  Belum ada data laporan di tahun {tahun}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Bar Chart — Ranking Relawan */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base text-slate-800">Ranking Relawan</CardTitle>
-              <p className="text-xs text-slate-500">Jumlah desa binaan aktif per relawan</p>
-            </CardHeader>
-            <CardContent>
-              {ranking.length > 0 ? (
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={ranking} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <YAxis type="category" dataKey="nama" tick={{ fontSize: 11 }} width={100} />
-                    <Tooltip formatter={(v) => [`${v} desa`, 'Desa Binaan']} />
-                    <Bar dataKey="jumlah_desa" name="Desa Binaan" radius={[0, 3, 3, 0]}>
-                      {ranking.map((_, i) => (
-                        <Cell key={i} fill={BRAND_COLORS[i % BRAND_COLORS.length]} />
-                      ))}
+                    <Bar 
+                      dataKey="realisasi" 
+                      name="Realisasi" 
+                      fill="#7a1200" 
+                      radius={[0, 4, 4, 0]} 
+                      barSize={16}
+                    >
+                      <LabelList 
+                        dataKey="realisasi" 
+                        position="right" 
+                        formatter={(v: number) => formatRupiah(v)} 
+                        style={{ fontSize: '10px', fontWeight: 700, fill: '#64748b' }} 
+                        offset={10}
+                      />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[280px] flex items-center justify-center text-slate-400 text-sm">
-                  Data ranking hanya tersedia untuk Admin / Monev
-                </div>
+                <div className="h-[320px] flex items-center justify-center text-slate-300 italic">No rankings to display</div>
               )}
             </CardContent>
           </Card>
-        </div>
 
-        {/* ── Struktur Tim ── */}
+          {/* Ranking Relawan */}
+          <Card className="border-0 shadow-[0_4px_20_rgba(0,0,0,0.03)] rounded-2xl bg-white ring-1 ring-slate-100">
+            <CardHeader className="p-8">
+              <CardTitle className="text-lg font-bold text-slate-800 tracking-tight">Kinerja Relawan</CardTitle>
+              <p className="text-xs text-slate-400 font-medium italic mt-1">Relawan dengan jumlah desa binaan terbanyak</p>
+            </CardHeader>
+            <CardContent className="px-6 pb-8">
+              {ranking.length > 0 ? (
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={ranking} layout="vertical" margin={{ top: 0, right: 60, left: 10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                    <XAxis type="number" allowDecimals={false} hide />
+                    <YAxis 
+                      type="category" 
+                      dataKey="nama" 
+                      tick={{ fontSize: 11, fontWeight: 700, fill: '#475569' }} 
+                      width={120} 
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip cursor={{ fill: '#f8fafc' }} formatter={(v) => [`${v} desa`, 'Desa Binaan']} />
+                    <Bar 
+                      dataKey="jumlah_desa" 
+                      name="Desa Binaan" 
+                      radius={[0, 4, 4, 0]} 
+                      barSize={16}
+                    >
+                      {ranking.map((_, i) => (
+                        <Cell key={i} fill={BRAND_COLORS[i % BRAND_COLORS.length]} />
+                      ))}
+                      <LabelList 
+                        dataKey="jumlah_desa" 
+                        position="right" 
+                        style={{ fontSize: '10px', fontWeight: 700, fill: '#64748b' }} 
+                        offset={10}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[320px] flex items-center justify-center text-slate-300 italic">Ranking restricted to privileged users</div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* ── Section 5: Timber Structure (Full Width Bento) ── */}
         {(teamMonev || teamKorwil) && (
-          <div className="mt-2">
-            {/* === Monev: Korwil + Relawan === */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center border border-red-100">
+                <Shield className="w-4 h-4 text-[#7a1200]" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-800 tracking-tight">Team Structure & Hierarchy</h2>
+            </div>
+            
             {teamMonev && (
-              <Card className="border-0 shadow-sm">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-red-100 flex items-center justify-center">
-                      <Shield className="w-5 h-5 text-[#7a1200]" />
+              <Card className="border-0 shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-2xl bg-white overflow-hidden p-2 ring-1 ring-slate-100">
+                <div className="p-6 flex items-center justify-between bg-slate-50/50 rounded-xl border border-slate-100 mb-6">
+                  <div className="flex items-center gap-5">
+                    <div className="w-14 h-14 rounded-2xl bg-slate-800 flex items-center justify-center text-white shadow-sm">
+                      <Shield className="w-7 h-7" />
                     </div>
                     <div>
-                      <CardTitle className="text-base text-slate-800">Struktur Tim</CardTitle>
-                      <p className="text-xs text-slate-500">Monev: <span className="font-semibold text-[#7a1200]">{teamMonev.monev_nama}</span></p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Lead Supervisor</p>
+                      <h3 className="text-xl font-black text-slate-800 tracking-tight uppercase">{teamMonev.monev_nama}</h3>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent>
+                  <div className="flex items-center gap-6">
+                    <div className="text-right">
+                      <p className="text-xl font-black text-slate-800 leading-none">{teamMonev.korwils.length}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Korwil</p>
+                    </div>
+                    <div className="w-px h-10 bg-slate-200" />
+                    <div className="text-right">
+                      <p className="text-xl font-black text-[#7a1200] leading-none">
+                        {teamMonev.korwils.reduce((acc, k) => acc + k.relawans.length, 0)}
+                      </p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Relawan</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-5 pb-8">
                   {teamMonev.korwils.length === 0 ? (
-                    <p className="text-slate-400 text-sm text-center py-4">Belum ada Korwil yang terdaftar</p>
+                    <p className="text-slate-400 text-sm text-center py-10 font-medium">No registered Korwil assigned to this Monev.</p>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {teamMonev.korwils.map((korwil) => {
                         const isExpanded = expandedKorwils.has(korwil.id)
                         return (
-                          <div key={korwil.id} className="border border-slate-200 rounded-xl overflow-hidden">
+                          <div key={korwil.id} className={`rounded-[2rem] border transition-all duration-300 overflow-hidden ${isExpanded ? 'border-[#7a1200]/30 shadow-2xl shadow-[#7a1200]/5 bg-white' : 'border-slate-100 hover:border-slate-300 bg-slate-50'}`}>
                             <button
                               type="button"
-                              className="w-full flex items-center justify-between px-4 py-3 bg-red-50 hover:bg-red-100 transition-colors text-left"
+                              className="w-full flex items-center justify-between p-6 text-left"
                               onClick={() => {
                                 const next = new Set(expandedKorwils)
                                 if (isExpanded) next.delete(korwil.id)
@@ -379,30 +533,31 @@ export default function DashboardPage() {
                                 setExpandedKorwils(next)
                               }}
                             >
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-[#7a1200] flex items-center justify-center text-white text-xs font-bold">K</div>
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-[#7a1200] flex items-center justify-center text-white text-base font-black shadow-lg shadow-[#7a1200]/20">K</div>
                                 <div>
-                                  <p className="font-semibold text-slate-800 text-sm">{korwil.nama}</p>
-                                  <p className="text-xs text-slate-500">Korwil · {korwil.jumlah_desa} desa · {korwil.relawans.length} relawan</p>
+                                  <p className="font-black text-slate-800 text-base tracking-tight">{korwil.nama}</p>
+                                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">Korwil · {korwil.jumlah_desa} desa · {korwil.relawans.length} relawan</p>
                                 </div>
                               </div>
-                              {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                              <div className={`p-2 rounded-xl bg-white shadow-sm transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                <ChevronDown className="w-4 h-4 text-[#7a1200]" />
+                              </div>
                             </button>
                             {isExpanded && (
-                              <div className="divide-y divide-slate-100">
+                              <div className="px-6 pb-6 space-y-3">
                                 {korwil.relawans.length === 0 ? (
-                                  <p className="px-4 py-3 text-sm text-slate-400 italic">Belum ada relawan di bawah Korwil ini</p>
+                                  <p className="px-4 py-6 text-sm text-slate-400 italic font-medium bg-white rounded-2xl border border-dashed border-slate-200 text-center">No volunteers assigned.</p>
                                 ) : (
                                   korwil.relawans.map((r) => (
-                                    <div key={r.id} className="flex items-center gap-3 px-4 py-2.5 pl-14 bg-white hover:bg-slate-50 transition-colors">
-                                      <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 text-xs font-bold flex-shrink-0">R</div>
+                                    <div key={r.id} className="flex items-center gap-4 p-4 bg-white hover:bg-[#7a1200]/5 border border-slate-100 rounded-2xl transition-all group">
+                                      <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-600 font-black text-xs">R</div>
                                       <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-slate-700 truncate">{r.nama}</p>
-                                        <p className="text-xs text-slate-400">Relawan · {r.jumlah_desa} desa aktif</p>
+                                        <p className="text-sm font-bold text-slate-700 truncate">{r.nama}</p>
+                                        <p className="text-[11px] font-medium text-slate-400">{r.jumlah_desa} desa aktif binaan</p>
                                       </div>
-                                      <div className="flex items-center gap-1 text-xs bg-slate-100 px-2 py-1 rounded-full">
-                                        <Building2 className="w-3 h-3 text-slate-500" />
-                                        <span className="text-slate-600">{r.jumlah_desa}</span>
+                                      <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-[#7a1200]/10">
+                                        <Building2 className="w-3.5 h-3.5 text-slate-500 group-hover:text-[#7a1200]" />
                                       </div>
                                     </div>
                                   ))
@@ -414,46 +569,47 @@ export default function DashboardPage() {
                       })}
                     </div>
                   )}
-                </CardContent>
+                </div>
               </Card>
             )}
 
-            {/* === Korwil: Relawan bawahannya === */}
             {teamKorwil && (
-              <Card className="border-0 shadow-sm mt-4">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-red-100 flex items-center justify-center">
-                      <UserCheck className="w-5 h-5 text-[#7a1200]" />
+              <Card className="border-0 shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-2xl bg-white overflow-hidden p-6 ring-1 ring-slate-100">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-[#7a1200] border border-red-100 shadow-sm shadow-red-100/50">
+                      <UserCheck className="w-6 h-6" />
                     </div>
                     <div>
-                      <CardTitle className="text-base text-slate-800">Tim Saya</CardTitle>
-                      <p className="text-xs text-slate-500">Korwil: <span className="font-semibold text-[#7a1200]">{teamKorwil.korwil_nama}</span> · {teamKorwil.relawans.length} relawan</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1.5">My Managed Team</p>
+                      <h3 className="text-lg font-black text-slate-800 tracking-tight">Korwil: <span className="text-slate-500">{teamKorwil.korwil_nama}</span></h3>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent>
+                  <Badge className="bg-slate-50 text-slate-500 border-slate-200 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-none">{teamKorwil.relawans.length} Relawan</Badge>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                   {teamKorwil.relawans.length === 0 ? (
-                    <p className="text-slate-400 text-sm text-center py-4">Belum ada relawan di wilayah Anda</p>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {teamKorwil.relawans.map((r) => (
-                        <div key={r.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-red-200 hover:bg-red-50 transition-colors">
-                          <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-bold text-sm flex-shrink-0">
-                            {r.nama.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-700 truncate">{r.nama}</p>
-                            <p className="text-xs text-slate-500">{r.jumlah_desa} desa aktif</p>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="col-span-full py-12 text-center bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
+                      <p className="text-slate-400 font-bold italic">No active volunteers found in your region.</p>
                     </div>
+                  ) : (
+                    teamKorwil.relawans.map((r) => (
+                      <Card key={r.id} className="border border-slate-100 shadow-none bg-slate-50/50 hover:bg-white hover:shadow-xl hover:border-white transition-all duration-300 rounded-[1.5rem] group p-4 flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center font-black text-slate-800 group-hover:bg-[#7a1200] group-hover:text-white transition-colors duration-300">
+                          {r.nama.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-black text-slate-800 truncate leading-none mb-1">{r.nama}</p>
+                          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">{r.jumlah_desa} Desa Aktif</p>
+                        </div>
+                      </Card>
+                    ))
                   )}
-                </CardContent>
+                </div>
               </Card>
             )}
-          </div>
+          </section>
         )}
       </div>
     </div>

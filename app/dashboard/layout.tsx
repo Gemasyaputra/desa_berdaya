@@ -28,6 +28,7 @@ import {
   ChevronRight,
   GitBranch,
   UsersRound,
+  BookOpen,
 } from 'lucide-react'
 
 export default function DashboardLayout({
@@ -118,18 +119,22 @@ export default function DashboardLayout({
           { href: '/dashboard', label: 'Summary Dashboard', icon: LayoutDashboard },
           { href: '/dashboard/desa', label: 'Desa Binaan', icon: Building2 },
           { href: '/dashboard/pm', label: 'Penerima Manfaat', icon: Users },
+          { href: '/dashboard/kelompok', label: 'Daftar Kelompok', icon: UsersRound },
           { href: '/dashboard/keuangan', label: 'Kegiatan & Keuangan', icon: ClipboardList },
           { href: '/dashboard/monitoring', label: 'Monitoring Bulanan', icon: ClipboardList },
           { href: '/dashboard/manajemen-tim', label: 'Manajemen Tim', icon: UsersRound },
           { href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch },
+          { href: '/dashboard/master-program', label: 'Master Program', icon: BookOpen },
           { href: '/dashboard/konfigurasi', label: 'Konfigurasi', icon: Settings },
         ]
       : [
           { href: '/dashboard', label: 'Beranda', icon: LayoutDashboard },
           { href: '/dashboard/desa', label: 'Desa Binaan', icon: Building2 },
           { href: '/dashboard/pm', label: 'Penerima Manfaat', icon: Users },
+          { href: '/dashboard/kelompok', label: 'Daftar Kelompok', icon: UsersRound },
           { href: '/dashboard/keuangan', label: 'Kegiatan & Keuangan', icon: ClipboardList },
           { href: '/dashboard/monitoring', label: 'Monitoring Bulanan', icon: ClipboardList },
+          { href: '/dashboard/master-program', label: 'Master Program', icon: BookOpen },
           ...(isKorwil ? [{ href: '/dashboard/manajemen-tim', label: 'Manajemen Tim', icon: UsersRound }] : []),
           ...(isKorwil ? [{ href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch }] : []),
         ]

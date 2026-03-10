@@ -138,6 +138,24 @@ async function seed() {
 
     // ── 4. Buat 2 Desa per Relawan (total 16) ──
     const desaIds: number[] = [];
+    const coordinates = [
+      { lat: 4.6951, lng: 96.7494 },   // Aceh
+      { lat: 2.1154, lng: 99.5451 },   // Sumatra Utara
+      { lat: -0.7399, lng: 100.8000 }, // Sumatra Barat
+      { lat: 0.2933, lng: 101.7068 },  // Riau
+      { lat: -3.3194, lng: 104.0305 }, // Sumatra Selatan
+      { lat: -4.5586, lng: 105.4068 }, // Lampung
+      { lat: -6.4058, lng: 106.0640 }, // Banten
+      { lat: -6.9204, lng: 107.6046 }, // Jawa Barat
+      { lat: -7.1509, lng: 110.1403 }, // Jawa Tengah
+      { lat: -7.5360, lng: 112.2384 }, // Jawa Timur
+      { lat: -8.3405, lng: 115.0920 }, // Bali
+      { lat: -8.6529, lng: 117.3616 }, // Nusa Tenggara Barat
+      { lat: -8.6574, lng: 121.0794 }, // Nusa Tenggara Timur
+      { lat: -4.1449, lng: 119.9071 }, // Sulawesi Selatan
+      { lat: -3.2385, lng: 130.1453 }, // Maluku
+      { lat: -4.2699, lng: 138.0804 }, // Papua
+    ];
     let desaIndex = 0;
     for (const relawanId of relawanIds) {
       for (let d = 0; d < 2; d++) {
@@ -156,8 +174,8 @@ async function seed() {
             ${Number(dc[0].kecamatan_id)},
             ${dcId},
             ${relawanId},
-            ${-6.5 - desaIndex * 0.01},
-            ${106.8 + desaIndex * 0.01},
+            ${coordinates[desaIndex % 16].lat},
+            ${coordinates[desaIndex % 16].lng},
             ${'Potensi desa binaan ke-' + (desaIndex + 1)},
             true,
             NOW()

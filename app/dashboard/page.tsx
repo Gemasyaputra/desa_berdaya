@@ -19,7 +19,12 @@ import {
   type SebaranStatus, type RankingRelawan, type TeamForMonev, type TeamForKorwil,
   type VillageMapPoint, type DistributionStats,
 } from './actions'
-import { SuperAdminMap } from './super-admin-map'
+import dynamic from 'next/dynamic'
+
+const SuperAdminMap = dynamic(
+  () => import('./super-admin-map').then((mod) => mod.SuperAdminMap),
+  { ssr: false }
+)
 
 // =====================================================
 // Helpers

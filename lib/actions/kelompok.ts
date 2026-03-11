@@ -42,10 +42,19 @@ export const getKelompokByDesaId = cache(async (desa_berdaya_id: number) => {
   }
 })
 
-export const getAllKelompok = cache(async (relawanId?: number) => {
+export const getAllKelompok = cache(async () => {
   try {
+    const { getServerSession } = await import('next-auth');
+    const { authOptions } = await import('@/lib/auth');
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return [];
+
+    const role = session.user.role;
+    const operatorId = session.user.operator_id;
+
     let rawKelompok;
-    if (relawanId) {
+
+    if (role === 'RELAWAN' || role === 'PROG_HEAD') {
        rawKelompok = await sql`
         SELECT k.*, 
                p.nama_program,
@@ -60,7 +69,44 @@ export const getAllKelompok = cache(async (relawanId?: number) => {
         LEFT JOIN program p ON k.program_id = p.id
         LEFT JOIN kategori_program kp ON p.kategori_id = kp.id
         LEFT JOIN relawan r ON k.relawan_id = r.id
-        WHERE k.relawan_id = ${relawanId}
+        WHERE k.relawan_id = ${operatorId}
+        ORDER BY k.created_at DESC
+      `
+    } else if (role === 'MONEV' && operatorId) {
+       rawKelompok = await sql`
+        SELECT k.*, 
+               p.nama_program,
+               kp.nama_kategori,
+               r.nama as nama_relawan,
+               dc.nama_desa,
+               mk.nama_kelompok as nama_kategori_kelompok
+        FROM kelompok k
+        JOIN desa_berdaya db ON k.desa_berdaya_id = db.id
+        JOIN relawan rl ON db.relawan_id = rl.id
+        JOIN desa_config dc ON db.desa_id = dc.id
+        LEFT JOIN master_kelompok mk ON k.master_kelompok_id = mk.id
+        LEFT JOIN program p ON k.program_id = p.id
+        LEFT JOIN kategori_program kp ON p.kategori_id = kp.id
+        LEFT JOIN relawan r ON k.relawan_id = r.id
+        WHERE rl.monev_id = ${operatorId}
+        ORDER BY k.created_at DESC
+      `
+    } else if (role === 'OFFICE' && session.user.office_id) {
+       rawKelompok = await sql`
+        SELECT k.*, 
+               p.nama_program,
+               kp.nama_kategori,
+               r.nama as nama_relawan,
+               dc.nama_desa,
+               mk.nama_kelompok as nama_kategori_kelompok
+        FROM kelompok k
+        JOIN desa_berdaya db ON k.desa_berdaya_id = db.id
+        JOIN desa_config dc ON db.desa_id = dc.id
+        LEFT JOIN master_kelompok mk ON k.master_kelompok_id = mk.id
+        LEFT JOIN program p ON k.program_id = p.id
+        LEFT JOIN kategori_program kp ON p.kategori_id = kp.id
+        LEFT JOIN relawan r ON k.relawan_id = r.id
+        WHERE dc.office_id = ${session.user.office_id}
         ORDER BY k.created_at DESC
       `
     } else {

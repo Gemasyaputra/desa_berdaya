@@ -86,6 +86,14 @@ export const authOptions: NextAuthOptions = {
                   token.korwil_id = relawan.korwil_id ? String(relawan.korwil_id) : null
                   token.name = relawan.nama
                 }
+              } else if (dbUser.role === 'OFFICE') {
+                const officeUsers = await sql`SELECT id, nama, office_id FROM office_user WHERE user_id = ${dbUser.id} LIMIT 1`
+                const ou = (Array.isArray(officeUsers) ? officeUsers[0] : officeUsers) as any
+                if (ou) {
+                  token.operator_id = String(ou.id)
+                  token.office_id = ou.office_id ? String(ou.office_id) : null
+                  token.name = ou.nama
+                }
               }
             }
           } catch(e) {
@@ -104,6 +112,7 @@ export const authOptions: NextAuthOptions = {
         session.user.operator_id = token.operator_id as string
         session.user.monev_id = token.monev_id as string
         session.user.korwil_id = token.korwil_id as string
+        session.user.office_id = token.office_id as string
         if (token.name) {
           session.user.name = token.name as string
         }

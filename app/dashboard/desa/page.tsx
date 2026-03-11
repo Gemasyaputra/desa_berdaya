@@ -19,7 +19,9 @@ export default function DesaBinaanPage() {
 
   const isKorwil = !!(session?.user as any)?.is_korwil
   const isAdmin = (session?.user as any)?.role === 'ADMIN'
+  const isOffice = (session?.user as any)?.role === 'OFFICE'
   const isAdminOrKorwil = isAdmin || isKorwil
+  const isPrivilegedUI = isAdmin || isKorwil
 
   useEffect(() => {
     getDesaBinaanList()
@@ -54,7 +56,7 @@ export default function DesaBinaanPage() {
               {isAdminOrKorwil ? 'Kelola wilayah desa binaan' : 'Desa binaan yang Anda kelola'}
             </p>
           </div>
-          {isAdminOrKorwil && (
+          {isPrivilegedUI && (
             <Link href="/dashboard/desa/tambah">
               <Button size="sm" style={{ backgroundColor: '#7a1200' }} className="text-white gap-1 shrink-0">
                 <PlusCircle className="w-4 h-4" />
@@ -97,7 +99,7 @@ export default function DesaBinaanPage() {
               <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-3" />
               <p className="text-slate-500 text-sm">
                 {desaList.length === 0
-                  ? (isAdminOrKorwil ? 'Belum ada desa binaan.' : 'Anda belum ditugaskan ke desa manapun.')
+                  ? (isPrivilegedUI ? 'Belum ada desa binaan.' : 'Anda belum ditugaskan ke desa manapun.')
                   : 'Tidak ada hasil yang cocok'}
               </p>
             </div>
@@ -143,7 +145,7 @@ export default function DesaBinaanPage() {
                     Detail <ChevronRight className="w-3 h-3" />
                   </Button>
                 </Link>
-                {isAdminOrKorwil && (
+                {isPrivilegedUI && (
                   <>
                     <Link href={`/dashboard/desa/${desa.id}/edit`}>
                       <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100 h-8 text-xs">Edit</Button>
@@ -175,7 +177,7 @@ export default function DesaBinaanPage() {
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500">
                     {desaList.length === 0
-                      ? (isAdminOrKorwil ? 'Belum ada data desa binaan.' : 'Anda belum ditugaskan ke desa manapun.')
+                      ? (isPrivilegedUI ? 'Belum ada data desa binaan.' : 'Anda belum ditugaskan ke desa manapun.')
                       : 'Tidak ada hasil yang cocok'}
                   </td></tr>
                 ) : filtered.map((desa) => (
@@ -216,7 +218,7 @@ export default function DesaBinaanPage() {
                         <Link href={`/dashboard/desa/${desa.id}`}>
                           <Button variant="outline" size="sm" className="text-[#7a1200] border-red-200 hover:bg-red-50">Detail</Button>
                         </Link>
-                        {isAdminOrKorwil && (
+                        {isPrivilegedUI && (
                           <>
                             <Link href={`/dashboard/desa/${desa.id}/edit`}>
                               <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100">Edit</Button>

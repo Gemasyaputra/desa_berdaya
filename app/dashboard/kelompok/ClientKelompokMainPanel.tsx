@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { Checkbox } from '@/components/ui/checkbox'
+import { useSession } from 'next-auth/react'
 
 import { 
   createKelompok, updateKelompok, deleteKelompok 
@@ -32,7 +33,11 @@ export default function ClientKelompokMainPanel({
   desaOptions: any[],
   defaultDesaId?: number
 }) {
+  const { data: session } = useSession()
   const { toast } = useToast()
+  
+  const role = (session?.user as any)?.role
+  const canMod = role === 'RELAWAN' || role === 'PROG_HEAD' || role === 'ADMIN' || role === 'KORWIL'
   
   // States for Kelompok
   const [isOpenKelompok, setIsOpenKelompok] = useState(false)
@@ -238,9 +243,11 @@ export default function ClientKelompokMainPanel({
           </h2>
           <p className="text-sm text-slate-500">Kumpulan kelompok dari semua daftar Desa Binaan Anda.</p>
         </div>
-        <Button onClick={handleOpenAddKelompok} className="!bg-[var(--brand-primary)] hover:brightness-90 text-white shadow-sm transition-all">
-          <Plus className="w-4 h-4 mr-2" /> Tambah Kelompok
-        </Button>
+        {canMod && (
+          <Button onClick={handleOpenAddKelompok} className="!bg-[var(--brand-primary)] hover:brightness-90 text-white shadow-sm transition-all">
+            <Plus className="w-4 h-4 mr-2" /> Tambah Kelompok
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4">
@@ -265,14 +272,16 @@ export default function ClientKelompokMainPanel({
                       </span>
                     </div>
                   </div>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => handleOpenEditKelompok(kel)} className="h-8">
-                       <Edit className="w-3.5 h-3.5 mr-1" /> Edit
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDeleteKelompok(kel.id, kel.desa_berdaya_id)} className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
-                       <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
+                  {canMod && (
+                    <div className="flex space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => handleOpenEditKelompok(kel)} className="h-8">
+                         <Edit className="w-3.5 h-3.5 mr-1" /> Edit
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleDeleteKelompok(kel.id, kel.desa_berdaya_id)} className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
+                         <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  )}
                </div>
                
                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4 text-sm">
@@ -290,13 +299,15 @@ export default function ClientKelompokMainPanel({
                  </div>
                </div>
 
-               <div className="mt-4 pt-4 border-t border-slate-100">
-                 <div className="flex justify-between items-center mb-2">
-                   <h4 className="text-sm font-semibold text-slate-800">Anggota PM ({kel.anggota?.length || 0})</h4>
-                   <Button variant="ghost" size="sm" onClick={() => handleOpenTambahAnggota(kel)} className="h-7 !text-[var(--brand-primary)] hover:brightness-75 px-2 transition-all">
-                     <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Anggota
-                   </Button>
-                 </div>
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-sm font-semibold text-slate-800">Anggota PM ({kel.anggota?.length || 0})</h4>
+                    {canMod && (
+                      <Button variant="ghost" size="sm" onClick={() => handleOpenTambahAnggota(kel)} className="h-7 !text-[var(--brand-primary)] hover:brightness-75 px-2 transition-all">
+                        <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Anggota
+                      </Button>
+                    )}
+                  </div>
                  {kel.anggota && kel.anggota.length > 0 ? (
                    <div className="flex flex-wrap gap-2 mt-1">
                      {kel.anggota.map((a: any) => (
@@ -406,7 +417,13 @@ export default function ClientKelompokMainPanel({
                                 setFilterUmur(prev => checked ? [...prev, cat] : prev.filter(c => c !== cat))
                               }}
                             />
-                            <label htmlFor={`filter-umur-${cat}`} className="text-sm text-slate-700 cursor-pointer font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">{cat}</label>
+                            <label htmlFor={`filter-umur-${cat}`} className="text-sm text-slate-700 cursor-pointer font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              {cat}
+                              {cat === 'Anak-anak' && <span className="text-slate-400 font-normal ml-1 text-xs">(0-11 thn)</span>}
+                              {cat === 'Remaja' && <span className="text-slate-400 font-normal ml-1 text-xs">(12-17 thn)</span>}
+                              {cat === 'Dewasa' && <span className="text-slate-400 font-normal ml-1 text-xs">(18-59 thn)</span>}
+                              {cat === 'Lanjut Usia' && <span className="text-slate-400 font-normal ml-1 text-xs">(&gt;60 thn)</span>}
+                            </label>
                           </div>
                         ))}
                       </div>

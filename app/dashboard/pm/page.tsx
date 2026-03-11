@@ -30,6 +30,7 @@ export default function PenerimaManfaatPage() {
 
   const role = (session?.user as any)?.role
   const canAdd = role === 'RELAWAN' || role === 'PROG_HEAD'
+  const canMod = role === 'RELAWAN' || role === 'PROG_HEAD' || role === 'ADMIN' || role === 'KORWIL'
 
   const fetchData = async () => {
     setLoading(true)
@@ -266,16 +267,20 @@ export default function PenerimaManfaatPage() {
                     Detail <ChevronRight className="w-3 h-3" />
                   </Button>
                 </Link>
-                <Link href={`/dashboard/pm/${pm.id}/edit`}>
-                  <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100 h-8 text-xs">Edit</Button>
-                </Link>
-                <DeletePMButton 
-                  id={pm.id} 
-                  onDeleted={(deletedId) => {
-                    setList(prev => prev.filter((item) => item.id !== deletedId))
-                    setFiltered(prev => prev.filter((item) => item.id !== deletedId))
-                  }} 
-                />
+                {canMod && (
+                  <>
+                    <Link href={`/dashboard/pm/${pm.id}/edit`}>
+                      <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100 h-8 text-xs">Edit</Button>
+                    </Link>
+                    <DeletePMButton 
+                      id={pm.id} 
+                      onDeleted={(deletedId) => {
+                        setList(prev => prev.filter((item) => item.id !== deletedId))
+                        setFiltered(prev => prev.filter((item) => item.id !== deletedId))
+                      }} 
+                    />
+                  </>
+                )}
               </div>
             </div>
           ))}
@@ -343,16 +348,20 @@ export default function PenerimaManfaatPage() {
                         <Link href={`/dashboard/pm/${pm.id}`}>
                           <Button variant="ghost" size="sm" className="text-[#7a1200] hover:bg-red-50">Detail</Button>
                         </Link>
-                        <Link href={`/dashboard/pm/${pm.id}/edit`}>
-                          <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100">Edit</Button>
-                        </Link>
-                        <DeletePMButton 
-                          id={pm.id} 
-                          onDeleted={(deletedId) => {
-                            setList(prev => prev.filter((item) => item.id !== deletedId))
-                            setFiltered(prev => prev.filter((item) => item.id !== deletedId))
-                          }} 
-                        />
+                        {canMod && (
+                          <>
+                            <Link href={`/dashboard/pm/${pm.id}/edit`}>
+                              <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100">Edit</Button>
+                            </Link>
+                            <DeletePMButton 
+                              id={pm.id} 
+                              onDeleted={(deletedId) => {
+                                setList(prev => prev.filter((item) => item.id !== deletedId))
+                                setFiltered(prev => prev.filter((item) => item.id !== deletedId))
+                              }} 
+                            />
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

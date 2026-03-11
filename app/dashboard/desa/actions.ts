@@ -55,6 +55,28 @@ export async function getDesaBinaanList() {
     return result as any[]
   }
 
+  if (role === 'OFFICE' && session.user.office_id) {
+    console.log('[DEBUG] OFFICE Role detected. Office ID:', session.user.office_id);
+    const result = await sql`
+      SELECT db.*, p.nama_provinsi, kk.nama_kota, k.nama_kecamatan, dc.nama_desa, r.nama as nama_relawan
+      FROM desa_berdaya db
+      JOIN provinsi p ON db.provinsi_id = p.id
+      JOIN kota_kabupaten kk ON db.kota_id = kk.id
+      JOIN kecamatan k ON db.kecamatan_id = k.id
+      JOIN desa_config dc ON db.desa_id = dc.id
+      JOIN relawan r ON db.relawan_id = r.id
+      WHERE dc.office_id = ${session.user.office_id}
+      ORDER BY db.tanggal_mulai DESC
+    `
+    const resultArray = result as any[];
+    console.log('[DEBUG] getDesaBinaanList OFFICE result count:', resultArray.length);
+    return resultArray;
+  }
+
+  if (role === 'OFFICE' && !session.user.office_id) {
+    console.log('[DEBUG] OFFICE Role detected, BUT NO office_id inside session. User might need to re-login.');
+  }
+
   return []
 }
 
@@ -103,10 +125,20 @@ export async function getRelawanBawahan() {
   return []
 }
 
+export async function getOfficeOptions() {
+  const result = await sql`SELECT id, nama_office FROM office ORDER BY nama_office ASC`
+  return result as any[]
+}
+
 export async function createDesaBinaan(data: any) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.is_korwil && session?.user?.role !== 'ADMIN') {
     throw new Error('Unauthorized')
+  }
+
+  // Update master desa_config untuk mengeset office_id-nya
+  if (data.office_id) {
+    await sql`UPDATE desa_config SET office_id = ${data.office_id} WHERE id = ${data.desa_id}`
   }
 
   await sql`
@@ -124,6 +156,11 @@ export async function updateDesaBinaan(id: number, data: any) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.is_korwil && session?.user?.role !== 'ADMIN') {
     throw new Error('Unauthorized')
+  }
+
+  // Update master desa_config jika office_id terpilih (diasumsikan bisa juga diperbarui di form edit)
+  if (data.office_id) {
+    await sql`UPDATE desa_config SET office_id = ${data.office_id} WHERE id = ${data.desa_id}`
   }
 
   await sql`
@@ -156,6 +193,7 @@ export async function getDesaBinaanById(id: number) {
   const result = await sql`
     SELECT 
       db.*,
+      dc.office_id,
       p.nama_provinsi,
       kk.nama_kota as kota_name,
       k.nama_kecamatan as kecamatan_name,

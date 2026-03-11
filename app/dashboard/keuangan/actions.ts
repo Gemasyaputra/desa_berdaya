@@ -30,6 +30,14 @@ export async function getDesaBerdayaOptions() {
       WHERE db.status_aktif = true
     `
     return result as any[]
+  } else if (role === 'OFFICE' && session.user.office_id) {
+    const result = await sql`
+      SELECT db.id, dc.nama_desa, 5000000 as alokasi_anggaran 
+      FROM desa_berdaya db
+      JOIN desa_config dc ON db.desa_id = dc.id
+      WHERE dc.office_id = ${session.user.office_id} AND db.status_aktif = true
+    `
+    return result as any[]
   }
   return []
 }

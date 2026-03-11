@@ -338,7 +338,13 @@ export function ClientKelompokPanel({
                             setFilterUmur(prev => checked ? [...prev, cat] : prev.filter(c => c !== cat))
                           }}
                         />
-                        <label htmlFor={`filter-umur-${cat}`} className="text-sm text-slate-700 cursor-pointer font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">{cat}</label>
+                        <label htmlFor={`filter-umur-${cat}`} className="text-sm text-slate-700 cursor-pointer font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          {cat}
+                          {cat === 'Anak-anak' && <span className="text-slate-400 font-normal ml-1 text-xs">(0-11 thn)</span>}
+                          {cat === 'Remaja' && <span className="text-slate-400 font-normal ml-1 text-xs">(12-17 thn)</span>}
+                          {cat === 'Dewasa' && <span className="text-slate-400 font-normal ml-1 text-xs">(18-59 thn)</span>}
+                          {cat === 'Lanjut Usia' && <span className="text-slate-400 font-normal ml-1 text-xs">(&gt;60 thn)</span>}
+                        </label>
                       </div>
                     ))}
                   </div>

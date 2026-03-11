@@ -6,12 +6,17 @@ import { PlusCircle, Search, MapPin, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getLaporanKeuangan } from './actions'
 import DeleteLaporanButton from './DeleteLaporanButton'
+import { useSession } from 'next-auth/react'
 
 export const dynamic = 'force-dynamic'
 
 export default function LaporanKeuanganListPage() {
+  const { data: session } = useSession()
   const [laporanList, setLaporanList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+
+  const role = (session?.user as any)?.role
+  const canMod = role === 'RELAWAN' || role === 'PROG_HEAD' || role === 'ADMIN' || role === 'KORWIL'
 
   useEffect(() => {
     getLaporanKeuangan().then(data => {
@@ -38,12 +43,14 @@ export default function LaporanKeuanganListPage() {
           <h1 className="text-2xl font-bold text-slate-800">Kegiatan & Keuangan</h1>
           <p className="text-slate-500 text-sm mt-1">Daftar pelaporan realisasi kegiatan di Desa Binaan.</p>
         </div>
-        <Link href="/dashboard/keuangan/tambah">
-          <Button className="bg-[#7a1200] hover:bg-[#5a0d00] text-white w-full sm:w-auto">
-            <PlusCircle className="w-4 h-4 mr-2" />
-            Tambah Laporan
-          </Button>
-        </Link>
+        {canMod && (
+          <Link href="/dashboard/keuangan/tambah">
+            <Button className="bg-[#7a1200] hover:bg-[#5a0d00] text-white w-full sm:w-auto">
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Tambah Laporan
+            </Button>
+          </Link>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -102,12 +109,16 @@ export default function LaporanKeuanganListPage() {
                             </a>
                           </Button>
                         )}
-                        <Link href={`/dashboard/keuangan/${laporan.id}/edit`}>
-                          <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100">
-                            Edit
-                          </Button>
-                        </Link>
-                        <DeleteLaporanButton id={laporan.id} />
+                        {canMod && (
+                          <>
+                            <Link href={`/dashboard/keuangan/${laporan.id}/edit`}>
+                              <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100">
+                                Edit
+                              </Button>
+                            </Link>
+                            <DeleteLaporanButton id={laporan.id} />
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

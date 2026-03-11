@@ -12,7 +12,7 @@ const MapPicker = dynamic(() => import('../MapPicker'), {
 })
 import { 
   getProvinsi, getKotaKabupaten, getKecamatan, getDesaConfig, 
-  getRelawanBawahan, createDesaBinaan 
+  getRelawanBawahan, createDesaBinaan, getOfficeOptions
 } from '../actions'
 
 export default function TambahDesaBinaanPage() {
@@ -25,12 +25,14 @@ export default function TambahDesaBinaanPage() {
   const [kecamatanOptions, setKecamatanOptions] = useState<any[]>([])
   const [desaConfigOptions, setDesaConfigOptions] = useState<any[]>([])
   const [relawanOptions, setRelawanOptions] = useState<any[]>([])
+  const [officeOptions, setOfficeOptions] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
     provinsi_id: '',
     kota_id: '',
     kecamatan_id: '',
     desa_id: '',
+    office_id: '',
     relawan_id: '',
     latitude: '',
     longitude: '',
@@ -42,12 +44,14 @@ export default function TambahDesaBinaanPage() {
   useEffect(() => {
     async function loadInitial() {
       try {
-        const [provList, relawanList] = await Promise.all([
+        const [provList, relawanList, officeList] = await Promise.all([
           getProvinsi(),
-          getRelawanBawahan()
+          getRelawanBawahan(),
+          getOfficeOptions()
         ])
         setProvinsiOptions(provList)
         setRelawanOptions(relawanList)
+        setOfficeOptions(officeList)
       } catch (err) {
         console.error('Failed to load initial data:', err)
       } finally {
@@ -156,6 +160,7 @@ export default function TambahDesaBinaanPage() {
         kota_id: Number(formData.kota_id),
         kecamatan_id: Number(formData.kecamatan_id),
         desa_id: Number(formData.desa_id),
+        office_id: formData.office_id ? Number(formData.office_id) : undefined,
         relawan_id: Number(formData.relawan_id),
         latitude: parseFloat(formData.latitude) || null,
         longitude: parseFloat(formData.longitude) || null,
@@ -231,6 +236,14 @@ export default function TambahDesaBinaanPage() {
                 <select name="relawan_id" value={formData.relawan_id} onChange={handleChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500" required>
                   <option value="" disabled>Pilih Relawan...</option>
                   {relawanOptions.map((r) => <option key={r.id} value={r.id}>{r.nama}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">Kantor Office (Opsi jika ikut Region)</label>
+                <select name="office_id" value={formData.office_id} onChange={handleChange} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500">
+                  <option value="">-- Tidak Ditugaskan ke Office (Default) --</option>
+                  {officeOptions.map((o) => <option key={o.id} value={o.id}>{o.nama_office}</option>)}
                 </select>
               </div>
 

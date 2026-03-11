@@ -21,6 +21,30 @@ export async function getPenerimaManfaatList() {
       ORDER BY pm.id DESC
     `) as any[]
   }
+
+  if (role === 'MONEV' && operatorId) {
+    return (await sql`
+      SELECT pm.*, dc.nama_desa
+      FROM penerima_manfaat pm
+      JOIN desa_berdaya db ON pm.desa_berdaya_id = db.id
+      JOIN relawan r ON db.relawan_id = r.id
+      JOIN desa_config dc ON db.desa_id = dc.id
+      WHERE r.monev_id = ${operatorId}
+      ORDER BY pm.id DESC
+    `) as any[]
+  }
+
+  if (role === 'OFFICE' && session.user.office_id) {
+    return (await sql`
+      SELECT pm.*, dc.nama_desa
+      FROM penerima_manfaat pm
+      JOIN desa_berdaya db ON pm.desa_berdaya_id = db.id
+      JOIN desa_config dc ON db.desa_id = dc.id
+      WHERE dc.office_id = ${session.user.office_id}
+      ORDER BY pm.id DESC
+    `) as any[]
+  }
+
   return (await sql`
     SELECT pm.*, dc.nama_desa
     FROM penerima_manfaat pm
@@ -74,7 +98,16 @@ export async function getDesaBerdayaOptions() {
       LEFT JOIN relawan r ON db.relawan_id = r.id
       WHERE db.status_aktif = true
     `) as any[]
+  } else if (role === 'OFFICE' && session.user.office_id) {
+    options = (await sql`
+      SELECT db.id, dc.nama_desa, r.nama as nama_relawan
+      FROM desa_berdaya db
+      JOIN desa_config dc ON db.desa_id = dc.id
+      LEFT JOIN relawan r ON db.relawan_id = r.id
+      WHERE dc.office_id = ${session.user.office_id} AND db.status_aktif = true
+    `) as any[]
   }
+
 
   return options
 }

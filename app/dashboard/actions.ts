@@ -67,6 +67,7 @@ async function getRoleFilter() {
     role: session.user.role as string,
     operatorId: session.user.operator_id as number | null,
     isKorwil: session.user.is_korwil as boolean,
+    officeId: session.user.office_id ? Number(session.user.office_id) : null,
   }
 }
 
@@ -82,6 +83,8 @@ export async function getDashboardStats(tahun: number): Promise<DashboardStats> 
   // Total desa
   const desaRows = isAdmin
     ? await sql`SELECT COUNT(*) FILTER (WHERE status_aktif) as aktif, COUNT(*) as semua FROM desa_berdaya`
+    : auth.role === 'OFFICE' && auth.officeId
+    ? await sql`SELECT COUNT(*) FILTER (WHERE db.status_aktif) as aktif, COUNT(*) as semua FROM desa_berdaya db JOIN desa_config dc ON db.desa_id = dc.id WHERE dc.office_id = ${auth.officeId}`
     : auth.isKorwil && auth.operatorId
     ? await sql`SELECT COUNT(*) FILTER (WHERE db.status_aktif) as aktif, COUNT(*) as semua FROM desa_berdaya db JOIN relawan r ON db.relawan_id = r.id WHERE r.korwil_id = ${auth.operatorId}`
     : auth.operatorId
@@ -91,6 +94,8 @@ export async function getDashboardStats(tahun: number): Promise<DashboardStats> 
   // Total PM
   const pmRows = isAdmin
     ? await sql`SELECT COUNT(*) as total FROM penerima_manfaat`
+    : auth.role === 'OFFICE' && auth.officeId
+    ? await sql`SELECT COUNT(*) as total FROM penerima_manfaat pm JOIN desa_berdaya db ON pm.desa_berdaya_id = db.id JOIN desa_config dc ON db.desa_id = dc.id WHERE dc.office_id = ${auth.officeId}`
     : auth.isKorwil && auth.operatorId
     ? await sql`SELECT COUNT(*) as total FROM penerima_manfaat pm JOIN desa_berdaya db ON pm.desa_berdaya_id = db.id JOIN relawan r ON db.relawan_id = r.id WHERE r.korwil_id = ${auth.operatorId}`
     : auth.operatorId
@@ -100,11 +105,17 @@ export async function getDashboardStats(tahun: number): Promise<DashboardStats> 
   // Total relawan
   const relawanRows = isAdmin
     ? await sql`SELECT COUNT(*) as total FROM relawan`
-    : await sql`SELECT COUNT(*) as total FROM relawan WHERE korwil_id = ${auth.operatorId}`
+    : auth.role === 'OFFICE' && auth.officeId
+    ? await sql`SELECT COUNT(DISTINCT db.relawan_id) as total FROM desa_berdaya db JOIN desa_config dc ON db.desa_id = dc.id WHERE dc.office_id = ${auth.officeId} AND db.status_aktif = true`
+    : auth.isKorwil && auth.operatorId
+    ? await sql`SELECT COUNT(*) as total FROM relawan WHERE korwil_id = ${auth.operatorId}`
+    : await sql`SELECT 1 as total`
 
   // Laporan keuangan tahun ini
   const laporanRows = isAdmin
     ? await sql`SELECT COALESCE(SUM(total_realisasi),0) as realisasi FROM laporan_kegiatan WHERE EXTRACT(YEAR FROM created_at) = ${tahun}`
+    : auth.role === 'OFFICE' && auth.officeId
+    ? await sql`SELECT COALESCE(SUM(lk.total_realisasi),0) as realisasi FROM laporan_kegiatan lk JOIN desa_berdaya db ON lk.desa_berdaya_id = db.id JOIN desa_config dc ON db.desa_id = dc.id WHERE dc.office_id = ${auth.officeId} AND EXTRACT(YEAR FROM lk.created_at) = ${tahun}`
     : auth.operatorId
     ? await sql`SELECT COALESCE(SUM(lk.total_realisasi),0) as realisasi FROM laporan_kegiatan lk JOIN desa_berdaya db ON lk.desa_berdaya_id = db.id WHERE db.relawan_id = ${auth.operatorId} AND EXTRACT(YEAR FROM lk.created_at) = ${tahun}`
     : await sql`SELECT 0 as realisasi`
@@ -146,6 +157,16 @@ export async function getAnggaranPerDesa(tahun: number): Promise<AnggaranPerDesa
         GROUP BY dc.nama_desa
         ORDER BY realisasi DESC
         LIMIT 10`
+    : auth.role === 'OFFICE' && auth.officeId
+    ? await sql`
+        SELECT dc.nama_desa,
+               COALESCE(SUM(lk.total_realisasi),0) as realisasi
+        FROM desa_berdaya db
+        JOIN desa_config dc ON db.desa_id = dc.id
+        LEFT JOIN laporan_kegiatan lk ON lk.desa_berdaya_id = db.id AND EXTRACT(YEAR FROM lk.created_at) = ${tahun}
+        WHERE dc.office_id = ${auth.officeId} AND db.status_aktif = true
+        GROUP BY dc.nama_desa
+        ORDER BY realisasi DESC`
     : auth.operatorId
     ? await sql`
         SELECT dc.nama_desa,
@@ -184,6 +205,18 @@ export async function getTrendLaporanBulanan(tahun: number): Promise<TrendBulana
         WHERE EXTRACT(YEAR FROM created_at) = ${tahun}
         GROUP BY TO_CHAR(created_at, 'Mon'), EXTRACT(MONTH FROM created_at)
         ORDER BY bulan_num`
+    : auth.role === 'OFFICE' && auth.officeId
+    ? await sql`
+        SELECT TO_CHAR(lk.created_at, 'Mon') as bulan,
+               EXTRACT(MONTH FROM lk.created_at) as bulan_num,
+               COUNT(*) as jumlah_laporan,
+               COALESCE(SUM(lk.total_realisasi),0) as total_realisasi
+        FROM laporan_kegiatan lk
+        JOIN desa_berdaya db ON lk.desa_berdaya_id = db.id
+        JOIN desa_config dc ON db.desa_id = dc.id
+        WHERE EXTRACT(YEAR FROM lk.created_at) = ${tahun} AND dc.office_id = ${auth.officeId}
+        GROUP BY TO_CHAR(lk.created_at, 'Mon'), EXTRACT(MONTH FROM lk.created_at)
+        ORDER BY bulan_num`
     : auth.operatorId
     ? await sql`
         SELECT TO_CHAR(lk.created_at, 'Mon') as bulan,
@@ -217,6 +250,8 @@ export async function getSebaranStatusDesa(): Promise<SebaranStatus[]> {
 
   const rows = isAdmin
     ? await sql`SELECT status_aktif, COUNT(*) as total FROM desa_berdaya GROUP BY status_aktif`
+    : auth.role === 'OFFICE' && auth.officeId
+    ? await sql`SELECT db.status_aktif, COUNT(*) as total FROM desa_berdaya db JOIN desa_config dc ON db.desa_id = dc.id WHERE dc.office_id = ${auth.officeId} GROUP BY db.status_aktif`
     : auth.operatorId
     ? await sql`SELECT status_aktif, COUNT(*) as total FROM desa_berdaya WHERE relawan_id = ${auth.operatorId} GROUP BY status_aktif`
     : []
@@ -234,7 +269,7 @@ export async function getRankingRelawan(): Promise<RankingRelawan[]> {
   const auth = await getRoleFilter()
   if (!auth) return []
 
-  const isAdmin = auth.role === 'ADMIN' || auth.role === 'MONEV' || auth.role === 'FINANCE'
+  const isAdmin = auth.role === 'ADMIN' || auth.role === 'MONEV' || auth.role === 'FINANCE' || auth.role === 'OFFICE'
   if (!isAdmin) return []
 
   const rows = await sql`
@@ -391,27 +426,53 @@ export async function getTeamForKorwil(): Promise<TeamForKorwil | null> {
 // =============================================================
 export async function getVillageMapPoints(): Promise<VillageMapPoint[]> {
   const auth = await getRoleFilter()
-  if (!auth || (auth.role !== 'ADMIN' && auth.role !== 'MONEV')) return []
+  if (!auth) return []
+  
+  const isSuper = auth.role === 'ADMIN' || auth.role === 'MONEV' || auth.role === 'FINANCE'
+  const isOffice = auth.role === 'OFFICE' && auth.officeId
 
-  const rows = await sql`
-    SELECT
-      db.id,
-      dc.nama_desa,
-      db.latitude,
-      db.longitude,
-      prov.nama_provinsi,
-      kota.nama_kota,
-      r.nama as nama_relawan,
-      db.status_aktif
-    FROM desa_berdaya db
-    JOIN desa_config dc ON db.desa_id = dc.id
-    JOIN provinsi prov ON db.provinsi_id = prov.id
-    JOIN kota_kabupaten kota ON db.kota_id = kota.id
-    LEFT JOIN relawan r ON db.relawan_id = r.id
-    WHERE db.status_aktif = true
-      AND db.latitude IS NOT NULL
-      AND db.longitude IS NOT NULL
-  `
+  if (!isSuper && !isOffice) return []
+
+  const rows = isOffice
+    ? await sql`
+        SELECT
+          db.id,
+          dc.nama_desa,
+          db.latitude,
+          db.longitude,
+          prov.nama_provinsi,
+          kota.nama_kota,
+          r.nama as nama_relawan,
+          db.status_aktif
+        FROM desa_berdaya db
+        JOIN desa_config dc ON db.desa_id = dc.id
+        JOIN provinsi prov ON db.provinsi_id = prov.id
+        JOIN kota_kabupaten kota ON db.kota_id = kota.id
+        LEFT JOIN relawan r ON db.relawan_id = r.id
+        WHERE db.status_aktif = true
+          AND dc.office_id = ${auth.officeId}
+          AND db.latitude IS NOT NULL
+          AND db.longitude IS NOT NULL
+      `
+    : await sql`
+        SELECT
+          db.id,
+          dc.nama_desa,
+          db.latitude,
+          db.longitude,
+          prov.nama_provinsi,
+          kota.nama_kota,
+          r.nama as nama_relawan,
+          db.status_aktif
+        FROM desa_berdaya db
+        JOIN desa_config dc ON db.desa_id = dc.id
+        JOIN provinsi prov ON db.provinsi_id = prov.id
+        JOIN kota_kabupaten kota ON db.kota_id = kota.id
+        LEFT JOIN relawan r ON db.relawan_id = r.id
+        WHERE db.status_aktif = true
+          AND db.latitude IS NOT NULL
+          AND db.longitude IS NOT NULL
+      `
 
   return (rows as any[]).map((r) => ({
     id: Number(r.id),
@@ -427,17 +488,28 @@ export async function getVillageMapPoints(): Promise<VillageMapPoint[]> {
 
 export async function getVillageDistributionStats(): Promise<DistributionStats> {
   const auth = await getRoleFilter()
-  if (!auth || (auth.role !== 'ADMIN' && auth.role !== 'MONEV')) {
+  const isSuper = auth?.role === 'ADMIN' || auth?.role === 'MONEV' || auth?.role === 'FINANCE'
+  const isOffice = auth?.role === 'OFFICE' && auth?.officeId
+
+  if (!auth || (!isSuper && !isOffice)) {
     return { totalProvinsi: 0, totalKota: 0, totalKecamatan: 0, totalDesa: 0 }
   }
 
-  const rows = await sql`
-    SELECT
-      (SELECT COUNT(DISTINCT provinsi_id) FROM desa_berdaya WHERE status_aktif = true) as total_provinsi,
-      (SELECT COUNT(DISTINCT kota_id) FROM desa_berdaya WHERE status_aktif = true) as total_kota,
-      (SELECT COUNT(DISTINCT kecamatan_id) FROM desa_berdaya WHERE status_aktif = true) as total_kecamatan,
-      (SELECT COUNT(*) FROM desa_berdaya WHERE status_aktif = true) as total_desa
-  `
+  const rows = isOffice
+    ? await sql`
+        SELECT
+          (SELECT COUNT(DISTINCT db.provinsi_id) FROM desa_berdaya db JOIN desa_config dc ON db.desa_id = dc.id WHERE db.status_aktif = true AND dc.office_id = ${auth.officeId}) as total_provinsi,
+          (SELECT COUNT(DISTINCT db.kota_id) FROM desa_berdaya db JOIN desa_config dc ON db.desa_id = dc.id WHERE db.status_aktif = true AND dc.office_id = ${auth.officeId}) as total_kota,
+          (SELECT COUNT(DISTINCT db.kecamatan_id) FROM desa_berdaya db JOIN desa_config dc ON db.desa_id = dc.id WHERE db.status_aktif = true AND dc.office_id = ${auth.officeId}) as total_kecamatan,
+          (SELECT COUNT(*) FROM desa_berdaya db JOIN desa_config dc ON db.desa_id = dc.id WHERE db.status_aktif = true AND dc.office_id = ${auth.officeId}) as total_desa
+      `
+    : await sql`
+        SELECT
+          (SELECT COUNT(DISTINCT provinsi_id) FROM desa_berdaya WHERE status_aktif = true) as total_provinsi,
+          (SELECT COUNT(DISTINCT kota_id) FROM desa_berdaya WHERE status_aktif = true) as total_kota,
+          (SELECT COUNT(DISTINCT kecamatan_id) FROM desa_berdaya WHERE status_aktif = true) as total_kecamatan,
+          (SELECT COUNT(*) FROM desa_berdaya WHERE status_aktif = true) as total_desa
+      `
 
   const r = (rows as any[])[0]
   return {

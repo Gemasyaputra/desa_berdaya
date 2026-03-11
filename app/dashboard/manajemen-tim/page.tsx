@@ -2,12 +2,14 @@
 
 import { useSession } from 'next-auth/react'
 import { useState } from 'react'
-import { Shield, UserCheck, Users, UsersRound } from 'lucide-react'
+import { Shield, UserCheck, Users, UsersRound, Building2, BriefcaseBusiness } from 'lucide-react'
 import { CRUDMonev } from './crud-monev'
 import { CRUDKorwil } from './crud-korwil'
 import { CRUDRelawan } from './crud-relawan'
+import { CRUDOffice } from './crud-office'
+import { CRUDOfficeUser } from './crud-office-user'
 
-type Tab = 'monev' | 'korwil' | 'relawan'
+type Tab = 'monev' | 'korwil' | 'relawan' | 'office' | 'officeuser'
 
 export default function ManajemenTimPage() {
   const { data: session, status } = useSession()
@@ -45,6 +47,8 @@ export default function ManajemenTimPage() {
     { key: 'monev', label: 'Monev', icon: Shield, show: isAdmin },
     { key: 'korwil', label: 'Korwil', icon: UserCheck, show: isAdmin || isMonev },
     { key: 'relawan', label: 'Relawan', icon: Users, show: isAdmin || isMonev || isKorwil },
+    { key: 'office', label: 'Office', icon: Building2, show: isAdmin },
+    { key: 'officeuser', label: 'Office User', icon: BriefcaseBusiness, show: isAdmin },
   ]
   const visibleTabs = tabs.filter((t) => t.show)
 
@@ -110,6 +114,8 @@ export default function ManajemenTimPage() {
               monevId={monevId}
             />
           )}
+          {validActive === 'office' && isAdmin && <CRUDOffice />}
+          {validActive === 'officeuser' && isAdmin && <CRUDOfficeUser />}
         </div>
       </div>
     </div>

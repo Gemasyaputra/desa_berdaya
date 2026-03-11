@@ -111,6 +111,7 @@ export default function DashboardLayout({
   }
 
   const isKorwil = !!(session?.user as any)?.is_korwil
+  const isOffice = userRole === 'OFFICE'
 
   const menuItems: MenuItem[] = !isRoleReady
     ? []
@@ -134,7 +135,7 @@ export default function DashboardLayout({
           { href: '/dashboard/kelompok', label: 'Daftar Kelompok', icon: UsersRound },
           { href: '/dashboard/keuangan', label: 'Kegiatan & Keuangan', icon: ClipboardList },
           { href: '/dashboard/monitoring', label: 'Monitoring Bulanan', icon: ClipboardList },
-          { href: '/dashboard/master-program', label: 'Master Program', icon: BookOpen },
+          ...(isOffice ? [] : [{ href: '/dashboard/master-program', label: 'Master Program', icon: BookOpen }]),
           ...(isKorwil ? [{ href: '/dashboard/manajemen-tim', label: 'Manajemen Tim', icon: UsersRound }] : []),
           ...(isKorwil ? [{ href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch }] : []),
         ]

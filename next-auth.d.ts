@@ -12,6 +12,7 @@ declare module 'next-auth' {
       operator_id?: string | null
       monev_id?: string | null
       korwil_id?: string | null
+      office_id?: string | null
     }
   }
 
@@ -23,6 +24,7 @@ declare module 'next-auth' {
     operator_id?: string | null
     monev_id?: string | null
     korwil_id?: string | null
+    office_id?: string | null
   }
 }
 
@@ -33,5 +35,6 @@ declare module 'next-auth/jwt' {
     operator_id?: string | null
     monev_id?: string | null
     korwil_id?: string | null
+    office_id?: string | null
   }
 }

@@ -110,7 +110,6 @@ export async function createKelompok(
   tahun: number,
   provided_relawan_id: number,
   program_id: number,
-  master_kelompok_id: number | null,
   penerima_manfaat_ids: number[]
 ) {
   try {
@@ -124,8 +123,8 @@ export async function createKelompok(
 
     // 1. Insert Kelompok
     const insertedKelompokRaw = await sql`
-      INSERT INTO kelompok (desa_berdaya_id, nama_kelompok, nama_pembina, tahun, relawan_id, program_id, master_kelompok_id)
-      VALUES (${desa_berdaya_id}, ${nama_kelompok}, ${nama_pembina}, ${tahun}, ${final_relawan_id}, ${program_id}, ${master_kelompok_id})
+      INSERT INTO kelompok (desa_berdaya_id, nama_kelompok, nama_pembina, tahun, relawan_id, program_id)
+      VALUES (${desa_berdaya_id}, ${nama_kelompok}, ${nama_pembina}, ${tahun}, ${final_relawan_id}, ${program_id})
       RETURNING id
     `
     
@@ -161,7 +160,6 @@ export async function updateKelompok(
   nama_pembina: string,
   tahun: number,
   program_id: number,
-  master_kelompok_id: number | null,
   penerima_manfaat_ids: number[]
 ) {
   try {
@@ -171,8 +169,7 @@ export async function updateKelompok(
       SET nama_kelompok = ${nama_kelompok},
           nama_pembina = ${nama_pembina},
           tahun = ${tahun},
-          program_id = ${program_id},
-          master_kelompok_id = ${master_kelompok_id}
+          program_id = ${program_id}
       WHERE id = ${id}
     `
 

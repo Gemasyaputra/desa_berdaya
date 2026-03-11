@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
+import MarkerClusterGroup from 'react-leaflet-cluster'
 import { Card, CardContent } from '@/components/ui/card'
 import { MapPin, Building2, Map as MapIcon, Navigation, Shield } from 'lucide-react'
 import type { VillageMapPoint, DistributionStats } from './actions'
@@ -31,9 +32,18 @@ export function SuperAdminMap({
     setIsMounted(true)
   }, [])
 
+  // Custom Icon for Clustering
+  const createClusterCustomIcon = function (cluster: any) {
+    return L.divIcon({
+      html: `<span>${cluster.getChildCount()}</span>`,
+      className: 'custom-cluster-icon',
+      iconSize: L.point(40, 40, true),
+    })
+  }
+
   if (!isMounted) return <div className="h-[500px] w-full bg-[#f8fafc] animate-pulse rounded-2xl border border-slate-100"></div>
 
-  // Center of Indonesia (approximated)
+  // Center of Indonesia to show Sumatra to Papua
   const defaultCenter: [number, number] = [-2.5489, 118.0149]
   const defaultZoom = 5
 
@@ -42,35 +52,98 @@ export function SuperAdminMap({
       {/* Map Display */}
       <Card className="lg:col-span-8 border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden rounded-2xl h-[500px] bg-white ring-1 ring-slate-100">
         <MapContainer 
-          center={points.length > 0 ? [points[0].latitude, points[0].longitude] : defaultCenter} 
-          zoom={points.length > 0 ? 6 : defaultZoom} 
+          center={defaultCenter} 
+          zoom={defaultZoom} 
           scrollWheelZoom={true} 
           style={{ height: '100%', width: '100%', zIndex: 0 }}
           zoomControl={true}
         >
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           />
-          {points.map((p) => (
-            <Marker key={p.id} position={[p.latitude, p.longitude]} icon={customIcon}>
-              <Popup className="minimalist-popup">
-                <div className="p-3 min-w-[180px]">
-                  <p className="font-bold text-slate-900 text-sm mb-1">{p.nama_desa}</p>
-                  <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-[#7a1200]" /> {p.nama_kota}
-                  </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5 ml-5">{p.nama_provinsi}</p>
-                  
-                  <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between text-[10px] text-slate-400 font-medium">
-                    <span className="flex items-center gap-1"><Navigation className="w-3 h-3" /> {p.latitude.toFixed(4)}</span>
-                    <span>{p.longitude.toFixed(4)}</span>
+          
+          <MarkerClusterGroup
+            chunkedLoading
+            iconCreateFunction={createClusterCustomIcon}
+            maxClusterRadius={50}
+          >
+            {points.map((p) => (
+              <Marker key={p.id} position={[p.latitude, p.longitude]} icon={customIcon}>
+                <Popup className="modern-popup" closeButton={false}>
+                  <div className="p-4 min-w-[240px] rounded-xl bg-white">
+                    <div className="mb-3">
+                      <p className="font-black text-slate-800 text-base leading-tight">{p.nama_desa}</p>
+                      <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1.5 mt-1">
+                        <MapPin className="w-3.5 h-3.5 text-[#7a1200]" /> {p.nama_kota}, {p.nama_provinsi}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 bg-slate-50 rounded-lg p-3 border border-slate-100 mb-3">
+                      <div>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Relawan</p>
+                        <p className="text-sm font-semibold text-slate-700">{p.nama_relawan}</p>
+                      </div>
+                      <div className="pt-2 border-t border-slate-200/60">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Status Binaan</p>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
+                          p.status === 'Aktif' 
+                            ? 'bg-emerald-100 text-emerald-800' 
+                            : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {p.status}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
+                      <span className="flex items-center gap-1"><Navigation className="w-3 h-3 opacity-70" /> {p.latitude.toFixed(4)}</span>
+                      <span>{p.longitude.toFixed(4)}</span>
+                    </div>
                   </div>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+                </Popup>
+              </Marker>
+            ))}
+          </MarkerClusterGroup>
         </MapContainer>
+        
+        {/* CSS For Clustering and Modern Popup */}
+        <style dangerouslySetInnerHTML={{__html: `
+          .custom-cluster-icon {
+            background-color: #7A1D1D;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            font-weight: 800;
+            box-shadow: 0 4px 12px rgba(122, 29, 29, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            border: 2px solid white;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+          }
+          .custom-cluster-icon:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(122, 29, 29, 0.5);
+          }
+          
+          .modern-popup .leaflet-popup-content-wrapper {
+            padding: 0;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.15);
+            border: 1px solid #f1f5f9;
+            overflow: hidden;
+          }
+          .modern-popup .leaflet-popup-content {
+            margin: 0;
+            width: 100% !important;
+          }
+          .modern-popup .leaflet-popup-tip {
+            background: #fff;
+            box-shadow: -2px 2px 15px rgba(0,0,0,0.05);
+          }
+        `}} />
         
         {/* Floating Badge - Minimalist */}
         <div className="absolute top-6 left-6 z-[10] bg-white shadow-[0_4px_15px_rgba(0,0,0,0.08)] px-4 py-2 rounded-xl border border-slate-50 flex items-center gap-2.5">

@@ -1,6 +1,6 @@
 import { getDesaBerdayaOptions } from '@/app/dashboard/pm/actions'
 import { getPrograms } from '@/lib/actions/program'
-import { getAllKelompok, getMasterKelompok } from '@/lib/actions/kelompok'
+import { getAllKelompok } from '@/lib/actions/kelompok'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import ClientKelompokMainPanel from '@/app/dashboard/kelompok/ClientKelompokMainPanel'
@@ -23,11 +23,10 @@ export default async function KelompokPage() {
     relawanId = session?.user?.operator_id ? Number(session.user.operator_id) : undefined
   }
 
-  const [kelompokList, programList, desaList, masterKelompokList] = await Promise.all([
+  const [kelompokList, programList, desaList] = await Promise.all([
     getAllKelompok(relawanId),
     getPrograms(),
-    getDesaBerdayaOptions(),
-    getMasterKelompok()
+    getDesaBerdayaOptions()
   ])
   
   return (
@@ -46,7 +45,6 @@ export default async function KelompokPage() {
           initialKelompok={kelompokList} 
           initialPrograms={programList} 
           desaOptions={desaList}
-          initialMasterKelompok={masterKelompokList}
           defaultDesaId={defaultDesaId}
         />
       </main>

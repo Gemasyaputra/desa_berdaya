@@ -46,6 +46,8 @@ export type VillageMapPoint = {
   longitude: number
   nama_provinsi: string
   nama_kota: string
+  nama_relawan: string
+  status: string
 }
 
 export type DistributionStats = {
@@ -398,11 +400,14 @@ export async function getVillageMapPoints(): Promise<VillageMapPoint[]> {
       db.latitude,
       db.longitude,
       prov.nama_provinsi,
-      kota.nama_kota
+      kota.nama_kota,
+      r.nama as nama_relawan,
+      db.status_aktif
     FROM desa_berdaya db
     JOIN desa_config dc ON db.desa_id = dc.id
     JOIN provinsi prov ON db.provinsi_id = prov.id
     JOIN kota_kabupaten kota ON db.kota_id = kota.id
+    LEFT JOIN relawan r ON db.relawan_id = r.id
     WHERE db.status_aktif = true
       AND db.latitude IS NOT NULL
       AND db.longitude IS NOT NULL
@@ -415,6 +420,8 @@ export async function getVillageMapPoints(): Promise<VillageMapPoint[]> {
     longitude: Number(r.longitude),
     nama_provinsi: r.nama_provinsi,
     nama_kota: r.nama_kota,
+    nama_relawan: r.nama_relawan || 'Relawan Belum Ditugaskan',
+    status: r.status_aktif ? 'Aktif' : 'Tidak Aktif'
   }))
 }
 

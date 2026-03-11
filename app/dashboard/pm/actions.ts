@@ -33,7 +33,7 @@ export async function getPenerimaManfaatList() {
 export async function getPenerimaManfaatByDesaId(desaId: number) {
   try {
     const list = await sql`
-      SELECT id, nama, nik
+      SELECT id, nama, nik, tanggal_lahir, jenis_kelamin
       FROM penerima_manfaat
       WHERE desa_berdaya_id = ${desaId}
       ORDER BY nama ASC

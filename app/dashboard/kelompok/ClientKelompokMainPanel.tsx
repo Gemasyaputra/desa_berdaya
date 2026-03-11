@@ -25,13 +25,11 @@ export default function ClientKelompokMainPanel({
   initialKelompok, 
   initialPrograms,
   desaOptions,
-  initialMasterKelompok = [],
   defaultDesaId,
 }: { 
   initialKelompok: any[],
   initialPrograms: any[],
   desaOptions: any[],
-  initialMasterKelompok?: any[],
   defaultDesaId?: number
 }) {
   const { toast } = useToast()
@@ -44,7 +42,6 @@ export default function ClientKelompokMainPanel({
   // Form fields
   const [kelompokDesaId, setKelompokDesaId] = useState<string>(defaultDesaId ? defaultDesaId.toString() : '')
   const [namaKelompok, setNamaKelompok] = useState('')
-  const [masterKelompokId, setMasterKelompokId] = useState<string>('')
   const [namaPembina, setNamaPembina] = useState('')
   const [tahunKel, setTahunKel] = useState<number>(new Date().getFullYear())
   const [kelompokProgramId, setKelompokProgramId] = useState<string>('')
@@ -54,6 +51,41 @@ export default function ClientKelompokMainPanel({
   const [selectedPMs, setSelectedPMs] = useState<number[]>([])
   const [isSubmittingKelompok, setIsSubmittingKelompok] = useState(false)
   const [isLoadingPMs, setIsLoadingPMs] = useState(false)
+  
+  // Filter States
+  const [filterUmur, setFilterUmur] = useState<string[]>([])
+  const [filterGender, setFilterGender] = useState<string[]>([])
+
+  // Helper
+  const getAgeCategory = (tanggal_lahir: string | null) => {
+    if (!tanggal_lahir) return 'Tanpa Tanggal Lahir'
+    const today = new Date()
+    const dob = new Date(tanggal_lahir)
+    let age = today.getFullYear() - dob.getFullYear()
+    const m = today.getMonth() - dob.getMonth()
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+      age--
+    }
+    if (age < 12) return 'Anak-anak'
+    if (age >= 12 && age <= 17) return 'Remaja'
+    if (age >= 18 && age <= 59) return 'Dewasa'
+    if (age >= 60) return 'Lanjut Usia'
+    return 'Lainnya'
+  }
+
+  const filteredPMs = desaPMs.filter(pm => {
+    let matchUmur = true
+    let matchGender = true
+
+    if (filterUmur.length > 0) {
+      matchUmur = filterUmur.includes(getAgeCategory(pm.tanggal_lahir))
+    }
+    if (filterGender.length > 0) {
+      matchGender = filterGender.includes(pm.jenis_kelamin?.toUpperCase() || '')
+    }
+
+    return matchUmur && matchGender
+  })
 
   useEffect(() => {
     if (defaultDesaId) {
@@ -94,11 +126,12 @@ export default function ClientKelompokMainPanel({
     setActiveKelompokObj(null)
     setKelompokDesaId('')
     setNamaKelompok('')
-    setMasterKelompokId('')
     setNamaPembina('')
     setTahunKel(new Date().getFullYear())
     setKelompokProgramId('')
     setSelectedPMs([])
+    setFilterUmur([])
+    setFilterGender([])
     setDesaPMs([])
     setIsOpenKelompok(true)
   }
@@ -108,7 +141,6 @@ export default function ClientKelompokMainPanel({
     setActiveKelompokObj(kel)
     setKelompokDesaId(kel.desa_berdaya_id.toString())
     setNamaKelompok(kel.nama_kelompok || '')
-    setMasterKelompokId(kel.master_kelompok_id ? kel.master_kelompok_id.toString() : '')
     setNamaPembina(kel.nama_pembina || '')
     setTahunKel(kel.tahun || new Date().getFullYear())
     setKelompokProgramId(kel.program_id ? kel.program_id.toString() : '')
@@ -123,7 +155,6 @@ export default function ClientKelompokMainPanel({
     setActiveKelompokObj(kel)
     setKelompokDesaId(kel.desa_berdaya_id.toString())
     setNamaKelompok(kel.nama_kelompok || '')
-    setMasterKelompokId(kel.master_kelompok_id ? kel.master_kelompok_id.toString() : '')
     setNamaPembina(kel.nama_pembina || '')
     setTahunKel(kel.tahun || new Date().getFullYear())
     setKelompokProgramId(kel.program_id ? kel.program_id.toString() : '')
@@ -134,16 +165,6 @@ export default function ClientKelompokMainPanel({
     // Optional: we can scroll or highlight the anggota section, but opening edit with pre-filled data is the simplest approach
   }
 
-  const handleKategoriKelompokChange = (val: string) => {
-    setMasterKelompokId(val)
-    if (initialMasterKelompok) {
-      const selectedMaster = initialMasterKelompok.find(mk => mk.id.toString() === val)
-      if (selectedMaster && selectedMaster.program_id) {
-        setKelompokProgramId(selectedMaster.program_id.toString())
-      }
-    }
-  }
-
   const handleTogglePM = (pmId: number) => {
     setSelectedPMs(prev => 
       prev.includes(pmId) ? prev.filter(id => id !== pmId) : [...prev, pmId]
@@ -151,7 +172,7 @@ export default function ClientKelompokMainPanel({
   }
 
   const handleSaveKelompok = async () => {
-    if (!kelompokDesaId || !namaKelompok.trim() || !masterKelompokId || !namaPembina.trim() || !tahunKel || !kelompokProgramId) {
+    if (!kelompokDesaId || !namaKelompok.trim() || !namaPembina.trim() || !tahunKel || !kelompokProgramId) {
       toast({ title: 'Error', description: 'Pastikan form wajib (*) sudah diisi.', variant: 'destructive' })
       return
     }
@@ -167,7 +188,6 @@ export default function ClientKelompokMainPanel({
           namaPembina,
           tahunKel,
           parseInt(kelompokProgramId),
-          masterKelompokId ? parseInt(masterKelompokId) : null,
           selectedPMs
         )
       } else {
@@ -178,7 +198,6 @@ export default function ClientKelompokMainPanel({
           tahunKel,
           0, // Relawan dikembalikan otomatis oleh aksi backend dari Desa ID nya
           parseInt(kelompokProgramId),
-          masterKelompokId ? parseInt(masterKelompokId) : null,
           selectedPMs
         )
       }
@@ -242,11 +261,8 @@ export default function ClientKelompokMainPanel({
                          {kel.nama_desa}
                       </span>
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
-                        {kel.nama_kategori_kelompok || kel.nama_program} 
+                        {kel.nama_program} 
                       </span>
-                      {kel.nama_kategori_kelompok && kel.nama_program && (
-                        <span className="text-xs text-slate-500">({kel.nama_program})</span>
-                      )}
                     </div>
                   </div>
                   <div className="flex space-x-2">
@@ -333,23 +349,6 @@ export default function ClientKelompokMainPanel({
                     onChange={(e) => setNamaKelompok(e.target.value)} 
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Kategori Kelompok <span className="text-red-500">*</span></Label>
-                  <Select value={masterKelompokId} onValueChange={handleKategoriKelompokChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih Kategori Kelompok..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {initialMasterKelompok?.map(mk => (
-                        <SelectItem key={mk.id} value={mk.id.toString()}>{mk.nama_kelompok}</SelectItem>
-                      ))}
-                      {(!initialMasterKelompok || initialMasterKelompok.length === 0) && (
-                        <div className="p-2 text-sm text-slate-500">Belum ada Kategori Kelompok</div>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -391,16 +390,63 @@ export default function ClientKelompokMainPanel({
                 </div>
 
                 <div className="pt-2">
-                  <Label className="mb-2 block">Pilih Anggota PM <span className="text-slate-400 font-normal text-xs ml-1">Optional</span></Label>
+                  <Label className="mb-2 block flex justify-between items-center text-slate-700">
+                    Filter Anggota PM
+                  </Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 border p-3 rounded-xl bg-slate-50/50 border-slate-200">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Umur</p>
+                      <div className="space-y-2">
+                        {['Anak-anak', 'Remaja', 'Dewasa', 'Lanjut Usia'].map(cat => (
+                          <div key={cat} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`filter-umur-${cat}`}
+                              checked={filterUmur.includes(cat)}
+                              onCheckedChange={(checked) => {
+                                setFilterUmur(prev => checked ? [...prev, cat] : prev.filter(c => c !== cat))
+                              }}
+                            />
+                            <label htmlFor={`filter-umur-${cat}`} className="text-sm text-slate-700 cursor-pointer font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">{cat}</label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Jenis Kelamin</p>
+                      <div className="space-y-2">
+                        {['LAKI-LAKI', 'PEREMPUAN'].map(jk => (
+                          <div key={jk} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`filter-jk-${jk}`}
+                              checked={filterGender.includes(jk)}
+                              onCheckedChange={(checked) => {
+                                setFilterGender(prev => checked ? [...prev, jk] : prev.filter(c => c !== jk))
+                              }}
+                            />
+                            <label htmlFor={`filter-jk-${jk}`} className="text-sm text-slate-700 cursor-pointer font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">{jk === 'LAKI-LAKI' ? 'Laki-laki' : 'Perempuan'}</label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <Label className="mb-2 block flex justify-between items-center">
+                    <span>Pilih Anggota PM <span className="text-slate-400 font-normal text-xs ml-1">Optional</span></span>
+                    <span className="text-xs font-medium text-[#7a1200] bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
+                      Menampilkan: {filteredPMs.length} PM
+                    </span>
+                  </Label>
                   {isLoadingPMs ? (
                     <p className="text-sm text-slate-500 p-2 text-center h-[200px] flex items-center justify-center">Loading PM...</p>
                   ) : (
-                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 max-h-[200px] overflow-y-auto space-y-2">
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 max-h-[250px] overflow-y-auto space-y-2">
                       {desaPMs.length === 0 ? (
                         <p className="text-sm text-slate-500 p-2 text-center">Belum ada data PM di desa ini.</p>
+                      ) : filteredPMs.length === 0 ? (
+                        <p className="text-sm text-slate-500 p-2 text-center">Tidak ada PM yang cocok dengan filter yang dipilih.</p>
                       ) : (
-                        desaPMs.map(pm => (
-                           <div key={pm.id} className="flex flex-row items-center space-x-3 bg-white p-2 rounded-md border border-slate-100 shadow-sm">
+                        filteredPMs.map(pm => (
+                           <div key={pm.id} className="flex flex-row items-center space-x-3 bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm hover:border-slate-300 transition-colors">
                              <Checkbox 
                                id={`pm-${pm.id}`} 
                                checked={selectedPMs.includes(pm.id)}

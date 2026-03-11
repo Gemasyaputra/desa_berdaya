@@ -200,7 +200,6 @@ export default function TambahPMPage() {
           kel.nama_pembina,
           kel.tahun,
           kel.program_id,
-          kel.master_kelompok_id,
           anggotaIds
         )
       }
@@ -632,7 +631,6 @@ export default function TambahPMPage() {
                     </p>
                     <p className="text-xs text-slate-500 mt-0.5">
                       Program: {kel.nama_program || '-'}
-                      {kel.nama_kategori_kelompok && ` • ${kel.nama_kategori_kelompok}`}
                     </p>
                     <p className="text-xs text-slate-400 mt-0.5">
                       Anggota saat ini: {kel.anggota?.length || 0}

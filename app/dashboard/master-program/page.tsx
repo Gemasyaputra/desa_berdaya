@@ -1,12 +1,9 @@
 import { getKategoriPrograms, getPrograms } from '@/lib/actions/program'
-import { getMasterKelompok } from '@/lib/actions/kelompok'
 import ClientProgramPanel from '@/app/dashboard/master-program/ClientProgramPanel'
-
 export default async function MasterProgramPage() {
-  const [kategoriList, programList, masterKelompokList] = await Promise.all([
+  const [kategoriList, programList] = await Promise.all([
     getKategoriPrograms(),
-    getPrograms(),
-    getMasterKelompok()
+    getPrograms()
   ])
   
   return (
@@ -15,7 +12,7 @@ export default async function MasterProgramPage() {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Master Data</h1>
-            <p className="text-slate-500 text-sm mt-1">Kelola daftar Kategori Program, Program PM, dan Kategori Kelompok</p>
+            <p className="text-slate-500 text-sm mt-1">Kelola daftar Kategori Program dan Program PM</p>
           </div>
         </div>
       </header>
@@ -24,7 +21,6 @@ export default async function MasterProgramPage() {
         <ClientProgramPanel 
           initialKategori={kategoriList} 
           initialPrograms={programList} 
-          initialMasterKelompok={masterKelompokList}
         />
       </main>
     </div>

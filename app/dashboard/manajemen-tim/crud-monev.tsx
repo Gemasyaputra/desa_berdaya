@@ -75,18 +75,23 @@ export function CRUDMonev() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Shield className="w-5 h-5 text-[#7a1200]" />
-          <h3 className="text-base font-semibold text-slate-800">Daftar Monev</h3>
-          <Badge className="bg-red-100 text-[#7a1200]">{list.length}</Badge>
+      <div className="flex items-center justify-between bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] mb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center border border-red-100 shadow-sm shadow-[#7a1200]/5">
+            <Shield className="w-6 h-6 text-[#7a1200]" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-slate-800 tracking-tight">Daftar Monev Administrator</h3>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Total: <span className="text-[#7a1200]">{list.length}</span> Pengguna Aktif</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={load} disabled={loading} className="h-10 rounded-xl px-4 border-slate-200 hover:bg-slate-50 text-slate-600 font-bold shadow-sm">
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
-          <Button size="sm" onClick={openCreate} style={{ backgroundColor: '#7a1200' }} className="text-white gap-1">
-            <Plus className="w-4 h-4" /> Tambah Monev
+          <Button size="sm" onClick={openCreate} style={{ backgroundColor: '#7a1200' }} className="h-10 rounded-xl px-5 text-white font-bold shadow-lg shadow-[#7a1200]/20 hover:shadow-[#7a1200]/30 transition-all active:scale-95 gap-2">
+            <Plus className="w-4 h-4" /> Tambah Baru
           </Button>
         </div>
       </div>
@@ -129,57 +134,63 @@ export function CRUDMonev() {
       )}
 
       {/* Tabel */}
-      <Card className="border-0 shadow-sm">
+      <Card className="border-0 shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-[2rem] bg-white overflow-hidden ring-1 ring-slate-100">
         <CardContent className="p-0">
           {loading ? (
-            <div className="p-8 text-center text-slate-400 text-sm">Memuat data...</div>
+            <div className="p-12 text-center text-slate-400 text-sm font-medium">Memuat data...</div>
           ) : list.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-sm">Belum ada data Monev</div>
+            <div className="p-12 text-center bg-slate-50/50 m-6 rounded-3xl border border-dashed border-slate-200">
+              <p className="text-slate-400 font-bold italic">Belum ada profil Monev yang terdaftar.</p>
+            </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto p-4">
               <table className="w-full">
-                <thead className="border-b border-slate-200 bg-slate-50">
+                <thead className="border-b border-slate-100 bg-slate-50/80">
                   <tr>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 w-12">No</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500">Nama</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500">Email</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500">HP</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500">Korwil</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500">Aksi</th>
+                    <th className="text-center py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400 w-16 rounded-tl-2xl">No</th>
+                    <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Identitas</th>
+                    <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Kontak</th>
+                    <th className="text-center py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Korwil Binaan</th>
+                    <th className="text-center py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400 rounded-tr-2xl">Tindakan</th>
                   </tr>
                 </thead>
                 <tbody>
                   {list.map((row, i) => (
-                    <tr key={row.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                      <td className="py-3 px-4 text-sm text-center text-slate-400">{i + 1}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-[#7a1200] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                    <tr key={row.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors group">
+                      <td className="py-4 px-4 text-sm font-bold text-center text-slate-400">{i + 1}</td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center font-black text-slate-800 group-hover:bg-[#7a1200] group-hover:text-white transition-colors duration-300 flex-shrink-0">
                             {row.nama.charAt(0).toUpperCase()}
                           </div>
-                          <span className="text-sm font-medium text-slate-800">{row.nama}</span>
+                          <div>
+                            <span className="text-sm font-black text-slate-800 block truncate leading-none mb-1">{row.nama}</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lead Supervisor</span>
+                          </div>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-sm text-slate-600">{row.email ?? '-'}</td>
-                      <td className="py-3 px-4 text-sm text-slate-600">{row.hp ?? '-'}</td>
-                      <td className="py-3 px-4 text-center">
-                        <Badge className="bg-amber-100 text-amber-700">{row.jumlah_korwil} Korwil</Badge>
+                      <td className="py-4 px-4">
+                        <p className="text-sm font-semibold text-slate-600 mb-0.5">{row.email ?? '-'}</p>
+                        <p className="text-[11px] font-medium text-slate-400">{row.hp ?? '-'}</p>
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-1.5 justify-center">
-                          <Button size="sm" variant="outline" onClick={() => openEdit(row)} className="h-7 px-2 text-xs">
-                            <Edit className="w-3 h-3 mr-1" /> Edit
+                      <td className="py-4 px-4 text-center">
+                        <Badge className="bg-amber-50 text-amber-700 border-amber-200/50 px-3 py-1 font-bold shadow-none rounded-lg">{row.jumlah_korwil} Cabang</Badge>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2 justify-center">
+                          <Button size="sm" variant="outline" onClick={() => openEdit(row)} className="h-8 rounded-lg px-3 text-xs font-bold border-slate-200 text-slate-600 hover:bg-slate-100 shadow-sm">
+                            <Edit className="w-3.5 h-3.5 mr-1.5" /> Edit
                           </Button>
                           <Link href={`/dashboard/manajemen-tim/wilayah/monev/${row.id}`}>
-                            <Button size="sm" variant="outline" className="h-7 px-2 text-xs text-emerald-700 border-emerald-200 hover:bg-emerald-50">
-                              <MapPin className="w-3 h-3 mr-1" /> Wilayah
+                            <Button size="sm" variant="outline" className="h-8 rounded-lg px-3 text-xs font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50 shadow-sm">
+                              <MapPin className="w-3.5 h-3.5 mr-1.5" /> Wilayah
                             </Button>
                           </Link>
-                          <Button size="sm" variant="outline" onClick={() => handleReset(row)} className="h-7 px-2 text-xs text-amber-600 border-amber-200 hover:bg-amber-50">
-                            <KeyRound className="w-3 h-3 mr-1" /> Reset
+                          <Button size="sm" variant="outline" onClick={() => handleReset(row)} className="h-8 rounded-lg px-3 text-xs font-bold border-amber-200 text-amber-600 hover:bg-amber-50 shadow-sm">
+                            <KeyRound className="w-3.5 h-3.5 mr-1.5" /> Reset
                           </Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleDelete(row)} className="h-7 px-2 text-xs">
-                            <Trash2 className="w-3 h-3 mr-1" /> Hapus
+                          <Button size="sm" variant="destructive" onClick={() => handleDelete(row)} className="h-8 rounded-lg px-3 text-xs font-bold shadow-sm">
+                            <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Hapus
                           </Button>
                         </div>
                       </td>

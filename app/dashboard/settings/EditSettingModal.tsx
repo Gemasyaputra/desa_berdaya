@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { updateSettingAdmin } from './actions'
 import { Loader2, Edit3, X, Save, UploadCloud, ImageIcon } from 'lucide-react'
 import { upload } from '@vercel/blob/client'
+import { Switch } from '@/components/ui/switch'
 
 export default function EditSettingModal({
   itemKey,
@@ -26,6 +27,8 @@ export default function EditSettingModal({
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+  
+  const isBoolean = initialValue.trim() === 'true' || initialValue.trim() === 'false' || !!labelTitle?.includes('(true/false)') || itemKey.endsWith('_enabled')
 
   const handleSave = async () => {
     try {
@@ -159,16 +162,35 @@ export default function EditSettingModal({
                   </div>
                 )}
 
-                <textarea 
-                  rows={isImage || isColor ? 2 : 6}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-[#7a1200] font-mono text-sm leading-relaxed"
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  placeholder={isImage ? "https://..." : isColor ? "#RRGGBB" : "Masukkan nilai konfigurasi..."}
-                  disabled={loading || uploading}
-                  spellCheck={false}
-                />
-                {!isImage && !isColor && (
+                {isBoolean ? (
+                  <div className="flex items-center justify-between p-4 border border-slate-200 rounded-xl bg-slate-50">
+                    <div className="space-y-0.5">
+                      <div className="font-semibold text-slate-800">
+                        {value === 'true' ? 'Aktif (True)' : 'Nonaktif (False)'}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        Klik toggle di samping untuk mengubah status konfigurasi.
+                      </div>
+                    </div>
+                    <Switch 
+                      checked={value.trim() === 'true'}
+                      onCheckedChange={(checked: boolean) => setValue(checked ? 'true' : 'false')}
+                      disabled={loading}
+                    />
+                  </div>
+                ) : (
+                  <textarea 
+                    rows={isImage || isColor ? 2 : 6}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-[#7a1200] font-mono text-sm leading-relaxed"
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    placeholder={isImage ? "https://..." : isColor ? "#RRGGBB" : "Masukkan nilai konfigurasi..."}
+                    disabled={loading || uploading}
+                    spellCheck={false}
+                  />
+                )}
+                
+                {!isImage && !isColor && !isBoolean && (
                   <p className="mt-2 text-xs text-slate-500">Mendukung format Teks, URL, Hex Kode Warna, atau struktur Tag HTML (termasuk Tailwind className).</p>
                 )}
               </div>

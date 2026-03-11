@@ -527,10 +527,10 @@ export default function DashboardPage() {
                       {teamMonev.korwils.map((korwil) => {
                         const isExpanded = expandedKorwils.has(korwil.id)
                         return (
-                          <div key={korwil.id} className={`rounded-[2rem] border transition-all duration-300 overflow-hidden ${isExpanded ? 'border-[#7a1200]/30 shadow-2xl shadow-[#7a1200]/5 bg-white' : 'border-slate-100 hover:border-slate-300 bg-slate-50'}`}>
+                          <div key={korwil.id} className={`rounded-[2rem] border transition-all duration-300 overflow-hidden ${isExpanded ? 'border-slate-200 shadow-xl shadow-slate-200/50 bg-white ring-1 ring-slate-100' : 'border-slate-100 hover:border-slate-300 bg-slate-50'}`}>
                             <button
                               type="button"
-                              className="w-full flex items-center justify-between p-6 text-left"
+                              className="w-full flex items-center justify-between p-6 text-left group"
                               onClick={() => {
                                 const next = new Set(expandedKorwils)
                                 if (isExpanded) next.delete(korwil.id)
@@ -539,14 +539,14 @@ export default function DashboardPage() {
                               }}
                             >
                               <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-[#7a1200] flex items-center justify-center text-white text-base font-black shadow-lg shadow-[#7a1200]/20">K</div>
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-base font-black transition-colors duration-300 ${isExpanded ? 'bg-slate-800 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600 group-hover:bg-slate-100'}`}>K</div>
                                 <div>
                                   <p className="font-black text-slate-800 text-base tracking-tight">{korwil.nama}</p>
                                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">Korwil · {korwil.jumlah_desa} desa · {korwil.relawans.length} relawan</p>
                                 </div>
                               </div>
-                              <div className={`p-2 rounded-xl bg-white shadow-sm transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                                <ChevronDown className="w-4 h-4 text-[#7a1200]" />
+                              <div className={`p-2 rounded-xl bg-white shadow-sm border border-slate-100 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                <ChevronDown className="w-4 h-4 text-slate-500" />
                               </div>
                             </button>
                             {isExpanded && (
@@ -555,14 +555,14 @@ export default function DashboardPage() {
                                   <p className="px-4 py-6 text-sm text-slate-400 italic font-medium bg-white rounded-2xl border border-dashed border-slate-200 text-center">No volunteers assigned.</p>
                                 ) : (
                                   korwil.relawans.map((r) => (
-                                    <div key={r.id} className="flex items-center gap-4 p-4 bg-white hover:bg-[#7a1200]/5 border border-slate-100 rounded-2xl transition-all group">
-                                      <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-600 font-black text-xs">R</div>
+                                    <div key={r.id} className="flex items-center gap-4 p-4 bg-slate-50/50 hover:bg-white border border-slate-100 hover:border-slate-200 hover:shadow-sm rounded-2xl transition-all group">
+                                      <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-600 font-black text-xs group-hover:bg-slate-800 group-hover:text-white transition-colors duration-300">R</div>
                                       <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-bold text-slate-700 truncate">{r.nama}</p>
+                                        <p className="text-sm font-bold text-slate-700 truncate group-hover:text-slate-900 transition-colors duration-300">{r.nama}</p>
                                         <p className="text-[11px] font-medium text-slate-400">{r.jumlah_desa} desa aktif binaan</p>
                                       </div>
-                                      <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-[#7a1200]/10">
-                                        <Building2 className="w-3.5 h-3.5 text-slate-500 group-hover:text-[#7a1200]" />
+                                      <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-slate-100 border border-slate-100 transition-colors duration-300">
+                                        <Building2 className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600" />
                                       </div>
                                     </div>
                                   ))
@@ -582,7 +582,7 @@ export default function DashboardPage() {
               <Card className="border-0 shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-2xl bg-white overflow-hidden p-6 ring-1 ring-slate-100">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-[#7a1200] border border-red-100 shadow-sm shadow-red-100/50">
+                    <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-white shadow-sm shadow-slate-200">
                       <UserCheck className="w-6 h-6" />
                     </div>
                     <div>
@@ -600,8 +600,8 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     teamKorwil.relawans.map((r) => (
-                      <Card key={r.id} className="border border-slate-100 shadow-none bg-slate-50/50 hover:bg-white hover:shadow-xl hover:border-white transition-all duration-300 rounded-[1.5rem] group p-4 flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center font-black text-slate-800 group-hover:bg-[#7a1200] group-hover:text-white transition-colors duration-300">
+                      <Card key={r.id} className="border border-slate-100 shadow-none bg-slate-50/50 hover:bg-white hover:shadow-xl hover:border-slate-200 transition-all duration-300 rounded-[1.5rem] group p-4 flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center font-black text-slate-800 group-hover:bg-slate-800 group-hover:text-white transition-colors duration-300">
                           {r.nama.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">

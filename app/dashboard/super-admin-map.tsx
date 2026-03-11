@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import React, { useEffect, useState, useMemo } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, GeoJSON } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import MarkerClusterGroup from 'react-leaflet-cluster'
@@ -9,14 +9,19 @@ import { Card, CardContent } from '@/components/ui/card'
 import { MapPin, Building2, Map as MapIcon, Navigation, Shield } from 'lucide-react'
 import type { VillageMapPoint, DistributionStats } from './actions'
 
-const customIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
+const customPinIcon = L.divIcon({
+  html: `
+    <div class="custom-pin-wrapper">
+      <div class="custom-pin-head">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <div class="custom-pin-point"></div>
+    </div>
+  `,
+  className: 'empty-leaflet-icon',
+  iconSize: [28, 38],
+  iconAnchor: [14, 38],
+  popupAnchor: [0, -32],
 })
 
 export function SuperAdminMap({ 
@@ -27,10 +32,99 @@ export function SuperAdminMap({
   stats: DistributionStats | null 
 }) {
   const [isMounted, setIsMounted] = useState(false)
+  const [geoJsonData, setGeoJsonData] = useState<any>(null)
 
   useEffect(() => {
     setIsMounted(true)
+    fetch('/indonesia-provinces.json')
+      .then(res => res.json())
+      .then(data => setGeoJsonData(data))
+      .catch(err => console.error("Failed to fetch geojson: ", err))
   }, [])
+
+  // Calculate province density
+  const provinceCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    points.forEach(p => {
+      const prov = p.nama_provinsi?.toUpperCase()
+      if (prov) {
+        counts[prov] = (counts[prov] || 0) + 1
+      }
+    })
+    return counts
+  }, [points])
+
+  const maxDensity = Math.max(0, ...Object.values(provinceCounts))
+
+  const matchProvinceName = (dbProv: string, geoProv: string) => {
+    const db = dbProv.toUpperCase()
+    const geo = geoProv.toUpperCase()
+
+    if (db === geo) return true
+    if (geo.includes('JAKARTA') && db.includes('JAKARTA')) return true
+    if (geo.includes('YOGYAKARTA') && db.includes('YOGYAKARTA')) return true
+    if (geo.includes('BANTEN') && db.includes('BANTEN')) return true
+    if (geo.includes('BANGKA BELITUNG') && db.includes('BANGKA BELITUNG')) return true
+    if (geo.includes('GORONTALO') && db.includes('GORONTALO')) return true
+    if (geo.replace(/ /g, '') === db.replace(/ /g, '')) return true
+
+    // Overlap matching
+    const geoWords = geo.split(' ')
+    const dbWords = db.split(' ')
+    const matchScore = geoWords.filter(w => dbWords.includes(w)).length
+    if (matchScore >= 2 && geoWords[0] === dbWords[0]) return true
+    if (matchScore === 1 && geoWords.length === 1 && dbWords.length === 1) return true
+
+    // specific cases for Papua
+    if (geo.includes('IRIAN JAYA') && db.includes('PAPUA')) {
+      if (geo.includes('TIMUR') && (db.includes('SELATAN') || db.includes('PEGUNUNGAN') || db === 'PAPUA')) return true
+      if (geo.includes('TENGAH') && db.includes('TENGAH')) return true
+      if (geo.includes('BARAT') && db.includes('BARAT')) return true
+    }
+    return false
+  }
+
+  const getProvinceMapCount = (feature: any) => {
+    const geoProv = feature.properties?.Propinsi || ''
+    let count = 0
+    for (const [dbProv, c] of Object.entries(provinceCounts)) {
+      if (matchProvinceName(dbProv, geoProv)) {
+        count += c
+      }
+    }
+    return count
+  }
+
+  const interpolateColor = (color1: string, color2: string, factor: number) => {
+    const hex = (c: string) => parseInt(c.slice(1), 16)
+    const c1 = hex(color1)
+    const c2 = hex(color2)
+    
+    const r1 = (c1 >> 16) & 255, g1 = (c1 >> 8) & 255, b1 = c1 & 255
+    const r2 = (c2 >> 16) & 255, g2 = (c2 >> 8) & 255, b2 = c2 & 255
+    
+    const r = Math.round(r1 + factor * (r2 - r1))
+    const g = Math.round(g1 + factor * (g2 - g1))
+    const b = Math.round(b1 + factor * (b2 - b1))
+    
+    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
+  }
+
+  const geoJsonStyle = (feature: any) => {
+    const count = getProvinceMapCount(feature)
+    const factor = maxDensity > 0 ? Math.min(count / maxDensity, 1) : 0
+    
+    // Gradien dari abu-abu (#EAEAEA) ke merah marun (#7A1D1D)
+    const fillColor = interpolateColor('#EAEAEA', '#7A1D1D', factor)
+    
+    return {
+      fillColor: fillColor,
+      weight: 1, // thin border
+      opacity: 1,
+      color: '#cbd5e1', // light gray border
+      fillOpacity: count > 0 ? 0.8 : 0.6,
+    }
+  }
 
   // Custom Icon for Clustering
   const createClusterCustomIcon = function (cluster: any) {
@@ -62,6 +156,13 @@ export function SuperAdminMap({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
             url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           />
+
+          {geoJsonData && (
+            <GeoJSON 
+              data={geoJsonData} 
+              style={geoJsonStyle}
+            />
+          )}
           
           <MarkerClusterGroup
             chunkedLoading
@@ -69,7 +170,7 @@ export function SuperAdminMap({
             maxClusterRadius={50}
           >
             {points.map((p) => (
-              <Marker key={p.id} position={[p.latitude, p.longitude]} icon={customIcon}>
+              <Marker key={p.id} position={[p.latitude, p.longitude]} icon={customPinIcon}>
                 <Popup className="modern-popup" closeButton={false}>
                   <div className="p-4 min-w-[240px] rounded-xl bg-white">
                     <div className="mb-3">
@@ -115,7 +216,7 @@ export function SuperAdminMap({
             border-radius: 50%;
             text-align: center;
             font-weight: 800;
-            box-shadow: 0 4px 12px rgba(122, 29, 29, 0.4);
+            box-shadow: 0 8px 24px rgba(122, 29, 29, 0.25);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -125,9 +226,45 @@ export function SuperAdminMap({
           }
           .custom-cluster-icon:hover {
             transform: scale(1.1);
-            box-shadow: 0 6px 16px rgba(122, 29, 29, 0.5);
+            box-shadow: 0 10px 30px rgba(122, 29, 29, 0.35);
           }
           
+          .empty-leaflet-icon {
+            background: transparent;
+            border: none;
+          }
+          .custom-pin-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            filter: drop-shadow(0 6px 10px rgba(122, 29, 29, 0.3));
+            transition: transform 0.2s ease;
+          }
+          .custom-pin-wrapper:hover {
+            transform: translateY(-4px) scale(1.05);
+            filter: drop-shadow(0 8px 15px rgba(122, 29, 29, 0.4));
+          }
+          .custom-pin-head {
+            width: 28px;
+            height: 28px;
+            background-color: #7A1D1D;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+          }
+          .custom-pin-point {
+            width: 0;
+            height: 0;
+            border-left: 7px solid transparent;
+            border-right: 7px solid transparent;
+            border-top: 12px solid #7A1D1D;
+            margin-top: -4px;
+            z-index: 1;
+          }
+
           .modern-popup .leaflet-popup-content-wrapper {
             padding: 0;
             border-radius: 16px;

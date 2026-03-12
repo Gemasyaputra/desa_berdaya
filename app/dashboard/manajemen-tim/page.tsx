@@ -69,11 +69,6 @@ export default function ManajemenTimPage() {
             </h1>
             <p className="text-slate-400 text-xs font-medium">Pengaturan Akses & Keanggotaan <span className="text-slate-500 font-bold">Monev, Korwil, dan Relawan</span></p>
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
-            <span className="inline-flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full shadow-sm">
-              Password default baru: <strong className="text-slate-700 bg-white px-2.5 py-0.5 rounded-full border border-slate-100 shadow-sm">DesaBerdaya2025</strong>
-            </span>
-          </div>
         </div>
       </header>
 

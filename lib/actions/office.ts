@@ -122,7 +122,7 @@ export async function deleteOffice(id: number) {
 export async function getDesaByOffice(officeId: number) {
   try {
     const result = await sql`
-      SELECT 
+      SELECT DISTINCT ON (dc.id)
         dc.id,
         dc.nama_desa,
         p.nama_provinsi,
@@ -138,7 +138,7 @@ export async function getDesaByOffice(officeId: number) {
       LEFT JOIN relawan r ON db.relawan_id = r.id
       LEFT JOIN relawan kor ON r.korwil_id = kor.id
       WHERE dc.office_id = ${officeId}
-      ORDER BY p.nama_provinsi, k.nama_kota, dc.nama_desa
+      ORDER BY dc.id, p.nama_provinsi, k.nama_kota, dc.nama_desa
     `
     
     return (result as any[]).map(r => ({
@@ -159,7 +159,7 @@ export async function getDesaByOffice(officeId: number) {
 export async function getUnassignedDesa() {
   try {
     const result = await sql`
-      SELECT 
+      SELECT DISTINCT ON (dc.id)
         dc.id,
         dc.nama_desa,
         p.nama_provinsi,
@@ -175,7 +175,7 @@ export async function getUnassignedDesa() {
       LEFT JOIN relawan r ON db.relawan_id = r.id
       LEFT JOIN relawan kor ON r.korwil_id = kor.id
       WHERE dc.office_id IS NULL
-      ORDER BY p.nama_provinsi, k.nama_kota, dc.nama_desa
+      ORDER BY dc.id, p.nama_provinsi, k.nama_kota, dc.nama_desa
     `
     
     return (result as any[]).map(r => ({

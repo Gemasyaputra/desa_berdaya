@@ -32,18 +32,35 @@ async function runSeedRZBandung() {
       kotaId = insertedKota[0].id;
     }
 
-    // 2. Buat Office: RZ Bandung
+    // 2. Buat/Update Office: RZ Bandung
     const existingOffices = await sql`SELECT id FROM office WHERE nama_office = 'RZ Bandung' LIMIT 1`;
     let officeId;
+
+    // Need a kecamatan for the office address too
+    const officeKecNama = 'Sumur Bandung'; 
+    const okRows = await sql`SELECT id FROM kecamatan WHERE nama_kecamatan ILIKE '%Sumur Bandung%' AND kota_id = ${kotaId} LIMIT 1`;
+    let okId = okRows.length > 0 ? okRows[0].id : null;
+    if (!okId) {
+      const insertedOk = await sql`INSERT INTO kecamatan (kota_id, nama_kecamatan) VALUES (${kotaId}, 'Sumur Bandung') RETURNING id`;
+      okId = insertedOk[0].id;
+    }
+
     if (existingOffices.length > 0) {
       officeId = Number(existingOffices[0].id);
+      await sql`
+        UPDATE office 
+        SET provinsi_id = ${provId}, kota_id = ${kotaId}, kecamatan_id = ${okId}
+        WHERE id = ${officeId}
+      `;
+      console.log(`✅ Office 'RZ Bandung' (ID: ${officeId}) diupdate dengan alamat terstruktur.`);
     } else {
       const officeRows = await sql`
-        INSERT INTO office (nama_office, alamat) 
-        VALUES ('RZ Bandung', 'Jl. Braga No.123, Bandung')
+        INSERT INTO office (nama_office, alamat, provinsi_id, kota_id, kecamatan_id) 
+        VALUES ('RZ Bandung', 'Jl. Braga No.123, Bandung', ${provId}, ${kotaId}, ${okId})
         RETURNING id
       `;
       officeId = Number(officeRows[0].id);
+      console.log(`✅ Office 'RZ Bandung' (ID: ${officeId}) dibuat.`);
     }
     console.log(`✅ Office 'RZ Bandung' (ID: ${officeId}) siap.`);
 
@@ -54,18 +71,21 @@ async function runSeedRZBandung() {
     if (existingUser.length === 0) {
       const userRows = await sql`
         INSERT INTO users (email, password_encrypted, role)
-        VALUES (${userEmail}, ${hashedPassword}, 'OFFICE')
+        VALUES (${userEmail}, ${hashedPassword}, 'FINANCE')
         RETURNING id
       `;
       userId = Number(userRows[0].id);
       
       await sql`
         INSERT INTO office_user (user_id, office_id, nama, hp, jabatan)
-        VALUES (${userId}, ${officeId}, 'Admin RZ Bandung', '081222333444', 'Kepala Cabang')
+        VALUES (${userId}, ${officeId}, 'Admin RZ Bandung', '081222333444', 'Finance of Program')
       `;
-      console.log(`✅ Office User 'Admin RZ Bandung' dibuat.`);
+      console.log(`✅ Office User 'Admin RZ Bandung' dibuat sebagai Finance of Program.`);
     } else {
       userId = Number(existingUser[0].id);
+      await sql`UPDATE users SET role = 'FINANCE' WHERE id = ${userId}`;
+      await sql`UPDATE office_user SET jabatan = 'Finance of Program' WHERE user_id = ${userId}`;
+      console.log(`✅ Office User 'Admin RZ Bandung' diupdate sebagai Finance of Program.`);
     }
 
     // 4. Seeding Master Data Program & Kategori (Jika belum ada)

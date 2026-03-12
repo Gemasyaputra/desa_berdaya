@@ -150,8 +150,19 @@ export function CRUDOfficeUser() {
                   <Input value={form.hp} onChange={(e) => setForm({ ...form, hp: e.target.value })} placeholder="08xx-xxxx-xxxx" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Jabatan (Fleksibel) <span className="text-red-500">*</span></Label>
-                  <Input required value={form.jabatan} onChange={(e) => setForm({ ...form, jabatan: e.target.value })} placeholder="Cth: Finance of Program" />
+                  <Label>Jabatan Staf <span className="text-red-500">*</span></Label>
+                  <Select 
+                    value={form.jabatan} 
+                    onValueChange={(val) => setForm({ ...form, jabatan: val })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Pilih Jabatan..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Finance of Program">Finance of Program</SelectItem>
+                      <SelectItem value="Program Head">Program Head</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Email Akun Login <span className="text-red-500">*</span></Label>

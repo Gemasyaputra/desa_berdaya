@@ -29,6 +29,8 @@ import {
   GitBranch,
   UsersRound,
   BookOpen,
+  MapPin,
+  User,
 } from 'lucide-react'
 
 export default function DashboardLayout({
@@ -45,6 +47,8 @@ export default function DashboardLayout({
   const [userName, setUserName] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userClinicId, setUserClinicId] = useState<number | null>(null)
+  const [userJabatan, setUserJabatan] = useState<string | null>(null)
+  const [userNamaOffice, setUserNamaOffice] = useState<string | null>(null)
   const [brandColor, setBrandColor] = useState('#7a1200')
   const [logoUrl, setLogoUrl] = useState('')
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false)
@@ -63,6 +67,8 @@ export default function DashboardLayout({
       setUserRole((user as any)?.role || 'User')
       const clinicId = (user as any)?.clinic_id
       setUserClinicId(typeof clinicId === 'number' ? clinicId : clinicId ? Number(clinicId) : null)
+      setUserJabatan((user as any)?.jabatan || null)
+      setUserNamaOffice((user as any)?.nama_office || null)
     }
     
     // Load sidebar state from localStorage
@@ -169,11 +175,17 @@ export default function DashboardLayout({
             {isUserReady ? (
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Users className="w-5 h-5" />
+                  <User className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate">{userName}</p>
-                  <p className="text-white/80 text-xs">{userRole}</p>
+                  <p className="font-semibold text-sm truncate leading-tight mb-0.5">{userName}</p>
+                  <p className="text-white/80 text-[10px] font-bold uppercase tracking-wider leading-none">{userJabatan || userRole}</p>
+                  {userNamaOffice && userNamaOffice !== '-' && (
+                    <div className="flex items-center gap-1 mt-1 opacity-70">
+                      <MapPin className="w-2.5 h-2.5" />
+                      <p className="text-white text-[9px] font-medium truncate leading-none italic">{userNamaOffice}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

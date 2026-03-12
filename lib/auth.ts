@@ -75,8 +75,10 @@ export const authOptions: NextAuthOptions = {
                 if (monev) {
                   token.operator_id = String(monev.id)
                   token.name = monev.nama
+                  token.jabatan = 'Monev Pusat'
+                  token.nama_office = 'Pusat'
                 }
-              } else if (dbUser.role === 'RELAWAN' || dbUser.role === 'PROG_HEAD' || dbUser.role === 'ADMIN' || dbUser.role === 'FINANCE') {
+              } else if (dbUser.role === 'RELAWAN' || dbUser.role === 'ADMIN') {
                 const relawans = await sql`SELECT id, nama, is_korwil, monev_id, korwil_id FROM relawan WHERE user_id = ${dbUser.id} LIMIT 1`
                 const relawan = (Array.isArray(relawans) ? relawans[0] : relawans) as any
                 if (relawan) {
@@ -85,14 +87,24 @@ export const authOptions: NextAuthOptions = {
                   token.monev_id = relawan.monev_id ? String(relawan.monev_id) : null
                   token.korwil_id = relawan.korwil_id ? String(relawan.korwil_id) : null
                   token.name = relawan.nama
+                  token.jabatan = relawan.is_korwil ? 'Korwil' : 'Relawan'
+                  token.nama_office = '-' 
                 }
-              } else if (dbUser.role === 'OFFICE') {
-                const officeUsers = await sql`SELECT id, nama, office_id FROM office_user WHERE user_id = ${dbUser.id} LIMIT 1`
+              } else if (dbUser.role === 'OFFICE' || dbUser.role === 'FINANCE' || dbUser.role === 'PROG_HEAD') {
+                const officeUsers = await sql`
+                  SELECT ou.id, ou.nama, ou.office_id, ou.jabatan, o.nama_office 
+                  FROM office_user ou
+                  LEFT JOIN office o ON ou.office_id = o.id
+                  WHERE ou.user_id = ${dbUser.id} 
+                  LIMIT 1
+                `
                 const ou = (Array.isArray(officeUsers) ? officeUsers[0] : officeUsers) as any
                 if (ou) {
                   token.operator_id = String(ou.id)
                   token.office_id = ou.office_id ? String(ou.office_id) : null
                   token.name = ou.nama
+                  token.jabatan = ou.jabatan || 'Staf Office'
+                  token.nama_office = ou.nama_office || '-'
                 }
               }
             }
@@ -113,6 +125,8 @@ export const authOptions: NextAuthOptions = {
         session.user.monev_id = token.monev_id as string
         session.user.korwil_id = token.korwil_id as string
         session.user.office_id = token.office_id as string
+        session.user.jabatan = token.jabatan as string
+        session.user.nama_office = token.nama_office as string
         if (token.name) {
           session.user.name = token.name as string
         }

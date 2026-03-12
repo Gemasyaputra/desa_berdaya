@@ -13,6 +13,8 @@ declare module 'next-auth' {
       monev_id?: string | null
       korwil_id?: string | null
       office_id?: string | null
+      jabatan?: string | null
+      nama_office?: string | null
     }
   }
 
@@ -25,6 +27,8 @@ declare module 'next-auth' {
     monev_id?: string | null
     korwil_id?: string | null
     office_id?: string | null
+    jabatan?: string | null
+    nama_office?: string | null
   }
 }
 
@@ -36,5 +40,7 @@ declare module 'next-auth/jwt' {
     monev_id?: string | null
     korwil_id?: string | null
     office_id?: string | null
+    jabatan?: string | null
+    nama_office?: string | null
   }
 }

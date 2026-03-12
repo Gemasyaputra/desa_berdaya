@@ -8,6 +8,12 @@ export type OfficeType = {
   id: number
   nama_office: string
   alamat: string | null
+  provinsi_id: number | null
+  kota_id: number | null
+  kecamatan_id: number | null
+  nama_provinsi?: string
+  nama_kota?: string
+  nama_kecamatan?: string
   created_at: Date
 }
 
@@ -23,30 +29,33 @@ export type OfficeWithStats = OfficeType & {
 export async function getOffices(searchQuery = ''): Promise<OfficeWithStats[]> {
   try {
     let result
-    if (searchQuery) {
-      const q = `%${searchQuery}%`
+    const q = searchQuery ? `%${searchQuery}%` : null;
+
+    if (q) {
       result = await sql`
         SELECT 
-          o.id,
-          o.nama_office,
-          o.alamat,
-          o.created_at,
+          o.id, o.nama_office, o.alamat, o.provinsi_id, o.kota_id, o.kecamatan_id,
+          p.nama_provinsi, kk.nama_kota, k.nama_kecamatan, o.created_at,
           (SELECT COUNT(*) FROM office_user ou WHERE ou.office_id = o.id) as jumlah_user,
           (SELECT COUNT(*) FROM desa_config dc WHERE dc.office_id = o.id) as jumlah_desa
         FROM office o
+        LEFT JOIN provinsi p ON o.provinsi_id = p.id
+        LEFT JOIN kota_kabupaten kk ON o.kota_id = kk.id
+        LEFT JOIN kecamatan k ON o.kecamatan_id = k.id
         WHERE o.nama_office ILIKE ${q}
         ORDER BY o.nama_office ASC
       `
     } else {
       result = await sql`
         SELECT 
-          o.id,
-          o.nama_office,
-          o.alamat,
-          o.created_at,
+          o.id, o.nama_office, o.alamat, o.provinsi_id, o.kota_id, o.kecamatan_id,
+          p.nama_provinsi, kk.nama_kota, k.nama_kecamatan, o.created_at,
           (SELECT COUNT(*) FROM office_user ou WHERE ou.office_id = o.id) as jumlah_user,
           (SELECT COUNT(*) FROM desa_config dc WHERE dc.office_id = o.id) as jumlah_desa
         FROM office o
+        LEFT JOIN provinsi p ON o.provinsi_id = p.id
+        LEFT JOIN kota_kabupaten kk ON o.kota_id = kk.id
+        LEFT JOIN kecamatan k ON o.kecamatan_id = k.id
         ORDER BY o.nama_office ASC
       `
     }
@@ -55,6 +64,12 @@ export async function getOffices(searchQuery = ''): Promise<OfficeWithStats[]> {
       id: Number(r.id),
       nama_office: r.nama_office,
       alamat: r.alamat,
+      provinsi_id: r.provinsi_id ? Number(r.provinsi_id) : null,
+      kota_id: r.kota_id ? Number(r.kota_id) : null,
+      kecamatan_id: r.kecamatan_id ? Number(r.kecamatan_id) : null,
+      nama_provinsi: r.nama_provinsi,
+      nama_kota: r.nama_kota,
+      nama_kecamatan: r.nama_kecamatan,
       created_at: new Date(r.created_at),
       jumlah_user: Number(r.jumlah_user),
       jumlah_desa: Number(r.jumlah_desa)
@@ -65,15 +80,21 @@ export async function getOffices(searchQuery = ''): Promise<OfficeWithStats[]> {
   }
 }
 
-export async function createOffice(nama_office: string, alamat: string | null) {
+export async function createOffice(
+  nama_office: string, 
+  alamat: string | null,
+  provinsi_id?: number | null,
+  kota_id?: number | null,
+  kecamatan_id?: number | null
+) {
   try {
     if (!nama_office.trim()) {
       return { success: false, error: 'Nama Office wajib diisi' }
     }
     
     await sql`
-      INSERT INTO office (nama_office, alamat)
-      VALUES (${nama_office}, ${alamat})
+      INSERT INTO office (nama_office, alamat, provinsi_id, kota_id, kecamatan_id)
+      VALUES (${nama_office}, ${alamat}, ${provinsi_id || null}, ${kota_id || null}, ${kecamatan_id || null})
     `
     
     revalidatePath('/dashboard/manajemen-tim')
@@ -84,7 +105,14 @@ export async function createOffice(nama_office: string, alamat: string | null) {
   }
 }
 
-export async function updateOffice(id: number, nama_office: string, alamat: string | null) {
+export async function updateOffice(
+  id: number, 
+  nama_office: string, 
+  alamat: string | null,
+  provinsi_id?: number | null,
+  kota_id?: number | null,
+  kecamatan_id?: number | null
+) {
   try {
     if (!nama_office.trim()) {
       return { success: false, error: 'Nama Office wajib diisi' }
@@ -92,7 +120,12 @@ export async function updateOffice(id: number, nama_office: string, alamat: stri
     
     await sql`
       UPDATE office
-      SET nama_office = ${nama_office}, alamat = ${alamat}
+      SET 
+        nama_office = ${nama_office}, 
+        alamat = ${alamat},
+        provinsi_id = ${provinsi_id || null},
+        kota_id = ${kota_id || null},
+        kecamatan_id = ${kecamatan_id || null}
       WHERE id = ${id}
     `
     

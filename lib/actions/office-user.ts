@@ -94,11 +94,14 @@ export async function createOfficeUser(data: {
     const pwd = data.password ? data.password : 'password123'
     const hashed = await bcrypt.hash(pwd, 10)
 
+    // Map Jabatan to Role
+    const role = data.jabatan === 'Program Head' ? 'PROG_HEAD' : 'FINANCE'
+
     // BEGIN TRANSAKSI (bisa disimulasikan berurutan karena ini server action cepat)
     // Walaupun raw pg, kita asumsikan safety
     const insertUserRes = await sql`
       INSERT INTO users (email, password_encrypted, role)
-      VALUES (${data.email}, ${hashed}, 'OFFICE')
+      VALUES (${data.email}, ${hashed}, ${role})
       RETURNING id
     `
     const userId = (insertUserRes as any[])[0].id
@@ -130,6 +133,9 @@ export async function updateOfficeUser(id: number, userId: number, data: {
       return { success: false, error: 'Nama, Email, dan Jabatan wajib diisi' }
     }
 
+    // Map Jabatan to Role
+    const role = data.jabatan === 'Program Head' ? 'PROG_HEAD' : 'FINANCE'
+
     // 1. Update User Email (cek collision dlu)
     const existing = await sql`SELECT id FROM users WHERE email = ${data.email} AND id != ${userId}`
     if ((existing as any[]).length > 0) {
@@ -140,13 +146,13 @@ export async function updateOfficeUser(id: number, userId: number, data: {
       const hashed = await bcrypt.hash(data.password, 10)
       await sql`
         UPDATE users
-        SET email = ${data.email}, password_encrypted = ${hashed}
+        SET email = ${data.email}, password_encrypted = ${hashed}, role = ${role}
         WHERE id = ${userId}
       `
     } else {
       await sql`
         UPDATE users
-        SET email = ${data.email}
+        SET email = ${data.email}, role = ${role}
         WHERE id = ${userId}
       `
     }

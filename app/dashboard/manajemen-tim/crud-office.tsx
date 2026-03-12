@@ -13,9 +13,23 @@ import {
   getOffices, createOffice, updateOffice, deleteOffice,
   type OfficeWithStats
 } from '@/lib/actions/office'
+import { getProvinsi, getKotaKabupaten, getKecamatan } from '@/app/dashboard/desa/actions'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 function emptyForm() {
-  return { nama_office: '', alamat: '' }
+  return { 
+    nama_office: '', 
+    alamat: '',
+    provinsi_id: undefined as number | undefined,
+    kota_id: undefined as number | undefined,
+    kecamatan_id: undefined as number | undefined
+  }
 }
 
 export function CRUDOffice() {
@@ -26,17 +40,52 @@ export function CRUDOffice() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState(emptyForm())
 
+  // Wilayah Data
+  const [provinsis, setProvinsis] = useState<any[]>([])
+  const [kotas, setKotas] = useState<any[]>([])
+  const [kecamatans, setKecamatans] = useState<any[]>([])
+
   const load = useCallback(async () => {
     setLoading(true)
-    try { setList(await getOffices()) } finally { setLoading(false) }
+    try { 
+      setList(await getOffices())
+      setProvinsis(await getProvinsi())
+    } finally { setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
 
+  // Cascading logic
+  useEffect(() => {
+    if (form.provinsi_id) {
+      getKotaKabupaten(form.provinsi_id).then(setKotas)
+    } else {
+      setKotas([])
+    }
+    // Reset lower fields if provinsi changes
+    if (!form.provinsi_id || (kotas.length > 0 && form.kota_id && !kotas.some(k => k.id === form.kota_id))) {
+       // Only reset if it's a change from a valid ID
+    }
+  }, [form.provinsi_id])
+
+  useEffect(() => {
+    if (form.kota_id) {
+      getKecamatan(form.kota_id).then(setKecamatans)
+    } else {
+      setKecamatans([])
+    }
+  }, [form.kota_id])
+
   const openCreate = () => { setEditingId(null); setForm(emptyForm()); setIsOpen(true) }
   const openEdit = (row: OfficeWithStats) => {
     setEditingId(row.id)
-    setForm({ nama_office: row.nama_office, alamat: row.alamat || '' })
+    setForm({ 
+      nama_office: row.nama_office, 
+      alamat: row.alamat || '',
+      provinsi_id: row.provinsi_id || undefined,
+      kota_id: row.kota_id || undefined,
+      kecamatan_id: row.kecamatan_id || undefined
+    })
     setIsOpen(true)
   }
   const closeForm = () => { setIsOpen(false); setEditingId(null); setForm(emptyForm()) }
@@ -45,8 +94,8 @@ export function CRUDOffice() {
     e.preventDefault()
     setSubmitting(true)
     const result = editingId
-      ? await updateOffice(editingId, form.nama_office, form.alamat || null)
-      : await createOffice(form.nama_office, form.alamat || null)
+      ? await updateOffice(editingId, form.nama_office, form.alamat || null, form.provinsi_id, form.kota_id, form.kecamatan_id)
+      : await createOffice(form.nama_office, form.alamat || null, form.provinsi_id, form.kota_id, form.kecamatan_id)
 
     if (result.success) {
       toast.success(editingId ? 'Office berhasil diupdate' : 'Office berhasil ditambahkan')
@@ -106,7 +155,57 @@ export function CRUDOffice() {
                   <Input required value={form.nama_office} onChange={(e) => setForm({ ...form, nama_office: e.target.value })} placeholder="Misal: Kantor Regional Jabar" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Alamat Lengkap</Label>
+                  <Label>Provinsi</Label>
+                  <Select 
+                    value={form.provinsi_id?.toString()} 
+                    onValueChange={(v) => setForm({ ...form, provinsi_id: Number(v), kota_id: undefined, kecamatan_id: undefined })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Provinsi" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {provinsis.map(p => (
+                        <SelectItem key={p.id} value={p.id.toString()}>{p.nama_provinsi}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Kota/Kabupaten</Label>
+                  <Select 
+                    disabled={!form.provinsi_id}
+                    value={form.kota_id?.toString()} 
+                    onValueChange={(v) => setForm({ ...form, kota_id: Number(v), kecamatan_id: undefined })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Kota/Kabupaten" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {kotas.map(k => (
+                        <SelectItem key={k.id} value={k.id.toString()}>{k.nama_kota}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Kecamatan</Label>
+                  <Select 
+                    disabled={!form.kota_id}
+                    value={form.kecamatan_id?.toString()} 
+                    onValueChange={(v) => setForm({ ...form, kecamatan_id: Number(v) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Kecamatan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {kecamatans.map(k => (
+                        <SelectItem key={k.id} value={k.id.toString()}>{k.nama_kecamatan}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="md:col-span-2 space-y-1.5">
+                  <Label>Alamat Lengkap (Jalan, No. Bangunan, dll)</Label>
                   <Input value={form.alamat} onChange={(e) => setForm({ ...form, alamat: e.target.value })} placeholder="Jl. Raya Desa Berdaya No.1" />
                 </div>
               </div>
@@ -153,7 +252,12 @@ export function CRUDOffice() {
                           </div>
                           <div>
                             <span className="text-sm font-black text-slate-800 block truncate leading-none mb-1">{row.nama_office}</span>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest line-clamp-1">{row.alamat || 'Alamat tidak diinput'}</span>
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex flex-wrap gap-x-2">
+                               {row.nama_kecamatan && <span>{row.nama_kecamatan},</span>}
+                               {row.nama_kota && <span>{row.nama_kota}</span>}
+                               {row.nama_provinsi && <span>({row.nama_provinsi})</span>}
+                            </div>
+                            <span className="text-[10px] font-medium text-slate-300 line-clamp-1 italic">{row.alamat || 'Detail alamat tidak diinput'}</span>
                           </div>
                         </div>
                       </td>

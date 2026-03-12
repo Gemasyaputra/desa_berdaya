@@ -24,7 +24,7 @@ export default async function KelompokPage() {
   }
 
   const [kelompokList, programList, desaList] = await Promise.all([
-    getAllKelompok(relawanId),
+    getAllKelompok(),
     getPrograms(),
     getDesaBerdayaOptions()
   ])

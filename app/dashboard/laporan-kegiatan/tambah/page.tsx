@@ -295,10 +295,11 @@ export default function TambahLaporanPage() {
       return
     }
 
-    if (!formData.bukti_url || formData.bukti_url.length === 0) {
-      toast.error('Mohon unggah minimal satu file bukti!')
-      return
-    }
+    /* Documentation is now optional as per user request */
+    // if (!formData.bukti_url || formData.bukti_url.length === 0) {
+    //   toast.error('Mohon unggah minimal satu file bukti!')
+    //   return
+    // }
 
     setLoading(true)
     startTransition(async () => {
@@ -609,7 +610,7 @@ export default function TambahLaporanPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                 <div className="space-y-4">
-                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Lampiran Bukti *</Label>
+                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Lampiran Bukti (Opsional)</Label>
                   
                   {/* Image Grid */}
                   {formData.bukti_url.length > 0 && (

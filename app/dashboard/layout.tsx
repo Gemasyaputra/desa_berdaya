@@ -118,6 +118,7 @@ export default function DashboardLayout({
 
   const isKorwil = !!(session?.user as any)?.is_korwil
   const isOffice = userRole === 'OFFICE'
+  const isAdminRole = userRole === 'ADMIN'
 
   const menuItems: MenuItem[] = !isRoleReady
     ? []
@@ -133,6 +134,15 @@ export default function DashboardLayout({
           { href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch },
           { href: '/dashboard/master-program', label: 'Master Program', icon: BookOpen },
           { href: '/dashboard/konfigurasi', label: 'Konfigurasi', icon: Settings },
+          ...(isAdminRole
+            ? [
+                {
+                  href: '/dashboard/konfigurasi/form-builder',
+                  label: 'Form Builder',
+                  icon: Settings,
+                },
+              ]
+            : []),
         ]
       : [
           { href: '/dashboard', label: 'Beranda', icon: LayoutDashboard },

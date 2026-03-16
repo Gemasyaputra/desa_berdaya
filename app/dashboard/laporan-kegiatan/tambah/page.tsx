@@ -36,6 +36,7 @@ import {
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { toast } from 'sonner'
 
 export default function TambahLaporanPage() {
@@ -222,14 +223,31 @@ export default function TambahLaporanPage() {
     }
   }
 
-  const handleCustomFieldChange = (name: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      custom_fields_data: {
-        ...prev.custom_fields_data,
-        [name]: value
+  const handleCustomFieldChange = (name: string, value: any, type?: string) => {
+    setFormData(prev => {
+      let newValue = value
+      
+      // Handle checkbox (multiple selection)
+      if (type === 'checkbox') {
+        const currentValues = Array.isArray(prev.custom_fields_data[name]) 
+          ? prev.custom_fields_data[name] 
+          : []
+        
+        if (currentValues.includes(value)) {
+          newValue = currentValues.filter((v: any) => v !== value)
+        } else {
+          newValue = [...currentValues, value]
+        }
       }
-    }))
+
+      return {
+        ...prev,
+        custom_fields_data: {
+          ...prev.custom_fields_data,
+          [name]: newValue
+        }
+      }
+    })
   }
 
   const formatRupiah = (number: number) => {
@@ -530,10 +548,11 @@ export default function TambahLaporanPage() {
                 <SectionHeader title="Form Spesifik Program" icon={FileText} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {customFields.map((field) => (
-                    <div key={field.id} className="space-y-2">
+                    <div key={field.id} className="space-y-4">
                       <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">
                         {field.field_label} {field.is_required && '*'}
                       </Label>
+                      
                       {field.field_type === 'textarea' ? (
                         <textarea
                           value={formData.custom_fields_data[field.field_name] || ''}
@@ -541,6 +560,33 @@ export default function TambahLaporanPage() {
                           className="w-full p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#7a1200] focus:border-[#7a1200] bg-slate-50/50 font-bold text-sm min-h-[100px]"
                           required={field.is_required}
                         />
+                      ) : field.field_type === 'radio' ? (
+                        <RadioGroup
+                          value={formData.custom_fields_data[field.field_name] || ''}
+                          onValueChange={(val) => handleCustomFieldChange(field.field_name, val)}
+                          className="flex flex-wrap gap-4"
+                          required={field.is_required}
+                        >
+                          {(field.field_options || []).map((opt: string) => (
+                            <div key={opt} className="flex items-center space-x-2">
+                              <RadioGroupItem value={opt} id={`${field.field_name}-${opt}`} />
+                              <Label htmlFor={`${field.field_name}-${opt}`} className="font-bold text-sm cursor-pointer">{opt}</Label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                      ) : field.field_type === 'checkbox' ? (
+                        <div className="flex flex-wrap gap-4">
+                          {(field.field_options || []).map((opt: string) => (
+                            <div key={opt} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`${field.field_name}-${opt}`}
+                                checked={(formData.custom_fields_data[field.field_name] || []).includes(opt)}
+                                onCheckedChange={() => handleCustomFieldChange(field.field_name, opt, 'checkbox')}
+                              />
+                              <Label htmlFor={`${field.field_name}-${opt}`} className="font-bold text-sm cursor-pointer">{opt}</Label>
+                            </div>
+                          ))}
+                        </div>
                       ) : (
                         <Input
                           type={field.field_type === 'number' ? 'number' : field.field_type === 'date' ? 'date' : 'text'}

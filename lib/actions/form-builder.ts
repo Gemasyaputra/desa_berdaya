@@ -54,6 +54,7 @@ export async function createFormCategory(data: FormCategoryWithFieldsInput) {
           field_name,
           field_label,
           field_type,
+          field_options,
           is_required,
           order_index
         )
@@ -62,6 +63,7 @@ export async function createFormCategory(data: FormCategoryWithFieldsInput) {
           ${field.field_name},
           ${field.field_label},
           ${field.field_type},
+          ${field.field_options || []},
           ${field.is_required ?? false},
           ${field.order_index ?? index}
         )
@@ -149,6 +151,7 @@ export async function getFormCategoryById(id: number) {
         field_name,
         field_label,
         field_type,
+        field_options,
         is_required,
         order_index
       FROM category_custom_fields
@@ -203,6 +206,7 @@ export async function updateFormCategory(
           field_name,
           field_label,
           field_type,
+          field_options,
           is_required,
           order_index
         )
@@ -211,6 +215,7 @@ export async function updateFormCategory(
           ${field.field_name},
           ${field.field_label},
           ${field.field_type},
+          ${field.field_options || []},
           ${field.is_required ?? false},
           ${field.order_index ?? index}
         )

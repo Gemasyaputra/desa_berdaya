@@ -150,7 +150,9 @@ export default function LaporanDetailPage() {
                   {Object.entries(laporan.custom_fields_data).map(([key, value]: [string, any]) => (
                     <div key={key} className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{key.replace(/_/g, ' ')}</p>
-                      <p className="font-bold text-slate-700 text-sm">{value?.toString() || '-'}</p>
+                      <p className="font-bold text-slate-700 text-sm">
+                        {Array.isArray(value) ? value.join(', ') : (value?.toString() || '-')}
+                      </p>
                     </div>
                   ))}
                 </div>

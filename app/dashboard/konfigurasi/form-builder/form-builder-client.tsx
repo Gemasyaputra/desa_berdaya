@@ -148,6 +148,7 @@ export function FormBuilderClient({
             field_name: String(f.field_name),
             field_label: String(f.field_label),
             field_type: String(f.field_type) as any,
+            field_options: Array.isArray(f.field_options) ? f.field_options : [],
             is_required: Boolean(f.is_required),
             order_index: Number(f.order_index ?? 0),
           })),
@@ -199,6 +200,7 @@ export function FormBuilderClient({
       field_name: '',
       field_label: '',
       field_type: 'text',
+      field_options: [],
       is_required: false,
       order_index: fields.length,
     } as any)
@@ -414,6 +416,8 @@ export function FormBuilderClient({
                                   <SelectItem value="date">Date</SelectItem>
                                   <SelectItem value="url">URL</SelectItem>
                                   <SelectItem value="textarea">Textarea</SelectItem>
+                                  <SelectItem value="radio">Radio Button</SelectItem>
+                                  <SelectItem value="checkbox">Checkbox</SelectItem>
                                 </SelectContent>
                               </Select>
                               {form.formState.errors.fields?.[index]?.field_type && (
@@ -462,6 +466,61 @@ export function FormBuilderClient({
                             </Button>
                           </div>
                         </div>
+
+                        {/* Field Options for Radio/Checkbox */}
+                        {(watch(`fields.${index}.field_type`) === 'radio' || watch(`fields.${index}.field_type`) === 'checkbox') && (
+                          <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-4">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm font-semibold">Opsi Pilihan (Choices)</Label>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const currentOptions = watch(`fields.${index}.field_options`) || []
+                                  setValue(`fields.${index}.field_options`, [...currentOptions, ''], { shouldValidate: true })
+                                }}
+                              >
+                                <Plus className="w-3 h-3 mr-1" />
+                                Tambah Opsi
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                              {(watch(`fields.${index}.field_options`) || []).map((option: string, optIndex: number) => (
+                                <div key={optIndex} className="flex items-center gap-2">
+                                  <Input
+                                    value={option}
+                                    onChange={(e) => {
+                                      const currentOptions = [...(watch(`fields.${index}.field_options`) || [])]
+                                      currentOptions[optIndex] = e.target.value
+                                      setValue(`fields.${index}.field_options`, currentOptions, { shouldValidate: true })
+                                    }}
+                                    placeholder={`Opsi ${optIndex + 1}`}
+                                    className="h-9"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                    onClick={() => {
+                                      const currentOptions = [...(watch(`fields.${index}.field_options`) || [])]
+                                      currentOptions.splice(optIndex, 1)
+                                      setValue(`fields.${index}.field_options`, currentOptions, { shouldValidate: true })
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                              {(watch(`fields.${index}.field_options`) || []).length === 0 && (
+                                <p className="text-xs text-slate-400 italic col-span-full">
+                                  Klik &quot;Tambah Opsi&quot; untuk menambahkan pilihan.
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}
@@ -576,4 +635,3 @@ export function FormBuilderClient({
     </div>
   )
 }
-

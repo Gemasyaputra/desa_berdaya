@@ -5,9 +5,10 @@ export const customFieldSchema = z.object({
   category_id: z.number().optional(),
   field_name: z.string().min(1, 'Nama field wajib diisi'),
   field_label: z.string().min(1, 'Label field wajib diisi'),
-  field_type: z.enum(['text', 'number', 'date', 'url', 'textarea'], {
+  field_type: z.enum(['text', 'number', 'date', 'url', 'textarea', 'radio', 'checkbox'], {
     required_error: 'Tipe field wajib dipilih',
   }),
+  field_options: z.array(z.string()).optional().default([]),
   is_required: z.boolean().default(false),
   order_index: z.number().int().nonnegative().default(0),
 })

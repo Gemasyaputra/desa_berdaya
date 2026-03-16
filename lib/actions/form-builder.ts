@@ -17,6 +17,14 @@ async function ensureAdmin() {
   return session
 }
 
+async function ensureAuthenticated() {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) {
+    throw new Error('Unauthorized')
+  }
+  return session
+}
+
 const REVALIDATE_PATH = '/dashboard/konfigurasi/form-builder'
 
 export async function createFormCategory(data: FormCategoryWithFieldsInput) {
@@ -61,7 +69,18 @@ export async function createFormCategory(data: FormCategoryWithFieldsInput) {
     }
 
     await sql`COMMIT`
+
+    // Automatic Linking logic
+    if (parsed.description) {
+      await sql`
+        UPDATE program 
+        SET form_category_id = ${categoryId}
+        WHERE nama_program = ${parsed.description}
+      `
+    }
+
     revalidatePath(REVALIDATE_PATH)
+    revalidatePath('/dashboard/master-program')
     return { success: true, id: categoryId }
   } catch (error) {
     console.error('Error createFormCategory:', error)
@@ -75,7 +94,7 @@ export async function createFormCategory(data: FormCategoryWithFieldsInput) {
 }
 
 export async function getFormCategories() {
-  await ensureAdmin()
+  await ensureAuthenticated()
 
   try {
     const rows = await sql`
@@ -101,7 +120,7 @@ export async function getFormCategories() {
 }
 
 export async function getFormCategoryById(id: number) {
-  await ensureAdmin()
+  await ensureAuthenticated()
 
   const categoryId = Number(id)
   if (Number.isNaN(categoryId)) {
@@ -199,7 +218,18 @@ export async function updateFormCategory(
     }
 
     await sql`COMMIT`
+
+    // Automatic Linking logic
+    if (parsed.description) {
+      await sql`
+        UPDATE program 
+        SET form_category_id = ${categoryId}
+        WHERE nama_program = ${parsed.description}
+      `
+    }
+
     revalidatePath(REVALIDATE_PATH)
+    revalidatePath('/dashboard/master-program')
     return { success: true }
   } catch (error) {
     console.error('Error updateFormCategory:', error)
@@ -221,14 +251,46 @@ export async function deleteFormCategory(id: number) {
   }
 
   try {
+    await sql`BEGIN`
+
+    // 1. Nullify references in program table
+    await sql`
+      UPDATE program 
+      SET form_category_id = NULL 
+      WHERE form_category_id = ${categoryId}
+    `
+
+    // 2. Nullify references in laporan_kegiatan table
+    await sql`
+      UPDATE laporan_kegiatan 
+      SET form_category_id = NULL 
+      WHERE form_category_id = ${categoryId}
+    `
+
+    // 3. Delete associated custom fields
+    await sql`
+      DELETE FROM category_custom_fields
+      WHERE category_id = ${categoryId}
+    `
+
+    // 4. Finally delete the category itself
     await sql`
       DELETE FROM form_categories
       WHERE id = ${categoryId}
     `
+
+    await sql`COMMIT`
+    
     revalidatePath(REVALIDATE_PATH)
+    revalidatePath('/dashboard/master-program')
     return { success: true }
   } catch (error) {
     console.error('Error deleteFormCategory:', error)
+    try {
+      await sql`ROLLBACK`
+    } catch {
+      // ignore
+    }
     return { success: false, error: 'Gagal menghapus kategori form' }
   }
 }

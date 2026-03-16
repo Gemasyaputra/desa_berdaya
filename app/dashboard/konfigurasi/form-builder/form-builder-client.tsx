@@ -187,7 +187,7 @@ export function FormBuilderClient({
       const result = await deleteFormCategory(id)
       if (result.success) {
         toast.success('Kategori form berhasil dihapus')
-        setCategories((prev) => prev.filter((c) => c.id !== id))
+        setCategories((prev) => prev.filter((c) => c.id != id))
       } else {
         toast.error(result.error || 'Terjadi kesalahan saat menghapus kategori form')
       }
@@ -208,26 +208,6 @@ export function FormBuilderClient({
   const watchName = watch('name')
   const watchDescription = watch('description')
 
-  useEffect(() => {
-    watchFields?.forEach((field, index) => {
-      const currentLabel = field?.field_label || ''
-      const currentName = field?.field_name || ''
-
-      // Only auto-generate when user has not manually changed field_name
-      if (!currentLabel) return
-      if (currentName && !currentName.startsWith('auto_')) return
-
-      const slug = currentLabel
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, '_')
-        .replace(/[^a-z0-9_]/g, '')
-
-      if (slug) {
-        setValue(`fields.${index}.field_name`, `auto_${slug}`)
-      }
-    })
-  }, [watchFields, setValue])
 
   // Sinkronkan pilihan awal select jika datang dari data existing (name/description sudah terisi)
   useEffect(() => {
@@ -241,16 +221,12 @@ export function FormBuilderClient({
     }
   }, [selectedKategoriId, watchName, kategoriOptions])
 
-  useEffect(() => {
-    if (!selectedProgramId && watchDescription) {
-      const found = programOptions.find(
-        (p: any) => (p as any).nama_program === watchDescription,
-      )
-      if (found) {
-        setSelectedProgramId(String((found as any).id))
-      }
-    }
-  }, [selectedProgramId, watchDescription, programOptions])
+  const filteredProgramOptions = useMemo(() => {
+    if (!selectedKategoriId) return []
+    return programOptions.filter(
+      (p: any) => String((p as any).kategori_id) === selectedKategoriId,
+    )
+  }, [programOptions, selectedKategoriId])
 
   const isEditing = editingId !== null
 
@@ -271,6 +247,8 @@ export function FormBuilderClient({
                   value={selectedKategoriId}
                   onValueChange={(value) => {
                     setSelectedKategoriId(value)
+                    setSelectedProgramId(undefined)
+                    setValue('description', '', { shouldValidate: true })
                     const selected = kategoriOptions.find(
                       (k: any) => String((k as any).id) === value,
                     )
@@ -312,7 +290,7 @@ export function FormBuilderClient({
                     <SelectValue placeholder="Pilih Program" />
                   </SelectTrigger>
                   <SelectContent>
-                    {programOptions.map((p: any) => (
+                    {filteredProgramOptions.map((p: any) => (
                       <SelectItem key={(p as any).id} value={String((p as any).id)}>
                         {(p as any).nama_program}
                       </SelectItem>
@@ -324,6 +302,31 @@ export function FormBuilderClient({
                     {form.formState.errors.description.message as string}
                   </p>
                 )}
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <h3 className="font-semibold text-slate-800">Field Wajib (Default)</h3>
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-6 text-sm">
+                  {[
+                    'Nama Desa', 'Tanggal Aktifitas', 'Nama Aktifitas',
+                    'Cabang', 'Korwil', 'Monev',
+                    'Nama Relawan', 'Kategori Program', 'Program',
+                    'Sasaran Program', 'Periode Laporan', 'Lokasi Pelaksanaan',
+                    'Jumlah PM Laki-laki', 'Jumlah PM Perempuan', 'Jumlah PM',
+                    'Jumlah Anggota Kelompok Perempuan', 'Jumlah Anggota Kelompok Laki-laki',
+                    'Terdokumentasi?'
+                  ].map((field) => (
+                    <div key={field} className="flex items-center gap-2 text-slate-600">
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                      {field}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-4 italic">
+                  * Field di atas adalah field standar yang akan muncul di setiap formulir dan tidak dapat diubah.
+                </p>
               </div>
             </div>
 
@@ -361,31 +364,29 @@ export function FormBuilderClient({
                             <div className="space-y-2 md:col-span-2">
                               <Label>Label Field *</Label>
                               <Input
-                                {...form.register(`fields.${index}.field_label` as const)}
+                                {...form.register(`fields.${index}.field_label` as const, {
+                                  onChange: (e) => {
+                                    const val = e.target.value
+                                    const slug = val
+                                      .toLowerCase()
+                                      .trim()
+                                      .replace(/\s+/g, '_')
+                                      .replace(/[^a-z0-9_]/g, '')
+                                    setValue(`fields.${index}.field_name`, slug, {
+                                      shouldValidate: true,
+                                    })
+                                  },
+                                })}
                                 placeholder="Contoh: Jumlah Peserta"
+                              />
+                              <input
+                                type="hidden"
+                                {...form.register(`fields.${index}.field_name` as const)}
                               />
                               {form.formState.errors.fields?.[index]?.field_label && (
                                 <p className="text-xs text-red-600 mt-1">
                                   {
                                     form.formState.errors.fields?.[index]?.field_label
-                                      ?.message as string
-                                  }
-                                </p>
-                              )}
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Nama Field (key)</Label>
-                              <Input
-                                {...form.register(`fields.${index}.field_name` as const)}
-                                placeholder="jumlah_peserta"
-                              />
-                              <p className="text-[10px] text-slate-500">
-                                Digunakan sebagai key JSON. Boleh disesuaikan.
-                              </p>
-                              {form.formState.errors.fields?.[index]?.field_name && (
-                                <p className="text-xs text-red-600 mt-1">
-                                  {
-                                    form.formState.errors.fields?.[index]?.field_name
                                       ?.message as string
                                   }
                                 </p>
@@ -467,6 +468,27 @@ export function FormBuilderClient({
                 </div>
               )}
             </div>
+
+            {Object.keys(form.formState.errors).length > 0 && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-sm font-bold text-red-600 mb-1">Terjadi kesalahan pada formulir:</p>
+                <ul className="list-disc list-inside text-xs text-red-500 space-y-1">
+                  {form.formState.errors.name && <li>Kategori Program: {form.formState.errors.name.message}</li>}
+                  {form.formState.errors.description && <li>Program: {form.formState.errors.description.message as string}</li>}
+                  {form.formState.errors.fields && (
+                    <>
+                      {Array.isArray(form.formState.errors.fields) ? (
+                        form.formState.errors.fields.map((err: any, idx) => (
+                          err && <li key={idx}>Field #{idx + 1}: {err.field_label?.message || err.field_name?.message || err.field_type?.message || 'Data tidak valid'}</li>
+                        ))
+                      ) : (
+                        <li>Fields: {(form.formState.errors.fields as any).message}</li>
+                      )}
+                    </>
+                  )}
+                </ul>
+              </div>
+            )}
 
             <div className="flex gap-2">
               <Button

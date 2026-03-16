@@ -42,7 +42,7 @@ export async function getDesaBerdayaOptions() {
   return []
 }
 
-export async function getLaporanKeuangan() {
+export async function getLaporanKegiatan() {
   const session = await getServerSession(authOptions)
   if (!session?.user) return []
 
@@ -62,7 +62,7 @@ export async function getLaporanKeuangan() {
   return result as any[]
 }
 
-export async function getLaporanKeuanganById(id: number) {
+export async function getLaporanKegiatanById(id: number) {
   const session = await getServerSession(authOptions)
   if (!session?.user) throw new Error('Unauthorized')
 
@@ -99,14 +99,14 @@ export async function getDesaHierarchy(desaBerdayaId: number) {
   return (result as any[])[0] || null
 }
 
-export async function getPMCounts(desaBerdayaId: number, programId: number) {
+export async function getPMCounts(desaBerdayaId: number, programId: number, kelompokId?: number) {
   const session = await getServerSession(authOptions)
   if (!session?.user) throw new Error('Unauthorized')
 
   const result = await sql`
     SELECT 
-      SUM(CASE WHEN pm.jenis_kelamin = 'Laki-laki' THEN 1 ELSE 0 END)::int as laki,
-      SUM(CASE WHEN pm.jenis_kelamin = 'Perempuan' THEN 1 ELSE 0 END)::int as perempuan,
+      SUM(CASE WHEN UPPER(pm.jenis_kelamin) = 'LAKI-LAKI' THEN 1 ELSE 0 END)::int as laki,
+      SUM(CASE WHEN UPPER(pm.jenis_kelamin) = 'PEREMPUAN' THEN 1 ELSE 0 END)::int as perempuan,
       COUNT(pm.id)::int as total,
       (
         SELECT COUNT(ka.penerima_manfaat_id)::int
@@ -115,7 +115,8 @@ export async function getPMCounts(desaBerdayaId: number, programId: number) {
         JOIN penerima_manfaat pm2 ON ka.penerima_manfaat_id = pm2.id
         WHERE k.desa_berdaya_id = ${desaBerdayaId} 
         AND k.program_id = ${programId}
-        AND pm2.jenis_kelamin = 'Laki-laki'
+        AND (${kelompokId ? kelompokId : null}::bigint IS NULL OR k.id = ${kelompokId ? kelompokId : null}::bigint)
+        AND UPPER(pm2.jenis_kelamin) = 'LAKI-LAKI'
       ) as kelompok_laki,
       (
         SELECT COUNT(ka.penerima_manfaat_id)::int
@@ -124,29 +125,71 @@ export async function getPMCounts(desaBerdayaId: number, programId: number) {
         JOIN penerima_manfaat pm2 ON ka.penerima_manfaat_id = pm2.id
         WHERE k.desa_berdaya_id = ${desaBerdayaId} 
         AND k.program_id = ${programId}
-        AND pm2.jenis_kelamin = 'Perempuan'
+        AND (${kelompokId ? kelompokId : null}::bigint IS NULL OR k.id = ${kelompokId ? kelompokId : null}::bigint)
+        AND UPPER(pm2.jenis_kelamin) = 'PEREMPUAN'
       ) as kelompok_perempuan
     FROM penerima_manfaat pm
     JOIN kelompok_anggota ka ON ka.penerima_manfaat_id = pm.id
     JOIN kelompok k ON ka.kelompok_id = k.id
     WHERE k.desa_berdaya_id = ${desaBerdayaId} 
     AND k.program_id = ${programId}
+    AND (${kelompokId ? kelompokId : null}::bigint IS NULL OR k.id = ${kelompokId ? kelompokId : null}::bigint)
   `
   return (result as any[])[0] || { laki: 0, perempuan: 0, total: 0, kelompok_laki: 0, kelompok_perempuan: 0 }
 }
 
-export async function createLaporanKeuangan(data: any) {
+export async function getProgramsByCategory(kategoriId: number) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return []
+
+  const result = await sql`
+    SELECT id, nama_program, form_category_id
+    FROM program
+    WHERE kategori_id = ${kategoriId}
+    ORDER BY nama_program ASC
+  `
+  return result as any[]
+}
+
+export async function getKelompokByDesaAndProgram(desaBerdayaId: number, programId: number) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return []
+
+  const result = await sql`
+    SELECT id, nama_kelompok, nama_pembina
+    FROM kelompok
+    WHERE desa_berdaya_id = ${desaBerdayaId} 
+    AND program_id = ${programId}
+    ORDER BY nama_kelompok ASC
+  `
+  return result as any[]
+}
+
+export async function getKelompokMembers(kelompokId: number) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return []
+
+  const result = await sql`
+    SELECT pm.id, pm.nama, pm.jenis_kelamin, pm.nik
+    FROM penerima_manfaat pm
+    JOIN kelompok_anggota ka ON ka.penerima_manfaat_id = pm.id
+    WHERE ka.kelompok_id = ${kelompokId}
+    ORDER BY pm.nama ASC
+  `
+  return result as any[]
+}
+
+export async function createLaporanKegiatan(data: any) {
   const session = await getServerSession(authOptions)
   if (!session?.user) throw new Error('Unauthorized')
 
   const result = await sql`
     INSERT INTO laporan_kegiatan (
-      desa_berdaya_id, 
-      form_category_id,
-      jenis_kegiatan, 
-      judul_kegiatan, 
-      deskripsi, 
-      total_realisasi, 
+      desa_berdaya_id,
+      jenis_kegiatan,
+      judul_kegiatan,
+      deskripsi,
+      total_realisasi,
       bukti_url,
       tanggal_kegiatan,
       sasaran_program,
@@ -158,32 +201,37 @@ export async function createLaporanKeuangan(data: any) {
       jumlah_kelompok_laki,
       jumlah_kelompok_perempuan,
       is_terdokumentasi,
-      custom_fields_data
+      custom_fields_data,
+      program_id,
+      form_category_id,
+      kelompok_id
     ) VALUES (
-      ${data.desa_berdaya_id}, 
-      ${data.form_category_id || null},
-      ${data.jenis_kegiatan}, 
-      ${data.judul_kegiatan}, 
-      ${data.deskripsi}, 
-      ${data.total_realisasi}, 
-      ${data.bukti_url},
+      ${data.desa_berdaya_id},
+      ${data.jenis_kegiatan},
+      ${data.judul_kegiatan},
+      ${data.deskripsi},
+      ${data.total_realisasi},
+      ${data.bukti_url || []},
       ${data.tanggal_kegiatan},
       ${data.sasaran_program},
       ${data.lokasi_pelaksanaan},
       ${data.periode_laporan},
-      ${data.jumlah_pm_laki || 0},
-      ${data.jumlah_pm_perempuan || 0},
-      ${data.jumlah_pm_total || 0},
-      ${data.jumlah_kelompok_laki || 0},
-      ${data.jumlah_kelompok_perempuan || 0},
-      ${data.is_terdokumentasi || false},
-      ${data.custom_fields_data || null}
+      ${data.jumlah_pm_laki},
+      ${data.jumlah_pm_perempuan},
+      ${data.jumlah_pm_total},
+      ${data.jumlah_kelompok_laki},
+      ${data.jumlah_kelompok_perempuan},
+      ${data.is_terdokumentasi},
+      ${data.custom_fields_data ? JSON.stringify(data.custom_fields_data) : null},
+      ${data.program_id},
+      ${data.form_category_id || null},
+      ${data.kelompok_id || null}
     ) RETURNING id
   `
   return { success: true, id: (result as any[])[0].id }
 }
 
-export async function updateLaporanKeuangan(id: number, data: any) {
+export async function updateLaporanKegiatan(id: number, data: any) {
   const session = await getServerSession(authOptions)
   if (!session?.user) throw new Error('Unauthorized')
 
@@ -194,13 +242,13 @@ export async function updateLaporanKeuangan(id: number, data: any) {
       judul_kegiatan = ${data.judul_kegiatan}, 
       deskripsi = ${data.deskripsi}, 
       total_realisasi = ${data.total_realisasi}, 
-      bukti_url = COALESCE(${data.bukti_url || null}, bukti_url)
+      bukti_url = ${data.bukti_url || []}
     WHERE id = ${id} RETURNING id
   `
   return { success: true, id: (result as any[])[0].id }
 }
 
-export async function deleteLaporanKeuangan(id: number) {
+export async function deleteLaporanKegiatan(id: number) {
   const session = await getServerSession(authOptions)
   if (!session?.user) throw new Error('Unauthorized')
 

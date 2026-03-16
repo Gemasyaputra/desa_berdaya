@@ -1,9 +1,12 @@
 import { getKategoriPrograms, getPrograms } from '@/lib/actions/program'
+import { getFormCategories } from '@/lib/actions/form-builder'
 import ClientProgramPanel from '@/app/dashboard/master-program/ClientProgramPanel'
+
 export default async function MasterProgramPage() {
-  const [kategoriList, programList] = await Promise.all([
+  const [kategoriList, programList, formCategories] = await Promise.all([
     getKategoriPrograms(),
-    getPrograms()
+    getPrograms(),
+    getFormCategories()
   ])
   
   return (
@@ -21,6 +24,7 @@ export default async function MasterProgramPage() {
         <ClientProgramPanel 
           initialKategori={kategoriList} 
           initialPrograms={programList} 
+          formCategories={formCategories}
         />
       </main>
     </div>

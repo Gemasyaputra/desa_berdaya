@@ -68,9 +68,10 @@ export async function deleteKategoriProgram(id: number) {
 export const getPrograms = cache(async () => {
   try {
     const rawData = await sql`
-      SELECT p.*, k.nama_kategori
+      SELECT p.*, k.nama_kategori, fc.name as form_category_name
       FROM program p
       JOIN kategori_program k ON p.kategori_id = k.id
+      LEFT JOIN form_categories fc ON p.form_category_id = fc.id
       ORDER BY k.nama_kategori ASC, p.nama_program ASC
     `
     return Array.isArray(rawData) ? rawData : []
@@ -80,11 +81,11 @@ export const getPrograms = cache(async () => {
   }
 })
 
-export async function createProgram(kategori_id: number, nama_program: string) {
+export async function createProgram(kategori_id: number, nama_program: string, data?: { form_category_id?: number }) {
   try {
     await sql`
-      INSERT INTO program (kategori_id, nama_program)
-      VALUES (${kategori_id}, ${nama_program})
+      INSERT INTO program (kategori_id, nama_program, form_category_id)
+      VALUES (${kategori_id}, ${nama_program}, ${data?.form_category_id || null})
     `
     revalidatePath('/dashboard/master-program')
     return { success: true }
@@ -94,11 +95,14 @@ export async function createProgram(kategori_id: number, nama_program: string) {
   }
 }
 
-export async function updateProgram(id: number, kategori_id: number, nama_program: string) {
+export async function updateProgram(id: number, kategori_id: number, nama_program: string, data?: { form_category_id?: number }) {
   try {
     await sql`
       UPDATE program
-      SET kategori_id = ${kategori_id}, nama_program = ${nama_program}
+      SET 
+        kategori_id = ${kategori_id}, 
+        nama_program = ${nama_program},
+        form_category_id = ${data?.form_category_id || null}
       WHERE id = ${id}
     `
     revalidatePath('/dashboard/master-program')

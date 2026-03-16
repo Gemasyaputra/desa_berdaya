@@ -23,10 +23,12 @@ import {
 
 export default function ClientProgramPanel({ 
   initialKategori, 
-  initialPrograms
+  initialPrograms,
+  formCategories
 }: { 
   initialKategori: any[], 
-  initialPrograms: any[]
+  initialPrograms: any[],
+  formCategories: any[]
 }) {
   const { toast } = useToast()
   
@@ -43,6 +45,7 @@ export default function ClientProgramPanel({
   const [activeProgram, setActiveProgram] = useState<any>(null)
   const [kategoriId, setKategoriId] = useState<string>('')
   const [namaProgram, setNamaProgram] = useState('')
+  const [formCategoryId, setFormCategoryId] = useState<string>('')
   const [isSubmittingProgram, setIsSubmittingProgram] = useState(false)
 
 
@@ -110,6 +113,7 @@ export default function ClientProgramPanel({
     setActiveProgram(null)
     setKategoriId('')
     setNamaProgram('')
+    setFormCategoryId('')
     setIsOpenProgram(true)
   }
 
@@ -118,6 +122,7 @@ export default function ClientProgramPanel({
     setActiveProgram(prog)
     setKategoriId(prog.kategori_id.toString())
     setNamaProgram(prog.nama_program || '')
+    setFormCategoryId(prog.form_category_id?.toString() || '')
     setIsOpenProgram(true)
   }
 
@@ -131,9 +136,13 @@ export default function ClientProgramPanel({
     try {
       let res
       if (isEditProgram && activeProgram) {
-        res = await updateProgram(activeProgram.id, parseInt(kategoriId), namaProgram)
+        res = await updateProgram(activeProgram.id, parseInt(kategoriId), namaProgram, {
+          form_category_id: formCategoryId ? parseInt(formCategoryId) : undefined
+        })
       } else {
-        res = await createProgram(parseInt(kategoriId), namaProgram)
+        res = await createProgram(parseInt(kategoriId), namaProgram, {
+          form_category_id: formCategoryId ? parseInt(formCategoryId) : undefined
+        })
       }
 
       if (res.success) {
@@ -191,6 +200,7 @@ export default function ClientProgramPanel({
                 <tr>
                   <th className="px-6 py-4">Kategori Program</th>
                   <th className="px-6 py-4">Nama Program</th>
+                  <th className="px-6 py-4">Tipe Form</th>
                   <th className="px-6 py-4 text-right">Aksi</th>
                 </tr>
               </thead>
@@ -206,6 +216,15 @@ export default function ClientProgramPanel({
                     <tr key={prog.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-6 py-4 font-medium text-slate-800">{prog.nama_kategori}</td>
                       <td className="px-6 py-4 text-slate-600">{prog.nama_program}</td>
+                      <td className="px-6 py-4">
+                        {prog.form_category_name ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-teal-50 text-teal-700 border border-teal-100">
+                            {prog.form_category_name}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">Default</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-right space-x-2">
                         <Button variant="outline" size="sm" onClick={() => handleOpenEditProgram(prog)} className="h-8">
                           <Edit className="w-3.5 h-3.5 mr-1" /> Edit
@@ -329,6 +348,21 @@ export default function ClientProgramPanel({
                 value={namaProgram} 
                 onChange={(e) => setNamaProgram(e.target.value)} 
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Hubungkan dengan Tipe Form (Opsional)</Label>
+              <Select value={formCategoryId} onValueChange={setFormCategoryId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Tipe Form..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">-- Tetap Default --</SelectItem>
+                  {formCategories.map((fc: any) => (
+                    <SelectItem key={fc.id} value={fc.id.toString()}>{fc.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-slate-500">Pilih kategori form dinamis yang akan digunakan untuk pelaporan program ini.</p>
             </div>
           </div>
           <DialogFooter>

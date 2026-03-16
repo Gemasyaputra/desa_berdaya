@@ -21,9 +21,7 @@ export const formCategoryBaseSchema = z.object({
 })
 
 export const formCategoryWithFieldsSchema = formCategoryBaseSchema.extend({
-  fields: z
-    .array(customFieldSchema)
-    .min(1, 'Minimal satu custom field diperlukan'),
+  fields: z.array(customFieldSchema),
 })
 
 export type CustomFieldInput = z.infer<typeof customFieldSchema>

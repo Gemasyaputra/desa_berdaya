@@ -32,6 +32,7 @@ import {
   MapPin,
   User,
   FileText,
+  TrendingUp,
 } from 'lucide-react'
 
 export default function DashboardLayout({
@@ -128,6 +129,7 @@ export default function DashboardLayout({
           { href: '/dashboard', label: 'Summary Dashboard', icon: LayoutDashboard },
           { href: '/dashboard/desa', label: 'Desa Binaan', icon: Building2 },
           { href: '/dashboard/pm', label: 'Penerima Manfaat', icon: Users },
+          { href: '/dashboard/ekonomi', label: 'Update Ekonomi', icon: TrendingUp },
           { href: '/dashboard/kelompok', label: 'Daftar Kelompok', icon: UsersRound },
           { href: '/dashboard/keuangan', label: 'Keuangan', icon: ClipboardList },
           { href: '/dashboard/laporan-kegiatan', label: 'Laporan Kegiatan', icon: FileText },
@@ -150,6 +152,7 @@ export default function DashboardLayout({
           { href: '/dashboard', label: 'Beranda', icon: LayoutDashboard },
           { href: '/dashboard/desa', label: 'Desa Binaan', icon: Building2 },
           { href: '/dashboard/pm', label: 'Penerima Manfaat', icon: Users },
+          { href: '/dashboard/ekonomi', label: 'Update Ekonomi', icon: TrendingUp },
           { href: '/dashboard/kelompok', label: 'Daftar Kelompok', icon: UsersRound },
           { href: '/dashboard/keuangan', label: 'Keuangan', icon: ClipboardList },
           { href: '/dashboard/laporan-kegiatan', label: 'Laporan Kegiatan', icon: FileText },

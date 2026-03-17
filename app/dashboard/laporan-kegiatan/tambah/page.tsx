@@ -55,8 +55,9 @@ export default function TambahLaporanPage() {
   const [pmCounts, setPmCounts] = useState<any>(null)
   const [customFields, setCustomFields] = useState<any[]>([])
   const [kelompokOptions, setKelompokOptions] = useState<any[]>([])
-  const [selectedKelompokId, setSelectedKelompokId] = useState<number>(0)
+  const [selectedKelompokIds, setSelectedKelompokIds] = useState<number[]>([])
   const [groupMembers, setGroupMembers] = useState<any[]>([])
+  const [excludedMemberIds, setExcludedMemberIds] = useState<number[]>([])
   
   const [formData, setFormData] = useState({
     desa_berdaya_id: 0,
@@ -72,7 +73,8 @@ export default function TambahLaporanPage() {
     periode_laporan: new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(new Date()),
     is_terdokumentasi: false,
     custom_fields_data: {} as Record<string, any>,
-    kelompok_id: 0
+    kelompok_ids: [] as number[],
+    penerima_manfaat_ids: [] as number[]
   })
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -112,7 +114,7 @@ export default function TambahLaporanPage() {
 
   const handleDesaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = Number(e.target.value)
-    setFormData(prev => ({ ...prev, desa_berdaya_id: id, kelompok_id: 0 }))
+    setFormData(prev => ({ ...prev, desa_berdaya_id: id, kelompok_ids: [] }))
     setKelompokOptions([])
     setGroupMembers([])
     fetchHierarchy(id)
@@ -139,9 +141,10 @@ export default function TambahLaporanPage() {
   const handleProgramChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const progId = Number(e.target.value)
     setSelectedProgramId(progId)
-    setSelectedKelompokId(0)
+    setSelectedKelompokIds([])
     setKelompokOptions([])
     setGroupMembers([])
+    setExcludedMemberIds([])
     
     const program = programOptions.find(p => Number(p.id) === progId)
     const categoryName = kategoriOptions.find(k => Number(k.id) === selectedKategoriId)?.nama_kategori
@@ -160,7 +163,7 @@ export default function TambahLaporanPage() {
           setFormData(prev => ({ 
             ...prev, 
             program_id: progId,
-            kelompok_id: 0,
+            kelompok_ids: [],
             form_category_id: program.form_category_id,
             jenis_kegiatan: categoryName?.toUpperCase() || 'EKONOMI',
             judul_kegiatan: `Laporan ${program.nama_program}`,
@@ -178,7 +181,7 @@ export default function TambahLaporanPage() {
         setFormData(prev => ({ 
           ...prev, 
           program_id: progId,
-          kelompok_id: 0,
+          kelompok_ids: [],
           form_category_id: 0,
           jenis_kegiatan: categoryName?.toUpperCase() || 'EKONOMI',
           judul_kegiatan: `Laporan ${program?.nama_program || ''}`,
@@ -193,20 +196,28 @@ export default function TambahLaporanPage() {
     }
   }
 
-  const handleKelompokChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const kId = Number(e.target.value)
-    setSelectedKelompokId(kId)
-    setFormData(prev => ({ ...prev, kelompok_id: kId }))
+  const toggleKelompok = async (id: number) => {
+    let newIds = [...selectedKelompokIds]
+    if (newIds.includes(id)) {
+      newIds = newIds.filter(i => i !== id)
+    } else {
+      newIds.push(id)
+    }
     
-    if (kId > 0) {
+    setSelectedKelompokIds(newIds)
+    setFormData(prev => ({ ...prev, kelompok_ids: newIds }))
+    
+    if (newIds.length > 0) {
       setLoading(true)
       try {
         const [members, counts] = await Promise.all([
-          getKelompokMembers(kId),
-          getPMCounts(formData.desa_berdaya_id, selectedProgramId, kId)
+          getKelompokMembers(newIds),
+          getPMCounts(formData.desa_berdaya_id, selectedProgramId, newIds)
         ])
         setGroupMembers(members)
         setPmCounts(counts)
+        setExcludedMemberIds([])
+        setFormData(prev => ({ ...prev, penerima_manfaat_ids: members.map((m: any) => m.id) }))
       } catch (e) {
         console.error(e)
         toast.error('Gagal memuat data kelompok')
@@ -215,12 +226,42 @@ export default function TambahLaporanPage() {
       }
     } else {
       setGroupMembers([])
-      // Refresh program-wide counts if kelompok is de-selected
       if (formData.desa_berdaya_id && selectedProgramId) {
         const counts = await getPMCounts(formData.desa_berdaya_id, selectedProgramId)
         setPmCounts(counts)
+        setExcludedMemberIds([])
+        setFormData(prev => ({ ...prev, penerima_manfaat_ids: [] }))
       }
     }
+  }
+
+  const toggleMemberAttendance = (memberId: number) => {
+    setExcludedMemberIds(prev => {
+      const isExcluded = prev.includes(memberId)
+      const newExcluded = isExcluded 
+        ? prev.filter(id => id !== memberId)
+        : [...prev, memberId]
+      
+      const presentMembers = groupMembers.filter(m => !newExcluded.includes(m.id))
+      
+      // Update form data
+      setFormData(f => ({ ...f, penerima_manfaat_ids: presentMembers.map(m => m.id) }))
+      
+      // Update localized counts
+      const counts = presentMembers.reduce((acc, m) => {
+        const isMan = m.jenis_kelamin?.toUpperCase() === 'LAKI-LAKI'
+        return {
+          laki: acc.laki + (isMan ? 1 : 0),
+          perempuan: acc.perempuan + (isMan ? 0 : 1),
+          total: acc.total + 1,
+          kelompok_laki: acc.kelompok_laki + (isMan ? 1 : 0),
+          kelompok_perempuan: acc.kelompok_perempuan + (isMan ? 0 : 1),
+        }
+      }, { laki: 0, perempuan: 0, total: 0, kelompok_laki: 0, kelompok_perempuan: 0 })
+      
+      setPmCounts(counts)
+      return newExcluded
+    })
   }
 
   const handleCustomFieldChange = (name: string, value: any, type?: string) => {
@@ -331,7 +372,7 @@ export default function TambahLaporanPage() {
           <ChevronLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight">Buat Laporan Kegiatan</h1>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Buat Laporan Kegiatan</h1>
           <p className="text-slate-500 text-sm font-medium">Lengkapi data di bawah untuk melaporkan aktifitas program.</p>
         </div>
       </div>
@@ -346,8 +387,8 @@ export default function TambahLaporanPage() {
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest">Informasi Wilayah</p>
-                  <CardTitle className="font-black text-lg leading-tight text-white">{hierarchy?.nama_desa || 'Pilih Desa'}</CardTitle>
+                  <p className="text-white/70 text-[10px] font-bold uppercase tracking-tight">Informasi Wilayah</p>
+                  <CardTitle className="font-bold text-lg leading-tight text-white">{hierarchy?.nama_desa || 'Pilih Desa'}</CardTitle>
                 </div>
               </div>
             </CardHeader>
@@ -369,7 +410,7 @@ export default function TambahLaporanPage() {
                   <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
                     <Users className="w-5 h-5" />
                   </div>
-                  <h3 className="font-black text-sm text-slate-800">Cakupan Manfaat (Otomatis)</h3>
+                  <h3 className="font-bold text-sm text-slate-800">Cakupan Manfaat (Otomatis)</h3>
                 </div>
               </CardHeader>
               <CardContent className="p-6 pt-2 space-y-4">
@@ -381,7 +422,7 @@ export default function TambahLaporanPage() {
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
                   <p className="text-xs text-slate-500 font-bold uppercase">Total PM Terlayani</p>
-                  <p className="text-xl font-black text-slate-800 tracking-tight">{pmCounts.total} Jiwa</p>
+                  <p className="text-xl font-bold text-slate-800 tracking-tight">{pmCounts.total} Jiwa</p>
                 </div>
               </CardContent>
             </Card>
@@ -397,7 +438,7 @@ export default function TambahLaporanPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Desa Binaan *</Label>
+                  <Label className="text-xs font-semibold text-slate-500 uppercase">Desa Binaan *</Label>
                   <select
                     value={formData.desa_berdaya_id}
                     onChange={handleDesaChange}
@@ -412,7 +453,7 @@ export default function TambahLaporanPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Kategori Program *</Label>
+                  <Label className="text-xs font-semibold text-slate-500 uppercase">Kategori Program *</Label>
                   <select
                     value={selectedKategoriId}
                     onChange={handleKategoriChange}
@@ -427,7 +468,7 @@ export default function TambahLaporanPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Pilih Program *</Label>
+                  <Label className="text-xs font-semibold text-slate-500 uppercase">Pilih Program *</Label>
                   <select
                     value={selectedProgramId}
                     onChange={handleProgramChange}
@@ -442,23 +483,37 @@ export default function TambahLaporanPage() {
                   </select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Pilih Kelompok PM (Opsional)</Label>
-                  <select
-                    value={selectedKelompokId}
-                    onChange={handleKelompokChange}
-                    className="w-full h-12 px-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#7a1200] focus:border-[#7a1200] bg-slate-50/50 font-bold text-sm"
-                    disabled={!selectedProgramId}
-                  >
-                    <option value={0}>Pilih Kelompok</option>
-                    {kelompokOptions.map(kel => (
-                      <option key={kel.id} value={kel.id}>{kel.nama_kelompok} ({kel.nama_pembina})</option>
-                    ))}
-                  </select>
+                <div className="space-y-3 md:col-span-2">
+                  <Label className="text-xs font-semibold text-slate-500 uppercase">Pilih Kelompok PM (Bisa Pilih Banyak)</Label>
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 min-h-[50px]">
+                    {!selectedProgramId ? (
+                      <p className="text-xs text-slate-400 italic">Pilih Program terlebih dahulu</p>
+                    ) : kelompokOptions.length === 0 ? (
+                      <p className="text-xs text-slate-400 italic">Tidak ada kelompok ditemukan untuk program ini</p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {kelompokOptions.map(kel => (
+                          <div key={kel.id} className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
+                            <Checkbox 
+                              id={`kel-${kel.id}`}
+                              checked={selectedKelompokIds.includes(Number(kel.id))}
+                              onCheckedChange={() => toggleKelompok(Number(kel.id))}
+                            />
+                            <Label 
+                              htmlFor={`kel-${kel.id}`}
+                              className="text-xs font-bold text-slate-700 cursor-pointer flex-1"
+                            >
+                              {kel.nama_kelompok} <span className="text-[10px] text-slate-400 font-normal">({kel.nama_pembina})</span>
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Tanggal Aktifitas *</Label>
+                  <Label className="text-xs font-semibold text-slate-500 uppercase">Tanggal Aktifitas *</Label>
                   <div className="relative">
                     <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input
@@ -472,7 +527,7 @@ export default function TambahLaporanPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Periode Laporan</Label>
+                  <Label className="text-xs font-semibold text-slate-500 uppercase">Periode Laporan</Label>
                   <Input
                     value={formData.periode_laporan}
                     onChange={(e) => setFormData(prev => ({ ...prev, periode_laporan: e.target.value }))}
@@ -483,7 +538,7 @@ export default function TambahLaporanPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Judul Aktifitas *</Label>
+                <Label className="text-xs font-semibold text-slate-500 uppercase">Judul Aktifitas *</Label>
                 <Input
                   value={formData.judul_kegiatan}
                   onChange={(e) => setFormData(prev => ({ ...prev, judul_kegiatan: e.target.value }))}
@@ -495,7 +550,7 @@ export default function TambahLaporanPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Sasaran Program</Label>
+                  <Label className="text-xs font-semibold text-slate-500 uppercase">Sasaran Program</Label>
                   <div className="relative">
                     <Target className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input
@@ -507,7 +562,7 @@ export default function TambahLaporanPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Lokasi Pelaksanaan</Label>
+                  <Label className="text-xs font-semibold text-slate-500 uppercase">Lokasi Pelaksanaan</Label>
                   <div className="relative">
                     <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input
@@ -526,18 +581,32 @@ export default function TambahLaporanPage() {
               <div className="space-y-4 pt-6 border-t border-slate-100">
                 <SectionHeader title="Anggota Kelompok" icon={Users} />
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase mb-4 italic">Klik tombol silang jika anggota tidak hadir pada kegiatan ini</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {groupMembers.map((member) => (
-                      <div key={member.id} className="flex items-center gap-3 p-3 bg-white rounded-xl shadow-sm border border-slate-100">
-                        <div className={`p-2 rounded-lg ${member.jenis_kelamin === 'Laki-laki' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'}`}>
-                          <Users className="w-4 h-4" />
+                    {groupMembers.map((member) => {
+                      const isExcluded = excludedMemberIds.includes(member.id)
+                      return (
+                        <div 
+                          key={member.id} 
+                          className={`flex items-center gap-3 p-3 bg-white rounded-xl shadow-sm border transition-all relative ${isExcluded ? 'opacity-50 grayscale border-slate-200 bg-slate-50' : 'border-slate-100'}`}
+                        >
+                          <div className={`p-2 rounded-lg ${member.jenis_kelamin === 'LAKI-LAKI' || member.jenis_kelamin === 'Laki-laki' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'}`}>
+                            <Users className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className={`text-sm font-black text-slate-800 ${isExcluded ? 'line-through' : ''}`}>{member.nama}</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase">{member.jenis_kelamin}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => toggleMemberAttendance(member.id)}
+                            className={`p-1.5 rounded-full transition-colors ${isExcluded ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-rose-50 text-rose-500 hover:bg-rose-100'}`}
+                          >
+                            {isExcluded ? <CheckCircle2 className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
+                          </button>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-black text-slate-800 truncate">{member.nama}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase">{member.jenis_kelamin}</p>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               </div>
@@ -550,7 +619,7 @@ export default function TambahLaporanPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {customFields.map((field) => (
                     <div key={field.id} className="space-y-4">
-                      <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                      <Label className="text-xs font-semibold text-slate-500 uppercase">
                         {field.field_label} {field.is_required && '*'}
                       </Label>
                       
@@ -610,7 +679,7 @@ export default function TambahLaporanPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                 <div className="space-y-4">
-                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Lampiran Bukti (Opsional)</Label>
+                  <Label className="text-xs font-semibold text-slate-500 uppercase">Lampiran Bukti (Opsional)</Label>
                   
                   {/* Image Grid */}
                   {formData.bukti_url.length > 0 && (
@@ -643,7 +712,7 @@ export default function TambahLaporanPage() {
                         className="aspect-square rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center gap-2 hover:border-[#7a1200] hover:bg-rose-50/30 transition-all group"
                       >
                         {uploading ? <Loader2 className="w-6 h-6 text-slate-400 animate-spin" /> : <Upload className="w-6 h-6 text-slate-400 group-hover:text-[#7a1200]" />}
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-[#7a1200]">Tambah Foto</span>
+                        <span className="text-[10px] font-semibold text-slate-500 uppercase group-hover:text-[#7a1200]">Tambah Foto</span>
                       </button>
                     </div>
                   )}
@@ -684,7 +753,7 @@ export default function TambahLaporanPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Deskripsi / Catatan Tambahan</Label>
+                <Label className="text-xs font-semibold text-slate-500 uppercase">Deskripsi / Catatan Tambahan</Label>
                 <textarea
                   value={formData.deskripsi}
                   onChange={(e) => setFormData(prev => ({ ...prev, deskripsi: e.target.value }))}
@@ -715,8 +784,8 @@ function InfoRow({ label, value, icon: Icon }: any) {
         <Icon className="w-4 h-4" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
-        <p className="font-bold text-slate-700 text-sm truncate">{value || '-'}</p>
+        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-tight leading-none mb-1">{label}</p>
+        <p className="font-bold text-slate-700 text-sm">{value || '-'}</p>
       </div>
     </div>
   )
@@ -729,7 +798,7 @@ function StatBox({ label, value, color }: any) {
   }
   return (
     <div className={`p-4 rounded-2xl border ${colors[color]} flex flex-col justify-between`}>
-      <p className="text-[9px] font-black uppercase tracking-widest mb-1">{label}</p>
+      <p className="text-[9px] font-semibold uppercase mb-1">{label}</p>
       <p className="text-xl font-black">{value || 0}</p>
     </div>
   )
@@ -741,7 +810,7 @@ function SectionHeader({ title, icon: Icon }: any) {
       <div className="p-2 bg-[#7a1200]/5 text-[#7a1200] rounded-lg">
         <Icon className="w-4 h-4" />
       </div>
-      <h3 className="font-black text-sm text-slate-800 uppercase tracking-wider">{title}</h3>
+      <h3 className="font-bold text-sm text-slate-800 uppercase tracking-tight">{title}</h3>
     </div>
   )
 }

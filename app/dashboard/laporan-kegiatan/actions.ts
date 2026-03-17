@@ -52,7 +52,11 @@ export async function getLaporanKegiatan() {
   const desaIds = options.map((o: any) => o.id)
 
   const result = await sql`
-    SELECT l.*, dc.nama_desa 
+    SELECT 
+      l.*, 
+      dc.nama_desa,
+      (SELECT array_agg(nama_kelompok) FROM kelompok WHERE id = ANY(l.kelompok_ids)) as nama_kelompok_list,
+      (SELECT array_agg(nama) FROM penerima_manfaat WHERE id = ANY(l.penerima_manfaat_ids)) as nama_pm_list
     FROM laporan_kegiatan l
     JOIN desa_berdaya db ON l.desa_berdaya_id = db.id
     JOIN desa_config dc ON db.desa_id = dc.id
@@ -67,7 +71,11 @@ export async function getLaporanKegiatanById(id: number) {
   if (!session?.user) throw new Error('Unauthorized')
 
   const result = await sql`
-    SELECT l.*, dc.nama_desa 
+    SELECT 
+      l.*, 
+      dc.nama_desa,
+      (SELECT array_agg(nama_kelompok) FROM kelompok WHERE id = ANY(l.kelompok_ids)) as nama_kelompok_list,
+      (SELECT array_agg(nama) FROM penerima_manfaat WHERE id = ANY(l.penerima_manfaat_ids)) as nama_pm_list
     FROM laporan_kegiatan l
     JOIN desa_berdaya db ON l.desa_berdaya_id = db.id
     JOIN desa_config dc ON db.desa_id = dc.id
@@ -99,9 +107,11 @@ export async function getDesaHierarchy(desaBerdayaId: number) {
   return (result as any[])[0] || null
 }
 
-export async function getPMCounts(desaBerdayaId: number, programId: number, kelompokId?: number) {
+export async function getPMCounts(desaBerdayaId: number, programId: number, kelompokIds?: number[]) {
   const session = await getServerSession(authOptions)
   if (!session?.user) throw new Error('Unauthorized')
+
+  const hasGroups = kelompokIds && kelompokIds.length > 0
 
   const result = await sql`
     SELECT 
@@ -115,7 +125,7 @@ export async function getPMCounts(desaBerdayaId: number, programId: number, kelo
         JOIN penerima_manfaat pm2 ON ka.penerima_manfaat_id = pm2.id
         WHERE k.desa_berdaya_id = ${desaBerdayaId} 
         AND k.program_id = ${programId}
-        AND (${kelompokId ? kelompokId : null}::bigint IS NULL OR k.id = ${kelompokId ? kelompokId : null}::bigint)
+        AND (${hasGroups ? kelompokIds : null}::bigint[] IS NULL OR k.id = ANY(${hasGroups ? kelompokIds : null}::bigint[]))
         AND UPPER(pm2.jenis_kelamin) = 'LAKI-LAKI'
       ) as kelompok_laki,
       (
@@ -125,7 +135,7 @@ export async function getPMCounts(desaBerdayaId: number, programId: number, kelo
         JOIN penerima_manfaat pm2 ON ka.penerima_manfaat_id = pm2.id
         WHERE k.desa_berdaya_id = ${desaBerdayaId} 
         AND k.program_id = ${programId}
-        AND (${kelompokId ? kelompokId : null}::bigint IS NULL OR k.id = ${kelompokId ? kelompokId : null}::bigint)
+        AND (${hasGroups ? kelompokIds : null}::bigint[] IS NULL OR k.id = ANY(${hasGroups ? kelompokIds : null}::bigint[]))
         AND UPPER(pm2.jenis_kelamin) = 'PEREMPUAN'
       ) as kelompok_perempuan
     FROM penerima_manfaat pm
@@ -133,7 +143,7 @@ export async function getPMCounts(desaBerdayaId: number, programId: number, kelo
     JOIN kelompok k ON ka.kelompok_id = k.id
     WHERE k.desa_berdaya_id = ${desaBerdayaId} 
     AND k.program_id = ${programId}
-    AND (${kelompokId ? kelompokId : null}::bigint IS NULL OR k.id = ${kelompokId ? kelompokId : null}::bigint)
+    AND (${hasGroups ? kelompokIds : null}::bigint[] IS NULL OR k.id = ANY(${hasGroups ? kelompokIds : null}::bigint[]))
   `
   return (result as any[])[0] || { laki: 0, perempuan: 0, total: 0, kelompok_laki: 0, kelompok_perempuan: 0 }
 }
@@ -165,15 +175,15 @@ export async function getKelompokByDesaAndProgram(desaBerdayaId: number, program
   return result as any[]
 }
 
-export async function getKelompokMembers(kelompokId: number) {
+export async function getKelompokMembers(kelompokIds: number[]) {
   const session = await getServerSession(authOptions)
-  if (!session?.user) return []
+  if (!session?.user || !kelompokIds || kelompokIds.length === 0) return []
 
   const result = await sql`
     SELECT pm.id, pm.nama, pm.jenis_kelamin, pm.nik
     FROM penerima_manfaat pm
     JOIN kelompok_anggota ka ON ka.penerima_manfaat_id = pm.id
-    WHERE ka.kelompok_id = ${kelompokId}
+    WHERE ka.kelompok_id = ANY(${kelompokIds})
     ORDER BY pm.nama ASC
   `
   return result as any[]
@@ -204,7 +214,8 @@ export async function createLaporanKegiatan(data: any) {
       custom_fields_data,
       program_id,
       form_category_id,
-      kelompok_id
+      kelompok_ids,
+      penerima_manfaat_ids
     ) VALUES (
       ${data.desa_berdaya_id},
       ${data.jenis_kegiatan},
@@ -225,7 +236,8 @@ export async function createLaporanKegiatan(data: any) {
       ${data.custom_fields_data ? JSON.stringify(data.custom_fields_data) : null},
       ${data.program_id},
       ${data.form_category_id || null},
-      ${data.kelompok_id || null}
+      ${data.kelompok_ids || []},
+      ${data.penerima_manfaat_ids || []}
     ) RETURNING id
   `
   return { success: true, id: (result as any[])[0].id }
@@ -242,7 +254,9 @@ export async function updateLaporanKegiatan(id: number, data: any) {
       judul_kegiatan = ${data.judul_kegiatan}, 
       deskripsi = ${data.deskripsi}, 
       total_realisasi = ${data.total_realisasi}, 
-      bukti_url = ${data.bukti_url || []}
+      bukti_url = ${data.bukti_url || []},
+      kelompok_ids = ${data.kelompok_ids || []},
+      penerima_manfaat_ids = ${data.penerima_manfaat_ids || []}
     WHERE id = ${id} RETURNING id
   `
   return { success: true, id: (result as any[])[0].id }

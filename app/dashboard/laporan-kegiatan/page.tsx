@@ -76,11 +76,11 @@ export default function LaporanKegiatanListPage() {
                 <div className="flex justify-between items-start gap-2">
                   <div className="min-w-0">
                     <div className="font-bold text-slate-800 leading-tight mb-1">{laporan.judul_kegiatan}</div>
-                    <Badge variant="outline" className="text-[10px] font-black uppercase text-teal-700 bg-teal-50 border-teal-100 px-2 py-0">
+                    <Badge variant="outline" className="text-[10px] font-bold uppercase text-teal-700 bg-teal-50 border-teal-100 px-2 py-0">
                       {laporan.jenis_kegiatan}
                     </Badge>
                   </div>
-                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-tighter shrink-0 bg-slate-100 px-2 py-1 rounded-md">
+                  <div className="text-[10px] font-semibold text-slate-500 uppercase shrink-0 bg-slate-100 px-2 py-1 rounded-md">
                     {formatDate(laporan.created_at)}
                   </div>
                 </div>
@@ -92,14 +92,14 @@ export default function LaporanKegiatanListPage() {
 
                 <div className="flex items-center gap-2 pt-2">
                   <Link href={`/dashboard/laporan-kegiatan/${laporan.id}`} className="flex-1">
-                    <Button variant="outline" size="sm" className="w-full text-teal-600 border-teal-100 hover:bg-teal-50 rounded-xl font-black text-[10px] uppercase">
+                    <Button variant="outline" size="sm" className="w-full text-teal-600 border-teal-100 hover:bg-teal-50 rounded-xl font-bold text-[10px] uppercase">
                       Lihat Detail
                     </Button>
                   </Link>
                   {canMod && (
                     <>
                       <Link href={`/dashboard/laporan-kegiatan/${laporan.id}/edit`}>
-                        <Button variant="outline" size="sm" className="text-slate-600 border-slate-100 hover:bg-slate-50 rounded-xl font-black text-[10px] uppercase">
+                        <Button variant="outline" size="sm" className="text-slate-600 border-slate-100 hover:bg-slate-50 rounded-xl font-bold text-[10px] uppercase">
                           Edit
                         </Button>
                       </Link>

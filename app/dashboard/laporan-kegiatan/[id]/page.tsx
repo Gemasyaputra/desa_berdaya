@@ -68,7 +68,7 @@ export default function LaporanDetailPage() {
         </Button>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-slate-800 tracking-tight">{laporan.judul_kegiatan}</h1>
+            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{laporan.judul_kegiatan}</h1>
             <Badge variant="outline" className="bg-white text-teal-700 border-teal-200">
               {laporan.jenis_kegiatan}
             </Badge>
@@ -84,7 +84,7 @@ export default function LaporanDetailPage() {
             <CardHeader className="bg-[#7a1200] text-white p-6 border-none">
               <div className="flex items-center gap-3">
                 <MapPin className="w-5 h-5 text-white/70" />
-                <CardTitle className="font-black text-lg text-white">{laporan.nama_desa}</CardTitle>
+                <CardTitle className="font-bold text-lg text-white">{laporan.nama_desa}</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
@@ -97,7 +97,7 @@ export default function LaporanDetailPage() {
 
           <Card className="bg-white border-none shadow-xl shadow-slate-200/50 overflow-hidden rounded-[2rem]">
             <CardHeader className="p-6 pb-2 border-none">
-              <h3 className="font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <h3 className="font-bold text-sm text-slate-800 uppercase tracking-tight flex items-center gap-2">
                 <Users className="w-4 h-4 text-blue-600" /> Cakupan PM
               </h3>
             </CardHeader>
@@ -110,7 +110,7 @@ export default function LaporanDetailPage() {
               </div>
               <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
                 <p className="text-xs text-slate-500 font-bold uppercase">Total Manfaat</p>
-                <p className="text-xl font-black text-slate-800">{laporan.jumlah_pm_total} Jiwa</p>
+                <p className="text-xl font-bold text-slate-800">{laporan.jumlah_pm_total} Jiwa</p>
               </div>
             </CardContent>
           </Card>
@@ -124,14 +124,24 @@ export default function LaporanDetailPage() {
                 <DetailItem label="Tanggal Pelaksanaan" value={formatDate(laporan.tanggal_kegiatan)} icon={Calendar} />
                 <DetailItem label="Lokasi" value={laporan.lokasi_pelaksanaan} icon={MapPin} />
                 <DetailItem label="Sasaran" value={laporan.sasaran_program} icon={Target} />
+                <DetailItem 
+                  label="Kelompok" 
+                  value={Array.isArray(laporan.nama_kelompok_list) && laporan.nama_kelompok_list.length > 0 ? laporan.nama_kelompok_list.join(', ') : '-'} 
+                  icon={Users} 
+                />
+                <DetailItem 
+                  label="Daftar Hadir (PM)" 
+                  value={Array.isArray(laporan.nama_pm_list) && laporan.nama_pm_list.length > 0 ? laporan.nama_pm_list.join(', ') : '-'} 
+                  icon={Users} 
+                />
               </div>
             </div>
 
             <div className="space-y-4">
-              <h3 className="font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <h3 className="font-bold text-sm text-slate-800 uppercase tracking-tight flex items-center gap-2">
                 <ClipboardList className="w-4 h-4 text-[#7a1200]" /> Deskripsi Kegiatan
                 {laporan.is_terdokumentasi && (
-                  <div className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-black uppercase tracking-tight">
+                  <div className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-bold uppercase tracking-tight">
                     <CheckCircle2 className="w-3 h-3" /> Terdokumentasi
                   </div>
                 )}
@@ -143,13 +153,13 @@ export default function LaporanDetailPage() {
 
             {laporan.custom_fields_data && Object.keys(laporan.custom_fields_data).length > 0 && (
               <div className="space-y-4 mt-8 pt-8 border-t border-slate-100">
-                <h3 className="font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                <h3 className="font-bold text-sm text-slate-800 uppercase tracking-tight flex items-center gap-2">
                   <FileText className="w-4 h-4 text-teal-600" /> Informasi Tambahan
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {Object.entries(laporan.custom_fields_data).map(([key, value]: [string, any]) => (
                     <div key={key} className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{key.replace(/_/g, ' ')}</p>
+                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-tight mb-1">{key.replace(/_/g, ' ')}</p>
                       <p className="font-bold text-slate-700 text-sm">
                         {Array.isArray(value) ? value.join(', ') : (value?.toString() || '-')}
                       </p>
@@ -160,7 +170,7 @@ export default function LaporanDetailPage() {
             )}
 
             <div className="mt-8 pt-8 border-t border-slate-100 space-y-4">
-              <h3 className="font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <h3 className="font-bold text-sm text-slate-800 uppercase tracking-tight flex items-center gap-2">
                 <FileImage className="w-4 h-4 text-[#7a1200]" /> Lampiran Bukti
               </h3>
               {Array.isArray(laporan.bukti_url) && laporan.bukti_url.length > 0 ? (
@@ -175,7 +185,7 @@ export default function LaporanDetailPage() {
                     >
                       <img src={url} alt={`Bukti ${index + 1}`} className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                         <Badge variant="secondary" className="bg-white/90 text-[10px] font-black uppercase text-slate-800">Lihat</Badge>
+                         <Badge variant="secondary" className="bg-white/90 text-[10px] font-bold uppercase text-slate-800">Lihat</Badge>
                       </div>
                     </a>
                   ))}
@@ -208,8 +218,8 @@ function InfoRow({ label, value, icon: Icon }: any) {
         <Icon className="w-4 h-4" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
-        <p className="font-bold text-slate-700 text-sm truncate">{value || '-'}</p>
+        <p className="text-[10px] font-semibold text-slate-500 uppercase leading-none mb-1">{label}</p>
+        <p className="font-bold text-slate-700 text-sm">{value || '-'}</p>
       </div>
     </div>
   )
@@ -222,8 +232,8 @@ function DetailItem({ label, value, icon: Icon }: any) {
         <Icon className="w-6 h-6" />
       </div>
       <div>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
-        <p className="font-black text-slate-800 text-base">{value || '-'}</p>
+        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-tight leading-none mb-1">{label}</p>
+        <p className="font-bold text-slate-800 text-base">{value || '-'}</p>
       </div>
     </div>
   )
@@ -236,8 +246,8 @@ function StatBox({ label, value, color }: any) {
   }
   return (
     <div className={`p-3 rounded-2xl border ${colors[color]}`}>
-      <p className="text-[9px] font-black uppercase tracking-widest leading-tight">{label}</p>
-      <p className="text-lg font-black">{value || 0}</p>
+      <p className="text-[9px] font-semibold uppercase leading-tight">{label}</p>
+      <p className="text-lg font-bold">{value || 0}</p>
     </div>
   )
 }

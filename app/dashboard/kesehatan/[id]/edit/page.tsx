@@ -140,6 +140,12 @@ export default function EditKesehatanPage() {
     loadInitialData()
   }, [id])
 
+  useEffect(() => {
+    if (session?.user?.name && !formData.nama_relawan) {
+      setFormData((prev: any) => ({ ...prev, nama_relawan: session?.user?.name }))
+    }
+  }, [session?.user?.name])
+
   const handleDesaChange = async (val: string) => {
     const desaId = parseInt(val)
     setSelectedDesaId(desaId)
@@ -249,7 +255,7 @@ export default function EditKesehatanPage() {
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pilih Program</Label>
                 <select 
-                  value={formData.program_kesehatan}
+                  value={formData.program_kesehatan || ''}
                   onChange={(e) => setFormData((prev: any) => ({ ...prev, program_kesehatan: e.target.value }))}
                   className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 font-bold focus:ring-[#7a1200]"
                   required
@@ -274,7 +280,7 @@ export default function EditKesehatanPage() {
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Bulan</Label>
                 <select 
-                  value={formData.bulan}
+                  value={formData.bulan || ''}
                   onChange={(e) => setFormData((prev: any) => ({ ...prev, bulan: parseInt(e.target.value) }))}
                   className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 font-bold focus:ring-[#7a1200]"
                   required
@@ -386,14 +392,14 @@ export default function EditKesehatanPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pendampingan Khusus?</Label>
-                  <select value={formData.anak_pendampingan_khusus} onChange={(e) => setFormData((prev: any) => ({ ...prev, anak_pendampingan_khusus: e.target.value }))} className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 font-bold focus:ring-[#7a1200]">
+                  <select value={formData.anak_pendampingan_khusus || ''} onChange={(e) => setFormData((prev: any) => ({ ...prev, anak_pendampingan_khusus: e.target.value }))} className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 font-bold focus:ring-[#7a1200]">
                     <option value="Ya">Ya</option>
                     <option value="Tidak">Tidak</option>
                   </select>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ASI Eksklusif (Bulan)</Label>
-                  <select value={formData.anak_asi_eksklusif} onChange={(e) => setFormData((prev: any) => ({ ...prev, anak_asi_eksklusif: parseInt(e.target.value) }))} className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 font-bold focus:ring-[#7a1200]">
+                  <select value={formData.anak_asi_eksklusif || ''} onChange={(e) => setFormData((prev: any) => ({ ...prev, anak_asi_eksklusif: parseInt(e.target.value) }))} className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 font-bold focus:ring-[#7a1200]">
                     {[1, 2, 3, 4, 5, 6].map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 </div>
@@ -529,13 +535,13 @@ export default function EditKesehatanPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Penanggung Biaya</Label>
-                   <select value={formData.lansia_penanggung_biaya} onChange={(e) => setFormData((prev: any) => ({ ...prev, lansia_penanggung_biaya: e.target.value }))} className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 font-bold focus:ring-[#7a1200]">
+                   <select value={formData.lansia_penanggung_biaya || ''} onChange={(e) => setFormData((prev: any) => ({ ...prev, lansia_penanggung_biaya: e.target.value }))} className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 font-bold focus:ring-[#7a1200]">
                     {PENANGGUNG_BIAYA.map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kepemilikan BPJS</Label>
-                   <select value={formData.lansia_kepemilikan_bpjs} onChange={(e) => setFormData((prev: any) => ({ ...prev, lansia_kepemilikan_bpjs: e.target.value }))} className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 font-bold focus:ring-[#7a1200]">
+                   <select value={formData.lansia_kepemilikan_bpjs || ''} onChange={(e) => setFormData((prev: any) => ({ ...prev, lansia_kepemilikan_bpjs: e.target.value }))} className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 font-bold focus:ring-[#7a1200]">
                     <option value="Ya">Ya</option>
                     <option value="Tidak">Tidak</option>
                   </select>

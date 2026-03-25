@@ -11,6 +11,7 @@ import {
   User, 
   ExternalLink,
   ChevronRight,
+  ChevronDown,
   Filter,
   Trash2,
   Edit
@@ -25,6 +26,8 @@ export default function EkonomiPage() {
   const [updates, setUpdates] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'selesai'>('all')
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     loadData()
@@ -53,10 +56,47 @@ export default function EkonomiPage() {
     }
   }
 
-  const filteredUpdates = updates.filter(u => 
-    u.nama_pm.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.nik_pm.includes(searchQuery)
-  )
+  const filteredUpdates = updates.filter(u => {
+    const matchSearch = u.nama_pm.toLowerCase().includes(searchQuery.toLowerCase()) || u.nik_pm.includes(searchQuery)
+    const matchStatus = statusFilter === 'all' ? true : (statusFilter === 'pending' ? !u.checked : u.checked)
+    return matchSearch && matchStatus
+  })
+
+  const groupedByKelompok = filteredUpdates.reduce((acc, curr) => {
+    const kId = curr.kelompok_id || 'tanpa_kelompok'
+    const kNama = curr.nama_kelompok || 'Tanpa Kelompok'
+    
+    if (!acc[kId]) {
+      acc[kId] = {
+        kelompok_id: kId,
+        nama_kelompok: kNama,
+        members: {}
+      }
+    }
+    
+    const pmId = curr.penerima_manfaat_id
+    if (!acc[kId].members[pmId]) {
+      acc[kId].members[pmId] = {
+        penerima_manfaat_id: pmId,
+        nama_pm: curr.nama_pm,
+        nik_pm: curr.nik_pm,
+        kategori: curr.kategori,
+        updates: Array(12).fill(null)
+      }
+    }
+    
+    acc[kId].members[pmId].updates[curr.bulan - 1] = curr
+    return acc
+  }, {} as Record<string, any>)
+
+  const groupsArray = Object.values(groupedByKelompok).map((g: any) => ({
+    ...g,
+    membersArray: Object.values(g.members)
+  }))
+
+  const toggleGroup = (kId: string) => {
+    setExpandedGroups(prev => ({ ...prev, [kId]: !prev[kId] }))
+  }
 
   const getBulanName = (month: number) => {
     const names = [
@@ -100,45 +140,114 @@ export default function EkonomiPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            
+            <div className="flex items-center gap-2 mb-6">
+              <Button 
+                variant={statusFilter === 'all' ? 'default' : 'outline'} 
+                size="sm" 
+                onClick={() => setStatusFilter('all')}
+                className={statusFilter === 'all' ? 'bg-slate-800 text-white rounded-xl' : 'rounded-xl text-slate-500'}
+              >Semua</Button>
+              <Button 
+                variant={statusFilter === 'pending' ? 'default' : 'outline'} 
+                size="sm" 
+                onClick={() => setStatusFilter('pending')}
+                className={statusFilter === 'pending' ? 'bg-amber-500 hover:bg-amber-600 text-white rounded-xl' : 'rounded-xl text-slate-500'}
+              >Pending</Button>
+              <Button 
+                variant={statusFilter === 'selesai' ? 'default' : 'outline'} 
+                size="sm" 
+                onClick={() => setStatusFilter('selesai')}
+                className={statusFilter === 'selesai' ? 'bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl' : 'rounded-xl text-slate-500'}
+              >Selesai</Button>
+            </div>
 
             {loading ? (
               <div className="py-12 text-center text-slate-400 font-medium">Memuat data...</div>
             ) : filteredUpdates.length === 0 ? (
               <div className="py-12 text-center text-slate-400 font-medium italic">Tidak ada data ditemukan</div>
             ) : (
-              <div className="space-y-4">
-                {filteredUpdates.map((item) => (
-                  <div key={item.id} className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-500/5 transition-all gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 font-bold text-xs group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
-                        #PM
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-800 tracking-tight">{item.nama_pm}</h3>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{item.nik_pm}</p>
-                        <div className="flex items-center gap-3 mt-1">
-                          <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border-none font-bold text-[10px] px-2 py-0">
-                            {item.kategori}
-                          </Badge>
-                          <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1 uppercase">
-                            <Calendar className="w-3 h-3" /> {getBulanName(item.bulan)} {item.tahun}
-                          </span>
+              <div className="space-y-6">
+                {groupsArray.map((group: any) => {
+                  const isExpanded = expandedGroups[group.kelompok_id]
+                  return (
+                    <div key={group.kelompok_id} className="bg-white border text-black border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                      {/* Accordion Header */}
+                      <div 
+                        onClick={() => toggleGroup(group.kelompok_id)}
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                            <TrendingUp className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-slate-800 text-lg">{group.nama_kelompok}</h2>
+                            <p className="text-xs text-slate-500 font-medium">{group.membersArray.length} Anggota PM</p>
+                          </div>
                         </div>
+                        <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-600 pointer-events-none">
+                          {isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+                        </Button>
                       </div>
+
+                      {/* Accordion Content */}
+                      {isExpanded && (
+                        <div className="p-4 pt-0 border-t border-slate-100 bg-slate-50/50">
+                          <div className="space-y-4 mt-4">
+                            {group.membersArray.map((person: any) => (
+                              <div key={person.penerima_manfaat_id} className="p-5 bg-white rounded-xl border border-slate-200 hover:border-emerald-200 hover:shadow-md transition-all">
+                                <div className="flex items-center gap-4 mb-4">
+                                  <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 font-bold text-xs group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors uppercase">
+                                    #PM
+                                  </div>
+                                  <div>
+                                    <h3 className="font-bold text-slate-800 tracking-tight">{person.nama_pm}</h3>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{person.nik_pm}</p>
+                                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                                      <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 font-bold text-[10px] px-2 py-0 border-none">
+                                        {person.kategori || 'Ekonomi'}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-6 sm:grid-cols-12 gap-2 mt-4 pt-4 border-t border-slate-50">
+                                  {person.updates.map((update: any, idx: number) => {
+                                    const monthName = getBulanName(idx + 1).substring(0, 3)
+                                    if (!update) {
+                                      return (
+                                        <div key={idx} className="flex flex-col items-center justify-center py-2 rounded-xl bg-slate-50 border border-slate-100 opacity-50">
+                                          <span className="text-[10px] font-bold text-slate-400">{monthName}</span>
+                                          <div className="w-2 h-2 rounded-full bg-slate-300 mt-1"></div>
+                                        </div>
+                                      )
+                                    }
+                                    return (
+                                      <div 
+                                        key={update.id}
+                                        onClick={() => router.push(`/dashboard/ekonomi/${update.id}/edit`)}
+                                        className={`flex flex-col items-center justify-center py-2 rounded-xl border cursor-pointer transition-all hover:scale-105 shadow-sm ${
+                                          update.checked 
+                                            ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300' 
+                                            : 'bg-amber-50 border-amber-200 hover:bg-amber-100 hover:border-amber-300'
+                                        }`}
+                                        title={update.checked ? 'Selesai - Klik untuk edit' : 'Pending - Klik untuk isi'}
+                                      >
+                                        <span className={`text-[10px] font-bold ${update.checked ? 'text-emerald-700' : 'text-amber-700'}`}>{monthName}</span>
+                                        <div className={`w-2 h-2 rounded-full mt-1 ${update.checked ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
-                       <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/ekonomi/${item.id}/edit`)} className="rounded-xl hover:text-blue-600 hover:bg-blue-50">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="rounded-xl hover:text-rose-600 hover:bg-rose-50">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/ekonomi/${item.id}`)} className="rounded-xl hover:text-emerald-600 hover:bg-emerald-50">
-                        <ChevronRight className="w-5 h-5" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>

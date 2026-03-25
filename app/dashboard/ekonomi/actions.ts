@@ -15,7 +15,9 @@ export async function getEkonomiUpdates() {
 
   if (role === 'RELAWAN' || role === 'PROG_HEAD') {
     result = await sql`
-      SELECT eu.*, pm.nama as nama_pm, pm.nik as nik_pm
+      SELECT eu.*, pm.nama as nama_pm, pm.nik as nik_pm,
+             (SELECT k.nama_kelompok FROM kelompok_anggota ka JOIN kelompok k ON ka.kelompok_id = k.id WHERE ka.penerima_manfaat_id = pm.id LIMIT 1) as nama_kelompok,
+             (SELECT k.id FROM kelompok_anggota ka JOIN kelompok k ON ka.kelompok_id = k.id WHERE ka.penerima_manfaat_id = pm.id LIMIT 1) as kelompok_id
       FROM ekonomi_update eu
       JOIN penerima_manfaat pm ON eu.penerima_manfaat_id = pm.id
       WHERE eu.operator_id = ${operatorId}
@@ -23,14 +25,18 @@ export async function getEkonomiUpdates() {
     ` as any[]
   } else if (role === 'ADMIN' || role === 'MONEV' || role === 'FINANCE') {
     result = await sql`
-      SELECT eu.*, pm.nama as nama_pm, pm.nik as nik_pm
+      SELECT eu.*, pm.nama as nama_pm, pm.nik as nik_pm,
+             (SELECT k.nama_kelompok FROM kelompok_anggota ka JOIN kelompok k ON ka.kelompok_id = k.id WHERE ka.penerima_manfaat_id = pm.id LIMIT 1) as nama_kelompok,
+             (SELECT k.id FROM kelompok_anggota ka JOIN kelompok k ON ka.kelompok_id = k.id WHERE ka.penerima_manfaat_id = pm.id LIMIT 1) as kelompok_id
       FROM ekonomi_update eu
       JOIN penerima_manfaat pm ON eu.penerima_manfaat_id = pm.id
       ORDER BY eu.tahun DESC, eu.bulan DESC
     ` as any[]
   } else if (role === 'OFFICE' && session.user.office_id) {
     result = await sql`
-      SELECT eu.*, pm.nama as nama_pm, pm.nik as nik_pm
+      SELECT eu.*, pm.nama as nama_pm, pm.nik as nik_pm,
+             (SELECT k.nama_kelompok FROM kelompok_anggota ka JOIN kelompok k ON ka.kelompok_id = k.id WHERE ka.penerima_manfaat_id = pm.id LIMIT 1) as nama_kelompok,
+             (SELECT k.id FROM kelompok_anggota ka JOIN kelompok k ON ka.kelompok_id = k.id WHERE ka.penerima_manfaat_id = pm.id LIMIT 1) as kelompok_id
       FROM ekonomi_update eu
       JOIN penerima_manfaat pm ON eu.penerima_manfaat_id = pm.id
       JOIN desa_berdaya db ON pm.desa_berdaya_id = db.id

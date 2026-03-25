@@ -15,7 +15,9 @@ export async function getKesehatanUpdates() {
 
   if (role === 'RELAWAN' || role === 'PROG_HEAD') {
     result = await sql`
-      SELECT ku.*, pm.nama as nama_pm, pm.nik as nik_pm
+      SELECT ku.*, pm.nama as nama_pm, pm.nik as nik_pm,
+             (SELECT k.nama_kelompok FROM kelompok_anggota ka JOIN kelompok k ON ka.kelompok_id = k.id WHERE ka.penerima_manfaat_id = pm.id LIMIT 1) as nama_kelompok,
+             (SELECT k.id FROM kelompok_anggota ka JOIN kelompok k ON ka.kelompok_id = k.id WHERE ka.penerima_manfaat_id = pm.id LIMIT 1) as kelompok_id
       FROM kesehatan_update ku
       JOIN penerima_manfaat pm ON ku.penerima_manfaat_id = pm.id
       WHERE ku.operator_id = ${operatorId}
@@ -23,14 +25,18 @@ export async function getKesehatanUpdates() {
     ` as any[]
   } else if (role === 'ADMIN' || role === 'MONEV' || role === 'FINANCE') {
     result = await sql`
-      SELECT ku.*, pm.nama as nama_pm, pm.nik as nik_pm
+      SELECT ku.*, pm.nama as nama_pm, pm.nik as nik_pm,
+             (SELECT k.nama_kelompok FROM kelompok_anggota ka JOIN kelompok k ON ka.kelompok_id = k.id WHERE ka.penerima_manfaat_id = pm.id LIMIT 1) as nama_kelompok,
+             (SELECT k.id FROM kelompok_anggota ka JOIN kelompok k ON ka.kelompok_id = k.id WHERE ka.penerima_manfaat_id = pm.id LIMIT 1) as kelompok_id
       FROM kesehatan_update ku
       JOIN penerima_manfaat pm ON ku.penerima_manfaat_id = pm.id
       ORDER BY ku.tahun DESC, ku.bulan DESC
     ` as any[]
   } else if (role === 'OFFICE' && session.user.office_id) {
     result = await sql`
-      SELECT ku.*, pm.nama as nama_pm, pm.nik as nik_pm
+      SELECT ku.*, pm.nama as nama_pm, pm.nik as nik_pm,
+             (SELECT k.nama_kelompok FROM kelompok_anggota ka JOIN kelompok k ON ka.kelompok_id = k.id WHERE ka.penerima_manfaat_id = pm.id LIMIT 1) as nama_kelompok,
+             (SELECT k.id FROM kelompok_anggota ka JOIN kelompok k ON ka.kelompok_id = k.id WHERE ka.penerima_manfaat_id = pm.id LIMIT 1) as kelompok_id
       FROM kesehatan_update ku
       JOIN penerima_manfaat pm ON ku.penerima_manfaat_id = pm.id
       JOIN desa_berdaya db ON pm.desa_berdaya_id = db.id
@@ -172,12 +178,36 @@ export async function getDesaBerdayaOptions() {
   const session = await getServerSession(authOptions)
   if (!session?.user) return []
 
-  const result = await sql`
-    SELECT db.id, dc.nama_desa
-    FROM desa_berdaya db
-    JOIN desa_config dc ON db.desa_id = dc.id
-    ORDER BY dc.nama_desa ASC
-  ` as any[]
+  const role = session.user.role
+  const operatorId = session.user.operator_id
+
+  let result: any[] = []
+
+  if (role === 'RELAWAN') {
+    result = await sql`
+      SELECT db.id, dc.nama_desa
+      FROM desa_berdaya db
+      JOIN desa_config dc ON db.desa_id = dc.id
+      WHERE db.relawan_id = ${operatorId}
+      ORDER BY dc.nama_desa ASC
+    ` as any[]
+  } else if (role === 'OFFICE' && session.user.office_id) {
+    result = await sql`
+      SELECT db.id, dc.nama_desa
+      FROM desa_berdaya db
+      JOIN desa_config dc ON db.desa_id = dc.id
+      WHERE dc.office_id = ${session.user.office_id}
+      ORDER BY dc.nama_desa ASC
+    ` as any[]
+  } else {
+    // ADMIN, MONEV, FINANCE, etc see all
+    result = await sql`
+      SELECT db.id, dc.nama_desa
+      FROM desa_berdaya db
+      JOIN desa_config dc ON db.desa_id = dc.id
+      ORDER BY dc.nama_desa ASC
+    ` as any[]
+  }
 
   return result
 }

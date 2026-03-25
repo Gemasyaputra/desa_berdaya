@@ -104,6 +104,11 @@ export default function TambahKesehatanPage() {
     async function loadDesas() {
       const options = await getDesaBerdayaOptions()
       setDesaOptions(options)
+      
+      // Auto-select if only one desa
+      if (options.length === 1) {
+        handleDesaChange(String(options[0].id))
+      }
     }
     loadDesas()
   }, [])

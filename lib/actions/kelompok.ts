@@ -190,6 +190,51 @@ export async function createKelompok(
       }
     }
 
+    // 3. Auto-generate 12 months pending updates for Ekonomi/Kesehatan
+    const programRaw = await sql`
+      SELECT p.id, kp.nama_kategori 
+      FROM program p 
+      LEFT JOIN kategori_program kp ON p.kategori_id = kp.id 
+      WHERE p.id = ${program_id}
+    `
+    const programData = Array.isArray(programRaw) && programRaw.length > 0 ? programRaw[0] : null
+    
+    if (programData && (programData as any).nama_kategori) {
+      const kategori = (programData as any).nama_kategori.toLowerCase()
+      
+      if (kategori.includes('ekonomi') || kategori.includes('kesehatan')) {
+        const isEkonomi = kategori.includes('ekonomi')
+        
+        if (penerima_manfaat_ids && penerima_manfaat_ids.length > 0) {
+          for (const pm_id of penerima_manfaat_ids) {
+            for (let month = 1; month <= 12; month++) {
+              if (isEkonomi) {
+                await sql`
+                  INSERT INTO ekonomi_update (
+                    tahun, bulan, checked, penerima_manfaat_id, operator_id,
+                    kategori, tipe, komoditas_produk, status_gk, program,
+                    jumlah_tanggungan, modal, pengeluaran_operasional, omzet, pendapatan, pendapatan_lainnya, nilai_ntp
+                  ) VALUES (
+                    ${tahun}, ${month}, false, ${pm_id}, ${final_relawan_id},
+                    '-', '-', '-', '-', '-',
+                    0, 0, 0, 0, 0, 0, 0
+                  )
+                `
+              } else {
+                await sql`
+                  INSERT INTO kesehatan_update (
+                    tahun, bulan, checked, penerima_manfaat_id, operator_id
+                  ) VALUES (
+                    ${tahun}, ${month}, false, ${pm_id}, ${final_relawan_id}
+                  )
+                `
+              }
+            }
+          }
+        }
+      }
+    }
+
     revalidatePath(`/dashboard/desa/${desa_berdaya_id}`)
     revalidatePath(`/dashboard/master-program`)
     return { success: true }

@@ -83,8 +83,8 @@ export default function EditEkonomiPage() {
             bulan: data.bulan,
             checked: data.checked,
             penerima_manfaat_id: data.penerima_manfaat_id,
-            kategori: data.kategori,
-            tipe: data.tipe,
+            kategori: data.kategori || 'Agrobisnis',
+            tipe: data.tipe || 'Pertanian',
             komoditas_produk: data.komoditas_produk || '',
             jumlah_tanggungan: data.jumlah_tanggungan || 0,
             modal: Number(data.modal) || 0,
@@ -165,11 +165,11 @@ export default function EditEkonomiPage() {
   }
 
   const handleKategoriChange = (val: string) => {
-    const tipeOptions = DATA_CONFIG[val as keyof typeof DATA_CONFIG].tipe
+    const tipeOptions = DATA_CONFIG[val as keyof typeof DATA_CONFIG]?.tipe || []
     setFormData(prev => ({ 
       ...prev, 
       kategori: val, 
-      tipe: tipeOptions[0] 
+      tipe: tipeOptions[0] || ''
     }))
   }
 
@@ -324,7 +324,7 @@ export default function EditEkonomiPage() {
                     onChange={(e) => setFormData(prev => ({ ...prev, tipe: e.target.value }))}
                     className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 font-bold"
                   >
-                    {DATA_CONFIG[formData.kategori as keyof typeof DATA_CONFIG].tipe.map(t => <option key={t} value={t}>{t}</option>)}
+                    {DATA_CONFIG[formData.kategori as keyof typeof DATA_CONFIG]?.tipe?.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
 
@@ -354,7 +354,7 @@ export default function EditEkonomiPage() {
                     onChange={(e) => setFormData(prev => ({ ...prev, program: e.target.value }))}
                     className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 font-bold"
                   >
-                   {DATA_CONFIG[formData.kategori as keyof typeof DATA_CONFIG].program.map(p => <option key={p} value={p}>{p}</option>)}
+                   {DATA_CONFIG[formData.kategori as keyof typeof DATA_CONFIG]?.program?.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
               </div>

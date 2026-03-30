@@ -227,7 +227,7 @@ export default function KesehatanPage() {
                                     const monthName = getBulanName(idx + 1).substring(0, 3)
                                     if (!update) {
                                       return (
-                                        <div key={idx} className="flex flex-col items-center justify-center py-2 rounded-xl bg-slate-50 border border-slate-100 opacity-50">
+                                        <div key={`empty-${idx}`} className="flex flex-col items-center justify-center py-2 rounded-xl bg-slate-50 border border-slate-100 opacity-50">
                                           <span className="text-[10px] font-bold text-slate-400">{monthName}</span>
                                           <div className="w-2 h-2 rounded-full bg-slate-300 mt-1"></div>
                                         </div>
@@ -235,17 +235,27 @@ export default function KesehatanPage() {
                                     }
                                     return (
                                       <div 
-                                        key={update.id}
+                                        key={`update-${update.id}`}
                                         onClick={() => router.push(`/dashboard/kesehatan/${update.id}/edit`)}
-                                        className={`flex flex-col items-center justify-center py-2 rounded-xl border cursor-pointer transition-all hover:scale-105 shadow-sm ${
+                                        className={`group flex flex-col items-center justify-center py-2 rounded-xl border cursor-pointer transition-all hover:scale-105 shadow-sm ${
                                           update.checked 
-                                            ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300' 
-                                            : 'bg-amber-50 border-amber-200 hover:bg-amber-100 hover:border-amber-300'
+                                            ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 border-solid' 
+                                            : (update.is_anak || update.is_ibu || update.is_lansia
+                                                ? 'bg-amber-50 border-amber-200 hover:bg-amber-100 hover:border-amber-300 border-solid'
+                                                : 'bg-white border-slate-200 border-dashed hover:border-amber-400 hover:bg-amber-50/50 border-2')
                                         }`}
-                                        title={update.checked ? 'Selesai - Klik untuk edit' : 'Pending - Klik untuk isi'}
+                                        title={update.checked ? 'Selesai' : (update.is_anak || update.is_ibu || update.is_lansia ? 'Sudah Diisi (Draft) - Perlu Verify' : 'Belum Diisi - Klik untuk isi')}
                                       >
-                                        <span className={`text-[10px] font-bold ${update.checked ? 'text-emerald-700' : 'text-amber-700'}`}>{monthName}</span>
-                                        <div className={`w-2 h-2 rounded-full mt-1 ${update.checked ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
+                                        <span className={`text-[10px] font-bold transition-colors ${update.checked ? 'text-emerald-700' : (update.is_anak || update.is_ibu || update.is_lansia ? 'text-amber-700' : 'text-slate-400 group-hover:text-amber-600')}`}>{monthName}</span>
+                                        {update.checked ? (
+                                          <div className="w-2 h-2 rounded-full mt-1 bg-emerald-500 transition-colors"></div>
+                                        ) : (
+                                          update.is_anak || update.is_ibu || update.is_lansia ? (
+                                            <div className="w-2 h-2 rounded-full mt-1 bg-amber-500 transition-colors"></div>
+                                          ) : (
+                                            <Plus className="w-3 h-3 text-slate-300 group-hover:text-amber-500 mt-0.5 transition-colors" strokeWidth={4} />
+                                          )
+                                        )}
                                       </div>
                                     )
                                   })}

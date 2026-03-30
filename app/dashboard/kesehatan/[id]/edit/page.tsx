@@ -111,8 +111,12 @@ export default function EditKesehatanPage() {
           const parsedAnakImun = typeof existingData.anak_imunisasi === 'string' ? JSON.parse(existingData.anak_imunisasi) : existingData.anak_imunisasi
           const parsedIbuImun = typeof existingData.ibu_imunisasi === 'string' ? JSON.parse(existingData.ibu_imunisasi) : existingData.ibu_imunisasi
           
-          setFormData({
-            ...existingData,
+          const sanitizedData = Object.fromEntries(
+            Object.entries(existingData).map(([k, v]) => [k, v === null ? '' : v])
+          )
+          setFormData((prev: any) => ({
+            ...prev,
+            ...sanitizedData,
             anak_imunisasi: parsedAnakImun || [],
             ibu_imunisasi: parsedIbuImun || [],
             // Format dates for input[type=date]
@@ -122,7 +126,7 @@ export default function EditKesehatanPage() {
             tgl_pemeriksaan_ibu: existingData.tgl_pemeriksaan_ibu ? new Date(existingData.tgl_pemeriksaan_ibu).toISOString().split('T')[0] : '',
             lansia_tgl_lahir: existingData.lansia_tgl_lahir ? new Date(existingData.lansia_tgl_lahir).toISOString().split('T')[0] : '',
             tgl_pemeriksaan_lansia: existingData.tgl_pemeriksaan_lansia ? new Date(existingData.tgl_pemeriksaan_lansia).toISOString().split('T')[0] : '',
-          })
+          }))
           
           if (existingData.desa_berdaya_id) {
             setSelectedDesaId(Number(existingData.desa_berdaya_id))

@@ -185,26 +185,29 @@ export async function getDesaBerdayaOptions() {
 
   if (role === 'RELAWAN') {
     result = await sql`
-      SELECT db.id, dc.nama_desa
+      SELECT db.id, dc.nama_desa, r.nama as nama_relawan
       FROM desa_berdaya db
       JOIN desa_config dc ON db.desa_id = dc.id
+      LEFT JOIN relawan r ON db.relawan_id = r.id
       WHERE db.relawan_id = ${operatorId}
       ORDER BY dc.nama_desa ASC
     ` as any[]
   } else if (role === 'OFFICE' && session.user.office_id) {
     result = await sql`
-      SELECT db.id, dc.nama_desa
+      SELECT db.id, dc.nama_desa, r.nama as nama_relawan
       FROM desa_berdaya db
       JOIN desa_config dc ON db.desa_id = dc.id
+      LEFT JOIN relawan r ON db.relawan_id = r.id
       WHERE dc.office_id = ${session.user.office_id}
       ORDER BY dc.nama_desa ASC
     ` as any[]
   } else {
     // ADMIN, MONEV, FINANCE, etc see all
     result = await sql`
-      SELECT db.id, dc.nama_desa
+      SELECT db.id, dc.nama_desa, r.nama as nama_relawan
       FROM desa_berdaya db
       JOIN desa_config dc ON db.desa_id = dc.id
+      LEFT JOIN relawan r ON db.relawan_id = r.id
       ORDER BY dc.nama_desa ASC
     ` as any[]
   }

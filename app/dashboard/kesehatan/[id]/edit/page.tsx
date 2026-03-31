@@ -153,7 +153,16 @@ export default function EditKesehatanPage() {
   const handleDesaChange = async (val: string) => {
     const desaId = parseInt(val)
     setSelectedDesaId(desaId)
-    setFormData((prev: any) => ({ ...prev, penerima_manfaat_id: 0 }))
+    
+    const selectedDesa = desaOptions.find((d: any) => d.id === desaId)
+    const relawanNameInfo = selectedDesa?.nama_relawan || session?.user?.name || ''
+
+    setFormData((prev: any) => ({ 
+      ...prev, 
+      penerima_manfaat_id: 0,
+      nama_relawan: relawanNameInfo
+    }))
+    
     setPmResults([])
     const pms = await getPenerimaManfaatByDesa(desaId)
     setPmResults(pms)

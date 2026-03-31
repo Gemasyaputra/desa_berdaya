@@ -107,16 +107,27 @@ export default function TambahKesehatanPage() {
       
       // Auto-select if only one desa
       if (options.length === 1) {
-        handleDesaChange(String(options[0].id))
+        // We pass the full options list to handleDesaChange so it can extract nama_relawan correctly on initial mount
+        handleDesaChange(String(options[0].id), options)
       }
     }
     loadDesas()
   }, [])
 
-  const handleDesaChange = async (id: string) => {
+  const handleDesaChange = async (id: string, initialOptions?: any[]) => {
     const desaId = parseInt(id)
     setSelectedDesaId(desaId)
-    setFormData((prev: any) => ({ ...prev, penerima_manfaat_id: 0 }))
+    
+    const availableOptions = initialOptions || desaOptions
+    const selectedDesa = availableOptions.find((d: any) => d.id === desaId)
+    const relawanNameInfo = selectedDesa?.nama_relawan || session?.user?.name || ''
+
+    setFormData((prev: any) => ({ 
+      ...prev, 
+      penerima_manfaat_id: 0,
+      nama_relawan: relawanNameInfo
+    }))
+    
     setPmResults([])
     const pms = await getPenerimaManfaatByDesa(desaId)
     setPmResults(pms)

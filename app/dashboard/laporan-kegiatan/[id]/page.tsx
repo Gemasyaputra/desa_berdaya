@@ -17,7 +17,10 @@ import {
   FileImage,
   DollarSign,
   ClipboardList,
-  Target
+  Target,
+  MessageCircle,
+  Send,
+  Share2
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -28,6 +31,7 @@ export default function LaporanDetailPage() {
   const [laporan, setLaporan] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [hierarchy, setHierarchy] = useState<any>(null)
+  const [beritaText, setBeritaText] = useState('')
 
   useEffect(() => {
     async function loadData() {
@@ -38,6 +42,24 @@ export default function LaporanDetailPage() {
           setLaporan(data)
           const h = await getDesaHierarchy(data.desa_berdaya_id)
           setHierarchy(h)
+
+          const pmTotal = data.jumlah_pm_total || 0;
+          const pmLaki = data.jumlah_pm_laki || 0;
+          const pmPerempuan = data.jumlah_pm_perempuan || 0;
+          const formatedDate = data.tanggal_kegiatan ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(data.tanggal_kegiatan)) : '-';
+
+          setBeritaText(`*${data.judul_kegiatan}*
+
+${formatedDate} - ${data.lokasi_pelaksanaan || '-'}
+
+${data.deskripsi || '-'}
+
+*Poin Utama Kegiatan:*
+- Sasaran: ${data.sasaran_program || '-'}
+- Cakupan Manfaat: ${pmLaki} Laki-laki, ${pmPerempuan} Perempuan
+- Total Manfaat: ${pmTotal} Jiwa
+
+${h?.nama_desa || '-'} - Laporan By: ${h?.nama_relawan || '-'}`)
         }
       } catch (e) {
         console.error(e)
@@ -202,6 +224,47 @@ export default function LaporanDetailPage() {
               )}
               <div className="flex justify-between items-center pt-4 border-t border-slate-50">
                 <p className="text-[10px] text-slate-400 font-bold uppercase">ID Laporan: #{laporan.id}</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Rilis Berita Card */}
+          <Card className="bg-white border-none shadow-xl shadow-slate-200/50 rounded-[2rem] p-8">
+            <div className="space-y-6">
+              <h3 className="font-bold text-lg text-slate-800 tracking-tight flex items-center gap-2">
+                <Share2 className="w-5 h-5 text-emerald-600" /> Rilis Berita & Forward
+              </h3>
+              <p className="text-sm text-slate-500 font-medium">
+                Draft berita di bawah ini di-generate secara otomatis. Anda dapat menyesuaikannya sebelum membagikan (forward) ke platform messaging.
+              </p>
+              
+              <textarea 
+                className="w-full h-64 p-4 text-sm bg-slate-50 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-700 leading-relaxed font-medium resize-y"
+                value={beritaText}
+                onChange={(e) => setBeritaText(e.target.value)}
+              />
+
+              <div className="flex flex-col sm:flex-row gap-4 pt-2">
+                <Button 
+                  className="flex-1 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-2xl h-12 font-bold shadow-lg shadow-[#25D366]/20 gap-2"
+                  onClick={() => {
+                    const url = `https://wa.me/?text=${encodeURIComponent(beritaText)}`;
+                    window.open(url, '_blank');
+                  }}
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  FORWARD KE WHATSAPP
+                </Button>
+                <Button 
+                  className="flex-1 bg-[#0088cc] hover:bg-[#0077b5] text-white rounded-2xl h-12 font-bold shadow-lg shadow-[#0088cc]/20 gap-2"
+                  onClick={() => {
+                    const url = `https://t.me/share/url?url=&text=${encodeURIComponent(beritaText)}`;
+                    window.open(url, '_blank');
+                  }}
+                >
+                  <Send className="w-5 h-5" />
+                  FORWARD KE TELEGRAM
+                </Button>
               </div>
             </div>
           </Card>

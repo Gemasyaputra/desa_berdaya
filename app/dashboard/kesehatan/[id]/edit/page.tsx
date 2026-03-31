@@ -171,7 +171,7 @@ export default function EditKesehatanPage() {
       try {
         await updateKesehatanUpdate(id, formData)
         toast.success('Data kesehatan berhasil diperbarui')
-        router.push(`/dashboard/kesehatan/${id}`)
+        router.push(`/dashboard/kesehatan`)
       } catch (err) {
         console.error(err)
         toast.error('Gagal memperbarui data')
@@ -244,7 +244,7 @@ export default function EditKesehatanPage() {
                 <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pilih Penerima Manfaat</Label>
                 <select 
                   value={formData.penerima_manfaat_id ? String(formData.penerima_manfaat_id) : ''}
-                  onChange={(e) => setFormData((prev: any) => ({ ...prev, penerima_manfaat_id: parseInt(e.target.value) }))}
+                  onChange={(e) => setFormData((prev: any) => ({ ...prev, penerima_manfaat_id: e.target.value === '' ? '' : parseInt(e.target.value) }))}
                   className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 font-bold focus:ring-[#7a1200]"
                   disabled={!selectedDesaId}
                   required
@@ -276,7 +276,7 @@ export default function EditKesehatanPage() {
                 <Input 
                   type="number"
                   value={formData.tahun}
-                  onChange={(e) => setFormData((prev: any) => ({ ...prev, tahun: parseInt(e.target.value) }))}
+                  onChange={(e) => setFormData((prev: any) => ({ ...prev, tahun: e.target.value === '' ? '' : parseInt(e.target.value) }))}
                   className={inputClass}
                   required
                 />
@@ -285,7 +285,7 @@ export default function EditKesehatanPage() {
                 <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Bulan</Label>
                 <select 
                   value={formData.bulan || ''}
-                  onChange={(e) => setFormData((prev: any) => ({ ...prev, bulan: parseInt(e.target.value) }))}
+                  onChange={(e) => setFormData((prev: any) => ({ ...prev, bulan: e.target.value === '' ? '' : parseInt(e.target.value) }))}
                   className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 font-bold focus:ring-[#7a1200]"
                   required
                 >
@@ -392,7 +392,7 @@ export default function EditKesehatanPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Anak Ke</Label>
-                  <Input type="number" value={formData.anak_ke} onChange={(e) => setFormData((prev: any) => ({ ...prev, anak_ke: parseInt(e.target.value) }))} className={inputClass} />
+                  <Input type="number" value={formData.anak_ke} onChange={(e) => setFormData((prev: any) => ({ ...prev, anak_ke: e.target.value === '' ? '' : parseInt(e.target.value) }))} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pendampingan Khusus?</Label>
@@ -403,7 +403,7 @@ export default function EditKesehatanPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ASI Eksklusif (Bulan)</Label>
-                  <select value={formData.anak_asi_eksklusif || ''} onChange={(e) => setFormData((prev: any) => ({ ...prev, anak_asi_eksklusif: parseInt(e.target.value) }))} className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 font-bold focus:ring-[#7a1200]">
+                  <select value={formData.anak_asi_eksklusif || ''} onChange={(e) => setFormData((prev: any) => ({ ...prev, anak_asi_eksklusif: e.target.value === '' ? '' : parseInt(e.target.value) }))} className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 font-bold focus:ring-[#7a1200]">
                     {[1, 2, 3, 4, 5, 6].map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 </div>
@@ -412,19 +412,19 @@ export default function EditKesehatanPage() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4 border-t border-slate-100">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">BB Lahir (kg)</Label>
-                  <Input type="number" step="0.01" value={formData.anak_bb_lahir} onChange={(e) => setFormData((prev: any) => ({ ...prev, anak_bb_lahir: parseFloat(e.target.value) }))} className={inputClass} />
+                  <Input type="number" step="0.01" value={formData.anak_bb_lahir} onChange={(e) => setFormData((prev: any) => ({ ...prev, anak_bb_lahir: e.target.value === '' ? '' : parseFloat(e.target.value) }))} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tinggi Badan (cm)</Label>
-                  <Input type="number" step="0.1" value={formData.anak_tinggi_badan} onChange={(e) => setFormData((prev: any) => ({ ...prev, anak_tinggi_badan: parseFloat(e.target.value) }))} className={inputClass} />
+                  <Input type="number" step="0.1" value={formData.anak_tinggi_badan} onChange={(e) => setFormData((prev: any) => ({ ...prev, anak_tinggi_badan: e.target.value === '' ? '' : parseFloat(e.target.value) }))} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Berat Badan (kg)</Label>
-                  <Input type="number" step="0.1" value={formData.anak_berat_badan} onChange={(e) => setFormData((prev: any) => ({ ...prev, anak_berat_badan: parseFloat(e.target.value) }))} className={inputClass} />
+                  <Input type="number" step="0.1" value={formData.anak_berat_badan} onChange={(e) => setFormData((prev: any) => ({ ...prev, anak_berat_badan: e.target.value === '' ? '' : parseFloat(e.target.value) }))} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lingkar Kepala (cm)</Label>
-                  <Input type="number" step="0.1" value={formData.anak_lingkar_kepala} onChange={(e) => setFormData((prev: any) => ({ ...prev, anak_lingkar_kepala: parseFloat(e.target.value) }))} className={inputClass} />
+                  <Input type="number" step="0.1" value={formData.anak_lingkar_kepala} onChange={(e) => setFormData((prev: any) => ({ ...prev, anak_lingkar_kepala: e.target.value === '' ? '' : parseFloat(e.target.value) }))} className={inputClass} />
                 </div>
               </div>
 
@@ -479,23 +479,23 @@ export default function EditKesehatanPage() {
                <div className="grid grid-cols-1 md:grid-cols-5 gap-6 pt-4 border-t border-slate-100">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">BB Sblm Hamil (kg)</Label>
-                  <Input type="number" step="0.1" value={formData.ibu_bb_sebelum_hamil} onChange={(e) => setFormData((prev: any) => ({ ...prev, ibu_bb_sebelum_hamil: parseFloat(e.target.value) }))} className={inputClass} />
+                  <Input type="number" step="0.1" value={formData.ibu_bb_sebelum_hamil} onChange={(e) => setFormData((prev: any) => ({ ...prev, ibu_bb_sebelum_hamil: e.target.value === '' ? '' : parseFloat(e.target.value) }))} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tinggi Badan (cm)</Label>
-                  <Input type="number" step="0.1" value={formData.ibu_tinggi_badan} onChange={(e) => setFormData((prev: any) => ({ ...prev, ibu_tinggi_badan: parseFloat(e.target.value) }))} className={inputClass} />
+                  <Input type="number" step="0.1" value={formData.ibu_tinggi_badan} onChange={(e) => setFormData((prev: any) => ({ ...prev, ibu_tinggi_badan: e.target.value === '' ? '' : parseFloat(e.target.value) }))} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Berat Badan (kg)</Label>
-                  <Input type="number" step="0.1" value={formData.ibu_berat_badan} onChange={(e) => setFormData((prev: any) => ({ ...prev, ibu_berat_badan: parseFloat(e.target.value) }))} className={inputClass} />
+                  <Input type="number" step="0.1" value={formData.ibu_berat_badan} onChange={(e) => setFormData((prev: any) => ({ ...prev, ibu_berat_badan: e.target.value === '' ? '' : parseFloat(e.target.value) }))} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">LILA (cm)</Label>
-                  <Input type="number" step="0.1" value={formData.ibu_lila} onChange={(e) => setFormData((prev: any) => ({ ...prev, ibu_lila: parseFloat(e.target.value) }))} className={inputClass} />
+                  <Input type="number" step="0.1" value={formData.ibu_lila} onChange={(e) => setFormData((prev: any) => ({ ...prev, ibu_lila: e.target.value === '' ? '' : parseFloat(e.target.value) }))} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Umur Hamil (Bulan)</Label>
-                  <Input type="number" step="0.5" value={formData.ibu_umur_kehamilan} onChange={(e) => setFormData((prev: any) => ({ ...prev, ibu_umur_kehamilan: parseFloat(e.target.value) }))} className={inputClass} />
+                  <Input type="number" step="0.5" value={formData.ibu_umur_kehamilan} onChange={(e) => setFormData((prev: any) => ({ ...prev, ibu_umur_kehamilan: e.target.value === '' ? '' : parseFloat(e.target.value) }))} className={inputClass} />
                 </div>
               </div>
 
@@ -559,11 +559,11 @@ export default function EditKesehatanPage() {
               <div className="grid grid-cols-1 md:grid-cols-5 gap-6 pt-4 border-t border-slate-100">
                  <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tinggi Badan (cm)</Label>
-                  <Input type="number" step="0.1" value={formData.lansia_tinggi_badan} onChange={(e) => setFormData((prev: any) => ({ ...prev, lansia_tinggi_badan: parseFloat(e.target.value) }))} className={inputClass} />
+                  <Input type="number" step="0.1" value={formData.lansia_tinggi_badan} onChange={(e) => setFormData((prev: any) => ({ ...prev, lansia_tinggi_badan: e.target.value === '' ? '' : parseFloat(e.target.value) }))} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Berat Badan (kg)</Label>
-                  <Input type="number" step="0.1" value={formData.lansia_berat_badan} onChange={(e) => setFormData((prev: any) => ({ ...prev, lansia_berat_badan: parseFloat(e.target.value) }))} className={inputClass} />
+                  <Input type="number" step="0.1" value={formData.lansia_berat_badan} onChange={(e) => setFormData((prev: any) => ({ ...prev, lansia_berat_badan: e.target.value === '' ? '' : parseFloat(e.target.value) }))} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tekanan Darah</Label>
@@ -571,15 +571,15 @@ export default function EditKesehatanPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kolesterol (mg/dL)</Label>
-                  <Input type="number" value={formData.lansia_kolesterol} onChange={(e) => setFormData((prev: any) => ({ ...prev, lansia_kolesterol: parseInt(e.target.value) }))} className={inputClass} />
+                  <Input type="number" value={formData.lansia_kolesterol} onChange={(e) => setFormData((prev: any) => ({ ...prev, lansia_kolesterol: e.target.value === '' ? '' : parseInt(e.target.value) }))} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gula Darah</Label>
-                  <Input type="number" value={formData.lansia_gula} onChange={(e) => setFormData((prev: any) => ({ ...prev, lansia_gula: parseInt(e.target.value) }))} className={inputClass} />
+                  <Input type="number" value={formData.lansia_gula} onChange={(e) => setFormData((prev: any) => ({ ...prev, lansia_gula: e.target.value === '' ? '' : parseInt(e.target.value) }))} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Asam Urat</Label>
-                  <Input type="number" step="0.1" value={formData.lansia_asam_urat} onChange={(e) => setFormData((prev: any) => ({ ...prev, lansia_asam_urat: parseFloat(e.target.value) }))} className={inputClass} />
+                  <Input type="number" step="0.1" value={formData.lansia_asam_urat} onChange={(e) => setFormData((prev: any) => ({ ...prev, lansia_asam_urat: e.target.value === '' ? '' : parseFloat(e.target.value) }))} className={inputClass} />
                 </div>
               </div>
 

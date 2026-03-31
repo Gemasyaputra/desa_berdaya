@@ -78,13 +78,27 @@ export default function EditEkonomiPage() {
         setDesaOptions(options)
         
         if (data) {
+          let loadKateg = (data.kategori || '').trim();
+          if (loadKateg === 'Agribisnis') loadKateg = 'Agrobisnis';
+          if (!DATA_CONFIG[loadKateg as keyof typeof DATA_CONFIG]) loadKateg = 'Agrobisnis';
+          
+          let loadTipe = (data.tipe || '').trim();
+          if (!DATA_CONFIG[loadKateg as keyof typeof DATA_CONFIG].tipe.includes(loadTipe)) {
+            loadTipe = DATA_CONFIG[loadKateg as keyof typeof DATA_CONFIG].tipe[0];
+          }
+
+          let loadProgram = (data.program || '').trim();
+          if (!DATA_CONFIG[loadKateg as keyof typeof DATA_CONFIG].program.includes(loadProgram)) {
+            loadProgram = DATA_CONFIG[loadKateg as keyof typeof DATA_CONFIG].program[0];
+          }
+
           setFormData({
             tahun: data.tahun,
             bulan: data.bulan,
             checked: data.checked,
             penerima_manfaat_id: data.penerima_manfaat_id,
-            kategori: data.kategori || 'Agrobisnis',
-            tipe: data.tipe || 'Pertanian',
+            kategori: loadKateg,
+            tipe: loadTipe,
             komoditas_produk: data.komoditas_produk || '',
             jumlah_tanggungan: data.jumlah_tanggungan || 0,
             modal: Number(data.modal) || 0,
@@ -94,7 +108,7 @@ export default function EditEkonomiPage() {
             pendapatan_lainnya: Number(data.pendapatan_lainnya) || 0,
             status_gk: data.status_gk || '',
             nilai_ntp: Number(data.nilai_ntp) || 0,
-            program: data.program || 'Berbagi Pangan'
+            program: loadProgram
           })
           setSelectedDesaId(data.desa_berdaya_id)
           

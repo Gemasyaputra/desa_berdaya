@@ -14,7 +14,8 @@ import {
   ChevronDown,
   Filter,
   Trash2,
-  Edit
+  Edit,
+  Check
 } from 'lucide-react'
 import { getEkonomiUpdates, deleteEkonomiUpdate } from './actions'
 import { Card, CardContent } from '@/components/ui/card'
@@ -238,7 +239,7 @@ export default function EkonomiPage() {
                                       >
                                         <span className={`text-[10px] font-bold transition-colors ${update.checked ? 'text-emerald-700' : (update.kategori && update.kategori !== '-' ? 'text-amber-700' : 'text-slate-400 group-hover:text-amber-600')}`}>{monthName}</span>
                                         {update.checked ? (
-                                          <div className="w-2 h-2 rounded-full mt-1 bg-emerald-500 transition-colors"></div>
+                                          <Check className="w-3 h-3 text-emerald-500 mt-0.5 transition-colors" strokeWidth={4} />
                                         ) : (
                                           update.kategori && update.kategori !== '-' ? (
                                             <div className="w-2 h-2 rounded-full mt-1 bg-amber-500 transition-colors"></div>

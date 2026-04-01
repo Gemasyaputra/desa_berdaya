@@ -37,6 +37,13 @@ export default function LaporanKegiatanListPage() {
     return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(dateString))
   }
 
+  const getEditUrl = (laporan: any) => {
+    const jenis = laporan.jenis_kegiatan?.toUpperCase() || ''
+    if (jenis === 'KESEHATAN') return `/dashboard/kesehatan/${laporan.id}/edit`
+    if (jenis === 'EKONOMI') return `/dashboard/ekonomi/${laporan.id}/edit`
+    return `/dashboard/laporan-kegiatan/${laporan.id}/edit`
+  }
+
   return (
     <div className="p-4 lg:p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-6">
@@ -98,11 +105,11 @@ export default function LaporanKegiatanListPage() {
                   </Link>
                   {canMod && (
                     <>
-                      <Link href={`/dashboard/laporan-kegiatan/${laporan.id}/edit`}>
-                        <Button variant="outline" size="sm" className="text-slate-600 border-slate-100 hover:bg-slate-50 rounded-xl font-bold text-[10px] uppercase">
+                      <Button asChild variant="outline" size="sm" className="text-slate-600 border-slate-100 hover:bg-slate-50 rounded-xl font-bold text-[10px] uppercase">
+                        <Link href={getEditUrl(laporan)}>
                           Edit
-                        </Button>
-                      </Link>
+                        </Link>
+                      </Button>
                       <DeleteLaporanButton id={laporan.id} />
                     </>
                   )}
@@ -153,11 +160,11 @@ export default function LaporanKegiatanListPage() {
                         </Link>
                         {canMod && (
                           <>
-                            <Link href={`/dashboard/laporan-kegiatan/${laporan.id}/edit`}>
-                              <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100">
+                            <Button asChild variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100">
+                              <Link href={getEditUrl(laporan)}>
                                 Edit
-                              </Button>
-                            </Link>
+                              </Link>
+                            </Button>
                             <DeleteLaporanButton id={laporan.id} />
                           </>
                         )}

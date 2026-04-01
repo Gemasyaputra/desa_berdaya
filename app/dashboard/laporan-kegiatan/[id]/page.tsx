@@ -47,6 +47,7 @@ export default function LaporanDetailPage() {
           const pmLaki = data.jumlah_pm_laki || 0;
           const pmPerempuan = data.jumlah_pm_perempuan || 0;
           const formatedDate = data.tanggal_kegiatan ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(data.tanggal_kegiatan)) : '-';
+          const pmList = Array.isArray(data.nama_pm_list) && data.nama_pm_list.length > 0 ? data.nama_pm_list.join(', ') : '-';
 
           setBeritaText(`*${data.judul_kegiatan}*
 
@@ -56,6 +57,7 @@ ${data.deskripsi || '-'}
 
 *Poin Utama Kegiatan:*
 - Sasaran: ${data.sasaran_program || '-'}
+- Penerima Manfaat: ${pmList}
 - Cakupan Manfaat: ${pmLaki} Laki-laki, ${pmPerempuan} Perempuan
 - Total Manfaat: ${pmTotal} Jiwa
 
@@ -125,10 +127,10 @@ ${h?.nama_desa || '-'} - Laporan By: ${h?.nama_relawan || '-'}`)
             </CardHeader>
             <CardContent className="p-6 pt-2 space-y-3">
               <div className="grid grid-cols-2 gap-2">
-                <StatBox label="PM L" value={laporan.jumlah_pm_laki} color="blue" />
-                <StatBox label="PM P" value={laporan.jumlah_pm_perempuan} color="rose" />
-                <StatBox label="Kelompok L" value={laporan.jumlah_kelompok_laki} color="blue" />
-                <StatBox label="Kelompok P" value={laporan.jumlah_kelompok_perempuan} color="rose" />
+                <StatBox label="Penerima Manfaat Laki-laki" value={laporan.jumlah_pm_laki} color="blue" />
+                <StatBox label="Penerima Manfaat Perempuan" value={laporan.jumlah_pm_perempuan} color="rose" />
+                <StatBox label="Anggota Kelompok Laki-laki" value={laporan.jumlah_kelompok_laki} color="blue" />
+                <StatBox label="Anggota Kelompok Perempuan" value={laporan.jumlah_kelompok_perempuan} color="rose" />
               </div>
               <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
                 <p className="text-xs text-slate-500 font-bold uppercase">Total Manfaat</p>
@@ -152,8 +154,25 @@ ${h?.nama_desa || '-'} - Laporan By: ${h?.nama_relawan || '-'}`)
                   icon={Users} 
                 />
                 <DetailItem 
-                  label="Daftar Hadir (PM)" 
-                  value={Array.isArray(laporan.nama_pm_list) && laporan.nama_pm_list.length > 0 ? laporan.nama_pm_list.join(', ') : '-'} 
+                  label="Penerima Manfaat" 
+                  value={Array.isArray(laporan.nama_pm_list) && laporan.nama_pm_list.length > 0 ? (
+                    <div className="mt-2 w-full">
+                      <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-3 bg-white border border-slate-200 shadow-inner rounded-xl">
+                        {laporan.nama_pm_list.map((name: string, i: number) => (
+                          <span key={i} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                      {laporan.nama_pm_list.length > 12 && (
+                        <div className="mt-2 text-right">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50 border border-slate-100 px-2 py-1 rounded-full shadow-sm">
+                            ↓ Scroll ke bawah untuk melihat semua
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : '-'} 
                   icon={Users} 
                 />
               </div>
@@ -258,8 +277,8 @@ ${h?.nama_desa || '-'} - Laporan By: ${h?.nama_relawan || '-'}`)
                 <Button 
                   className="flex-1 bg-[#0088cc] hover:bg-[#0077b5] text-white rounded-2xl h-12 font-bold shadow-lg shadow-[#0088cc]/20 gap-2"
                   onClick={() => {
-                    const url = `https://t.me/share/url?url=&text=${encodeURIComponent(beritaText)}`;
-                    window.open(url, '_blank');
+                    const url = `tg://msg_url?url=&text=${encodeURIComponent(beritaText)}`;
+                    window.open(url, '_self');
                   }}
                 >
                   <Send className="w-5 h-5" />
@@ -294,9 +313,9 @@ function DetailItem({ label, value, icon: Icon }: any) {
       <div className="p-3 bg-slate-50 rounded-2xl text-slate-400 flex-shrink-0">
         <Icon className="w-6 h-6" />
       </div>
-      <div>
+      <div className="flex-1">
         <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-tight leading-none mb-1">{label}</p>
-        <p className="font-bold text-slate-800 text-base">{value || '-'}</p>
+        <div className="font-bold text-slate-800 text-sm">{value || '-'}</div>
       </div>
     </div>
   )

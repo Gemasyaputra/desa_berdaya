@@ -170,7 +170,7 @@ export default function DashboardLayout({
       {/* Sidebar */}
       <aside
         style={{ backgroundColor: brandColor }}
-        className={`fixed lg:static inset-y-0 left-0 z-50 text-white transform transition-all duration-300 ease-in-out ${
+        className={`fixed lg:static inset-y-0 left-0 z-[100] text-white transform transition-all duration-300 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } ${sidebarCollapsed ? 'lg:w-0 lg:overflow-hidden' : 'lg:w-64'}`}
       >
@@ -294,7 +294,7 @@ export default function DashboardLayout({
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-[90] lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}

@@ -36,6 +36,7 @@ import {
   UserCircle,
   TrendingUp,
   Heart,
+  Target,
 } from 'lucide-react'
 
 export default function DashboardLayout({
@@ -156,6 +157,11 @@ export default function DashboardLayout({
           { href: '/dashboard/konfigurasi', label: 'Konfigurasi', icon: Settings },
           ...(isAdminRole
             ? [
+                {
+                  href: '/dashboard/intervensi',
+                  label: 'Intervensi Program',
+                  icon: Target,
+                },
                 {
                   href: '/dashboard/konfigurasi/form-builder',
                   label: 'Form Builder',

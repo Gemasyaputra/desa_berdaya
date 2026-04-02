@@ -1,31 +1,92 @@
-# 🚀 Template Fitur Baru
+🚀 Template Fitur Baru
+1. Nama Fitur
+ Intervensi Program
 
-Silakan isi detail fitur baru yang ingin ditambahkan pada bagian di bawah ini. Semakin detail penjelasan Anda, semakin mudah untuk kita merencanakannya!
+2. Tujuan / Objektif Fitur
+Fitur ini bertujuan untuk merencanakan, mencatat, dan mengelola alokasi anggaran serta program intervensi spesifik (seperti kesehatan atau ekonomi) yang akan dijalankan di suatu desa. Memudahkan Super Admin memonitor pengajuan, persetujuan, dan pencairan dana secara terstruktur per bulan/tahun.
 
-## 1. Nama Fitur
+3. Akses Pengguna (Role)
+Hanya SUPER ADMIN.
 
-_(Contoh: Manajemen Inventaris Barang)_
+4. Halaman Baru atau Perubahan UI
+Diperlukan pembuatan halaman baru di bawah struktur dashboard menggunakan Shadcn UI:
 
-## 2. Tujuan / Objektif Fitur
+/dashboard/intervensi: Halaman utama berisi tabel daftar program intervensi beserta filter dan pencarian.
 
-_(Jelaskan secara singkat apa tujuan dari fitur ini dan masalah apa yang dipecahkan)_
+/dashboard/intervensi/tambah: Halaman form untuk membuat header Intervensi Program baru.
 
-## 3. Akses Pengguna (Role)
+/dashboard/intervensi/[id]: Halaman detail yang terdiri dari:
 
-_(Siapa saja yang bisa atau memiliki hak akses menggunakan fitur ini? Contoh: ADMIN, RELAWAN, MONEV, dll)_
+Card Informasi Dasar (header).
 
-## 4. Halaman Baru atau Perubahan UI
 
-_(Sebutkan jika ada halaman baru yang perlu dibuat, misal: `/dashboard/inventaris`, atau apakah ini hanya sebuah tombol/modal di halaman yang sudah ada?)_
+Tab "Anggaran" berisi tabel rincian budget dan
 
-## 5. Kebutuhan Data (Database)
+Modal/Dialog (pop-up) untuk "Create Budget".
 
-_(Sebutkan hal-hal apa saja yang perlu disimpan. Contoh: Nama barang, jumlah, kategori, foto bukti, dll)_
+5. Kebutuhan Data (Database)
+Memerlukan dua tabel baru dengan relasi One-to-Many:
 
-## 6. Alur Kerja (User Flow/Workflow)
+Tabel Header (Intervensi Program):
 
-_(Jelaskan langkah demi langkah penggunaan fiturnya. Contoh: User klik tombol Tambah -> Sistem memunculkan Form -> User mengisi dan Simpan -> Data muncul di tabel dengan format X)_
+Desa (Relasi ke tabel Desa)
 
-## 7. Catatan Tambahan
+Kategori Program
 
-_(Adakah aturan/validasi khusus? Misal: "Umur wajib diatas 18 tahun", atau referensi fitur dari aplikasi lain, dll)_
+Nama Program (Relasi ke tabel Master Program)
+
+Deskripsi
+
+Sumber Dana
+
+Fundraiser
+
+Relawan (Relasi ke tabel Relawan)
+
+Status Dokumen (DRAFT, APPROVED, CANCELLED)
+
+Tabel Detail (Anggaran per bulan):
+
+Relasi ke Header (ID Intervensi Program)
+
+Tahun
+
+Bulan
+
+Ajuan RI (Nominal/Float)
+
+Anggaran Disetujui (Nominal/Float)
+
+Anggaran Dicairkan (Nominal/Float)
+
+State/Status Pencairan (String, cth: "Dialokasikan")
+
+ID STP
+
+Catatan (Text)
+
+is_DBF (Boolean)
+
+is_RZ (Boolean)
+
+6. Alur Kerja (User Flow/Workflow)
+Super Admin masuk ke /dashboard/intervensi dan klik "Tambah Intervensi".
+
+Sistem menampilkan form kosong. Super Admin mengisi data dasar (Desa, Program, Relawan, dll).
+
+Setelah klik Simpan, data tersimpan dengan status "DRAFT", dan user diarahkan ke halaman detail (/dashboard/intervensi/[id]).
+
+Di halaman detail pada tab "Anggaran", user klik tombol "Add a line".
+
+Muncul modal pop-up "Create Budget". Form sebagian besar akan otomatis terisi berdasarkan data header (Desa, Program, Kategori Program, Info Relawan).
+
+User mengisi rincian bulan, tahun, dan nominal Ajuan RI, lalu klik "Save & Close". Data baru masuk ke tabel anggaran.
+
+Setelah rincian selesai, Super Admin bisa menekan tombol "APPROVE" untuk mengunci dokumen dari status DRAFT menjadi APPROVED.
+
+7. Catatan Tambahan
+Modal "Create Budget" harus menampilkan data rekening bank relawan (Read-only) secara otomatis saat form budget dibuka, mengambil referensi dari ID Relawan yang dipilih pada bagian Header form utama.
+
+Setelah status berubah menjadi "APPROVED" atau "CANCELLED", seluruh input field di Header dan tombol "Add a line" harus terkunci (disabled) dan tidak bisa dimodifikasi lagi.
+
+Tab "KPI" disiapkan sebagai placeholder UI terlebih dahulu.

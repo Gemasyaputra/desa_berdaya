@@ -153,9 +153,10 @@ export default function TambahIntervensiPage() {
                 <div className="space-y-2">
                   <Label>Relawan PJ <span className="text-rose-500">*</span></Label>
                   <select 
-                    className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 cursor-not-allowed"
                     value={formData.relawan_id}
                     onChange={(e) => setFormData(p => ({ ...p, relawan_id: Number(e.target.value) }))}
+                    disabled
                     required
                   >
                     <option value={0}>Pilih Relawan</option>
@@ -164,11 +165,17 @@ export default function TambahIntervensiPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Sumber Dana</Label>
-                  <Input 
-                    placeholder="Contoh: CSR BUMN, Donatur ZIS"
+                  <select 
+                    className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     value={formData.sumber_dana}
                     onChange={(e) => setFormData(p => ({ ...p, sumber_dana: e.target.value }))}
-                  />
+                  >
+                    <option value="">Pilih Sumber Dana</option>
+                    <option value="Project">Project</option>
+                    <option value="Reguler">Reguler</option>
+                    <option value="Zakat">Zakat</option>
+                    <option value="Infaq">Infaq</option>
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <Label>Fundraiser</Label>

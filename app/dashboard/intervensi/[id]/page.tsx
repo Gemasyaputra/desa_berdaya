@@ -262,12 +262,18 @@ export default function DetailIntervensiPage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                     <Label className="text-right text-slate-500 font-bold text-xs uppercase">Sumber Dana</Label>
-                    <Input 
-                      className="disabled:bg-slate-50 border-slate-200 font-semibold"
+                    <select 
+                      className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:border-slate-400 disabled:bg-slate-50 disabled:text-slate-500 font-semibold"
                       value={formData.sumber_dana}
                       onChange={(e) => setFormData(p => ({ ...p, sumber_dana: e.target.value }))}
                       disabled={isLocked}
-                    />
+                    >
+                      <option value="">Pilih Sumber Dana</option>
+                      <option value="Project">Project</option>
+                      <option value="Reguler">Reguler</option>
+                      <option value="Zakat">Zakat</option>
+                      <option value="Infaq">Infaq</option>
+                    </select>
                   </div>
                   <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                     <Label className="text-right text-slate-500 font-bold text-xs uppercase">Fundraiser</Label>
@@ -281,10 +287,10 @@ export default function DetailIntervensiPage() {
                   <div className="grid grid-cols-[140px_1fr] items-center gap-4 pt-4">
                     <Label className="text-right text-slate-500 font-bold text-xs uppercase">Relawan</Label>
                     <select 
-                      className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none disabled:bg-slate-50 font-semibold"
+                      className="h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 cursor-not-allowed font-semibold"
                       value={formData.relawan_id}
                       onChange={(e) => setFormData(p => ({ ...p, relawan_id: Number(e.target.value) }))}
-                      disabled={isLocked}
+                      disabled
                       required
                     >
                       <option value={0}>Pilih Relawan</option>

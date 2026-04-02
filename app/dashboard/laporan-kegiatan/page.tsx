@@ -38,9 +38,6 @@ export default function LaporanKegiatanListPage() {
   }
 
   const getEditUrl = (laporan: any) => {
-    const jenis = laporan.jenis_kegiatan?.toUpperCase() || ''
-    if (jenis === 'KESEHATAN') return `/dashboard/kesehatan/${laporan.id}/edit`
-    if (jenis === 'EKONOMI') return `/dashboard/ekonomi/${laporan.id}/edit`
     return `/dashboard/laporan-kegiatan/${laporan.id}/edit`
   }
 

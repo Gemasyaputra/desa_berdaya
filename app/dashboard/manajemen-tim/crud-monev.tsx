@@ -65,12 +65,7 @@ export function CRUDMonev() {
     else toast.error(result.error || 'Gagal menghapus')
   }
 
-  const handleReset = async (row: MonevRow) => {
-    if (!confirm(`Reset password "${row.nama}" ke default?`)) return
-    const result = await resetPasswordMonev(row.id)
-    if (result.success) toast.success('Password direset ke DesaBerdaya2025')
-    else toast.error(result.error || 'Gagal reset password')
-  }
+
 
   return (
     <div className="space-y-4">
@@ -186,9 +181,7 @@ export function CRUDMonev() {
                               <MapPin className="w-3.5 h-3.5 mr-1.5" /> Wilayah
                             </Button>
                           </Link>
-                          <Button size="sm" variant="outline" onClick={() => handleReset(row)} className="h-8 rounded-lg px-3 text-xs font-bold border-amber-200 text-amber-600 hover:bg-amber-50 shadow-sm">
-                            <KeyRound className="w-3.5 h-3.5 mr-1.5" /> Reset
-                          </Button>
+
                           <Button size="sm" variant="destructive" onClick={() => handleDelete(row)} className="h-8 rounded-lg px-3 text-xs font-bold shadow-sm">
                             <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Hapus
                           </Button>

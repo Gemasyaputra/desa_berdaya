@@ -11,11 +11,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Trash2, Edit, X, Save, RefreshCw, KeyRound, Users, MapPin, UserCheck, CheckCircle2, UploadCloud, Loader2 } from 'lucide-react'
+import { Plus, Trash2, Edit, X, Save, RefreshCw, Users, MapPin, UserCheck, CheckCircle2, UploadCloud, Loader2 } from 'lucide-react'
 import { upload } from '@vercel/blob/client'
 import { toast } from 'sonner'
 import {
-  getRelawanList, createRelawan, updateRelawan, deleteRelawan, resetPasswordRelawan,
+  getRelawanList, createRelawan, updateRelawan, deleteRelawan,
   getKorwilOptions,
   type RelawanRow, type OptionItem,
 } from './actions'
@@ -164,13 +164,6 @@ export function CRUDRelawan({
     const result = await deleteRelawan(row.id)
     if (result.success) { toast.success('Relawan dihapus'); load() }
     else toast.error(result.error || 'Gagal menghapus')
-  }
-
-  const handleReset = async (row: RelawanRow) => {
-    if (!confirm(`Reset password "${row.nama}" ke default?`)) return
-    const result = await resetPasswordRelawan(row.id)
-    if (result.success) toast.success('Password direset ke DesaBerdaya2025')
-    else toast.error(result.error || 'Gagal reset password')
   }
 
   const filteredList = list.filter((row) => {
@@ -457,10 +450,7 @@ export function CRUDRelawan({
                   </TabsContent>
                 </div>
 
-                <div className="p-6 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between">
-                  {!editingId ? (
-                    <p className="text-xs font-medium text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200/50">Password bawaan untuk login: <span className="font-bold">DesaBerdaya2025</span></p>
-                  ) : <div />}
+                <div className="p-6 bg-slate-50/80 border-t border-slate-100 flex items-center justify-end">
                   <div className="flex gap-3">
                     <Button type="button" variant="outline" onClick={closeForm} className="h-11 rounded-xl px-6 border-slate-200 font-bold text-slate-600 hover:bg-white shadow-sm">Batal</Button>
                     <Button type="submit" disabled={submitting} style={{ backgroundColor: '#7a1200' }} className="h-11 rounded-xl px-8 text-white font-bold shadow-lg shadow-[#7a1200]/20 hover:shadow-[#7a1200]/30 transition-all active:scale-95 gap-2">
@@ -511,7 +501,7 @@ export function CRUDRelawan({
                           </div>
                           <div>
                             <span className="text-sm font-black text-slate-800 block truncate leading-none mb-1">{row.nama}</span>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Relawan Berpijak</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{row.tipe_relawan || 'Relawan'}</span>
                           </div>
                         </div>
                       </td>
@@ -539,9 +529,6 @@ export function CRUDRelawan({
                               <MapPin className="w-3.5 h-3.5 mr-1.5" /> Wilayah
                             </Button>
                           </Link>
-                          <Button size="sm" variant="outline" onClick={() => handleReset(row)} className="h-8 rounded-lg px-3 text-xs font-bold border-amber-200 text-amber-600 hover:bg-amber-50 shadow-sm">
-                            <KeyRound className="w-3.5 h-3.5 mr-1.5" /> Reset
-                          </Button>
                           <Button size="sm" variant="destructive" onClick={() => handleDelete(row)} className="h-8 rounded-lg px-3 text-xs font-bold shadow-sm">
                             <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Hapus
                           </Button>

@@ -97,13 +97,7 @@ export function CRUDOfficeUser() {
     else toast.error(result.error || 'Gagal menghapus')
   }
 
-  const handleReset = async (row: OfficeUserType) => {
-    if (!confirm(`Reset password "${row.nama}" ke default?`)) return
-    // Reuse reset action because it's same user ID
-    const result = await resetPasswordMonev(row.user_id)
-    if (result.success) toast.success('Password direset ke DesaBerdaya2025')
-    else toast.error(result.error || 'Gagal reset password')
-  }
+
 
   return (
     <div className="space-y-4">
@@ -251,9 +245,7 @@ export function CRUDOfficeUser() {
                           <Button size="sm" variant="outline" onClick={() => openEdit(row)} className="h-8 rounded-lg px-3 text-xs font-bold border-slate-200 text-slate-600 hover:bg-slate-100 shadow-sm">
                             <Edit className="w-3.5 h-3.5 mr-1" /> Edit
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleReset(row)} className="h-8 rounded-lg px-3 text-xs font-bold border-amber-200 text-amber-600 hover:bg-amber-50 shadow-sm">
-                            <KeyRound className="w-3.5 h-3.5 mr-1" /> Reset
-                          </Button>
+
                           <Button size="sm" variant="destructive" onClick={() => handleDelete(row)} className="h-8 rounded-lg px-2 text-xs font-bold shadow-sm">
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>

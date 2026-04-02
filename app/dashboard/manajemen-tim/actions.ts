@@ -216,7 +216,12 @@ export async function getKorwilList(): Promise<KorwilRow[]> {
     ? await sql`
         SELECT r.id, r.nama, r.hp, u.email, r.user_id, r.monev_id,
                m.nama AS monev_nama,
-               COUNT(sub.id) AS jumlah_relawan
+               COUNT(sub.id) AS jumlah_relawan,
+               r.foto_url, r.status_relawan, r.cabang_dbf, r.tipe_relawan,
+               r.tempat_lahir, r.tanggal_lahir, r.jenis_kelamin, r.alamat, r.nomor_induk, r.ketokohan,
+               r.bank, r.nomor_rekening, r.atas_nama, r.nomor_ktp, r.nomor_kk, r.pendidikan, r.pekerjaan,
+               r.jabatan_desa, r.keahlian, r.status_edukasi, r.coa_kafalah, r.nama_coa_kafalah,
+               r.akun_facebook, r.akun_twitter, r.akun_instagram
         FROM relawan r
         LEFT JOIN users u ON r.user_id = u.id
         LEFT JOIN monev m ON r.monev_id = m.id
@@ -227,7 +232,12 @@ export async function getKorwilList(): Promise<KorwilRow[]> {
     : await sql`
         SELECT r.id, r.nama, r.hp, u.email, r.user_id, r.monev_id,
                m.nama AS monev_nama,
-               COUNT(sub.id) AS jumlah_relawan
+               COUNT(sub.id) AS jumlah_relawan,
+               r.foto_url, r.status_relawan, r.cabang_dbf, r.tipe_relawan,
+               r.tempat_lahir, r.tanggal_lahir, r.jenis_kelamin, r.alamat, r.nomor_induk, r.ketokohan,
+               r.bank, r.nomor_rekening, r.atas_nama, r.nomor_ktp, r.nomor_kk, r.pendidikan, r.pekerjaan,
+               r.jabatan_desa, r.keahlian, r.status_edukasi, r.coa_kafalah, r.nama_coa_kafalah,
+               r.akun_facebook, r.akun_twitter, r.akun_instagram
         FROM relawan r
         LEFT JOIN users u ON r.user_id = u.id
         LEFT JOIN monev m ON r.monev_id = m.id
@@ -245,12 +255,36 @@ export async function getKorwilList(): Promise<KorwilRow[]> {
     monev_id: r.monev_id ? Number(r.monev_id) : null,
     monev_nama: r.monev_nama,
     jumlah_relawan: Number(r.jumlah_relawan),
+    foto_url: r.foto_url,
+    status_relawan: r.status_relawan,
+    cabang_dbf: r.cabang_dbf,
+    tipe_relawan: r.tipe_relawan,
+    tempat_lahir: r.tempat_lahir,
+    tanggal_lahir: r.tanggal_lahir ? new Date(r.tanggal_lahir).toISOString().split('T')[0] : null,
+    jenis_kelamin: r.jenis_kelamin,
+    alamat: r.alamat,
+    nomor_induk: r.nomor_induk,
+    ketokohan: r.ketokohan,
+    bank: r.bank,
+    nomor_rekening: r.nomor_rekening,
+    atas_nama: r.atas_nama,
+    nomor_ktp: r.nomor_ktp,
+    nomor_kk: r.nomor_kk,
+    pendidikan: r.pendidikan,
+    pekerjaan: r.pekerjaan,
+    jabatan_desa: r.jabatan_desa,
+    keahlian: r.keahlian,
+    status_edukasi: r.status_edukasi,
+    coa_kafalah: r.coa_kafalah,
+    nama_coa_kafalah: r.nama_coa_kafalah,
+    akun_facebook: r.akun_facebook,
+    akun_twitter: r.akun_twitter,
+    akun_instagram: r.akun_instagram,
   }))
 }
 
-export async function createKorwil(data: {
+export async function createKorwil(data: Partial<RelawanRow> & {
   nama: string
-  hp?: string
   email: string
   monev_id: number
 }) {
@@ -275,8 +309,22 @@ export async function createKorwil(data: {
     `
     const userId = Number((userRows as any[])[0].id)
     const relawanRows = await sql`
-      INSERT INTO relawan (user_id, nama, hp, is_korwil, monev_id)
-      VALUES (${userId}, ${data.nama}, ${data.hp ?? null}, true, ${monevId})
+      INSERT INTO relawan (
+        user_id, nama, hp, is_korwil, monev_id,
+        foto_url, status_relawan, cabang_dbf, tipe_relawan,
+        tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, nomor_induk, ketokohan,
+        bank, nomor_rekening, atas_nama, nomor_ktp, nomor_kk, pendidikan, pekerjaan,
+        jabatan_desa, keahlian, status_edukasi, coa_kafalah, nama_coa_kafalah,
+        akun_facebook, akun_twitter, akun_instagram
+      )
+      VALUES (
+        ${userId}, ${data.nama}, ${data.hp ?? null}, true, ${monevId},
+        ${data.foto_url ?? null}, ${data.status_relawan ?? 'Aktif'}, ${data.cabang_dbf ?? null}, ${data.tipe_relawan ?? null},
+        ${data.tempat_lahir ?? null}, ${data.tanggal_lahir ?? null}, ${data.jenis_kelamin ?? null}, ${data.alamat ?? null}, ${data.nomor_induk ?? null}, ${data.ketokohan ?? null},
+        ${data.bank ?? null}, ${data.nomor_rekening ?? null}, ${data.atas_nama ?? null}, ${data.nomor_ktp ?? null}, ${data.nomor_kk ?? null}, ${data.pendidikan ?? null}, ${data.pekerjaan ?? null},
+        ${data.jabatan_desa ?? null}, ${data.keahlian ?? null}, ${data.status_edukasi ?? null}, ${data.coa_kafalah ?? null}, ${data.nama_coa_kafalah ?? null},
+        ${data.akun_facebook ?? null}, ${data.akun_twitter ?? null}, ${data.akun_instagram ?? null}
+      )
       RETURNING id
     `
     // Set korwil_id = self (self-reference sebagai identitas Korwil)
@@ -291,7 +339,7 @@ export async function createKorwil(data: {
 
 export async function updateKorwil(
   id: number,
-  data: { nama: string; hp?: string; email?: string; monev_id?: number }
+  data: Partial<RelawanRow> & { nama: string; email?: string }
 ) {
   const auth = await getAuthContext()
   if (!auth) return { success: false, error: 'Akses ditolak' }
@@ -301,9 +349,23 @@ export async function updateKorwil(
 
   try {
     if (isAdmin && data.monev_id) {
-      await sql`UPDATE relawan SET nama = ${data.nama}, hp = ${data.hp ?? null}, monev_id = ${data.monev_id} WHERE id = ${id}`
+      await sql`UPDATE relawan SET 
+        nama = ${data.nama}, hp = ${data.hp ?? null}, monev_id = ${data.monev_id},
+        foto_url = ${data.foto_url ?? null}, status_relawan = ${data.status_relawan ?? null}, cabang_dbf = ${data.cabang_dbf ?? null}, tipe_relawan = ${data.tipe_relawan ?? null},
+        tempat_lahir = ${data.tempat_lahir ?? null}, tanggal_lahir = ${data.tanggal_lahir ?? null}, jenis_kelamin = ${data.jenis_kelamin ?? null}, alamat = ${data.alamat ?? null}, nomor_induk = ${data.nomor_induk ?? null}, ketokohan = ${data.ketokohan ?? null},
+        bank = ${data.bank ?? null}, nomor_rekening = ${data.nomor_rekening ?? null}, atas_nama = ${data.atas_nama ?? null}, nomor_ktp = ${data.nomor_ktp ?? null}, nomor_kk = ${data.nomor_kk ?? null}, pendidikan = ${data.pendidikan ?? null}, pekerjaan = ${data.pekerjaan ?? null},
+        jabatan_desa = ${data.jabatan_desa ?? null}, keahlian = ${data.keahlian ?? null}, status_edukasi = ${data.status_edukasi ?? null}, coa_kafalah = ${data.coa_kafalah ?? null}, nama_coa_kafalah = ${data.nama_coa_kafalah ?? null},
+        akun_facebook = ${data.akun_facebook ?? null}, akun_twitter = ${data.akun_twitter ?? null}, akun_instagram = ${data.akun_instagram ?? null}
+        WHERE id = ${id}`
     } else {
-      await sql`UPDATE relawan SET nama = ${data.nama}, hp = ${data.hp ?? null} WHERE id = ${id}`
+      await sql`UPDATE relawan SET 
+        nama = ${data.nama}, hp = ${data.hp ?? null},
+        foto_url = ${data.foto_url ?? null}, status_relawan = ${data.status_relawan ?? null}, cabang_dbf = ${data.cabang_dbf ?? null}, tipe_relawan = ${data.tipe_relawan ?? null},
+        tempat_lahir = ${data.tempat_lahir ?? null}, tanggal_lahir = ${data.tanggal_lahir ?? null}, jenis_kelamin = ${data.jenis_kelamin ?? null}, alamat = ${data.alamat ?? null}, nomor_induk = ${data.nomor_induk ?? null}, ketokohan = ${data.ketokohan ?? null},
+        bank = ${data.bank ?? null}, nomor_rekening = ${data.nomor_rekening ?? null}, atas_nama = ${data.atas_nama ?? null}, nomor_ktp = ${data.nomor_ktp ?? null}, nomor_kk = ${data.nomor_kk ?? null}, pendidikan = ${data.pendidikan ?? null}, pekerjaan = ${data.pekerjaan ?? null},
+        jabatan_desa = ${data.jabatan_desa ?? null}, keahlian = ${data.keahlian ?? null}, status_edukasi = ${data.status_edukasi ?? null}, coa_kafalah = ${data.coa_kafalah ?? null}, nama_coa_kafalah = ${data.nama_coa_kafalah ?? null},
+        akun_facebook = ${data.akun_facebook ?? null}, akun_twitter = ${data.akun_twitter ?? null}, akun_instagram = ${data.akun_instagram ?? null}
+        WHERE id = ${id}`
     }
     if (data.email) {
       const r = await sql`SELECT user_id FROM relawan WHERE id = ${id} LIMIT 1`

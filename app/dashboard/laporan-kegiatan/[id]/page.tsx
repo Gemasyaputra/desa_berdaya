@@ -20,7 +20,9 @@ import {
   Target,
   MessageCircle,
   Send,
-  Share2
+  Share2,
+  Newspaper,
+  Copy
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -32,6 +34,7 @@ export default function LaporanDetailPage() {
   const [loading, setLoading] = useState(true)
   const [hierarchy, setHierarchy] = useState<any>(null)
   const [beritaText, setBeritaText] = useState('')
+  const [artikelText, setArtikelText] = useState('')
 
   useEffect(() => {
     async function loadData() {
@@ -62,6 +65,18 @@ ${data.deskripsi || '-'}
 - Total Manfaat: ${pmTotal} Jiwa
 
 ${h?.nama_desa || '-'} - Laporan By: ${h?.nama_relawan || '-'}`)
+
+          setArtikelText(`${data.judul_kegiatan}
+
+Oleh: Relawan Desa Berdaya (${h?.nama_relawan || '-'})
+Lokasi: ${h?.nama_desa || '-'}, ${data.lokasi_pelaksanaan || '-'} - ${formatedDate}
+
+${data.deskripsi || '-'}
+
+Pelaksanaan program ${data.jenis_kegiatan?.toLowerCase() || ''} ini ditujukan khusus untuk ${data.sasaran_program || 'masyarakat desa'}. Berdasarkan data realisasi kegiatan di lapangan, program ini sukses disambut baik dan menyalurkan manfaat kepada total ${pmTotal} jiwa, dengan rincian ${pmLaki} penerima manfaat laki-laki dan ${pmPerempuan} penerima manfaat perempuan.
+
+Alhamdulillah, melalui kolaborasi yang baik, program ini diharapkan dapat terus memberikan dampak positif berkelanjutan bagi seluruh penerima manfaat yang terlibat di wilayah binaan.`)
+
         }
       } catch (e) {
         console.error(e)
@@ -217,18 +232,55 @@ ${h?.nama_desa || '-'} - Laporan By: ${h?.nama_relawan || '-'}`)
               {Array.isArray(laporan.bukti_url) && laporan.bukti_url.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {laporan.bukti_url.map((url: string, index: number) => (
-                    <a 
-                      key={index} 
-                      href={url} 
-                      target="_blank" 
-                      rel="noreferrer"
+                    <div 
+                      key={index}
                       className="aspect-square rounded-[1.5rem] overflow-hidden border-2 border-slate-100 bg-slate-50 shadow-sm transition-all hover:shadow-md hover:border-[#7a1200]/30 group relative"
                     >
                       <img src={url} alt={`Bukti ${index + 1}`} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                         <Badge variant="secondary" className="bg-white/90 text-[10px] font-bold uppercase text-slate-800">Lihat</Badge>
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <Button type="button" variant="secondary" size="icon" className="h-8 w-8 rounded-full bg-white text-slate-700" asChild>
+                          <a href={url} target="_blank" rel="noreferrer">
+                            <FileImage className="w-4 h-4" />
+                          </a>
+                        </Button>
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          size="icon" 
+                          className="h-8 w-8 rounded-full bg-white text-slate-700 hover:bg-slate-100"
+                          onClick={() => {
+                            const img = new Image();
+                            img.crossOrigin = "Anonymous";
+                            img.onload = () => {
+                              const canvas = document.createElement("canvas");
+                              canvas.width = img.width;
+                              canvas.height = img.height;
+                              const ctx = canvas.getContext("2d");
+                              if (!ctx) return;
+                              ctx.drawImage(img, 0, 0);
+                              canvas.toBlob(async (blob) => {
+                                if (!blob) return;
+                                try {
+                                  await navigator.clipboard.write([
+                                    new ClipboardItem({ 'image/png': blob })
+                                  ]);
+                                  import('sonner').then(m => m.toast.success("Gambar berhasil disalin!"));
+                                } catch (e) {
+                                  console.error(e);
+                                  import('sonner').then(m => m.toast.error("Gagal menyalin gambar ke clipboard"));
+                                }
+                              }, "image/png");
+                            };
+                            img.onerror = () => {
+                               import('sonner').then(m => m.toast.error("Gagal menyalin: masalah izin (CORS) dari server gambar."));
+                            };
+                            img.src = url;
+                          }}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
                       </div>
-                    </a>
+                    </div>
                   ))}
                 </div>
               ) : typeof laporan.bukti_url === 'string' && laporan.bukti_url ? (
@@ -283,6 +335,37 @@ ${h?.nama_desa || '-'} - Laporan By: ${h?.nama_relawan || '-'}`)
                 >
                   <Send className="w-5 h-5" />
                   FORWARD KE TELEGRAM
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {/* Format Artikel Card */}
+          <Card className="bg-white border-none shadow-xl shadow-slate-200/50 rounded-[2rem] p-8">
+            <div className="space-y-6">
+              <h3 className="font-bold text-lg text-slate-800 tracking-tight flex items-center gap-2">
+                <Newspaper className="w-5 h-5 text-indigo-600" /> Draft Artikel Publikasi
+              </h3>
+              <p className="text-sm text-slate-500 font-medium">
+                Draft format artikel naratif di bawah ini auto-generated berdasarkan laporan aslinya. Sangat cocok disalin untuk ditaruh ke blog, website, buletin, portal internal maupun social media perusahaan.
+              </p>
+              
+              <textarea 
+                className="w-full h-80 p-6 text-sm bg-slate-50 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-700 leading-relaxed font-medium resize-y whitespace-pre-wrap"
+                value={artikelText}
+                onChange={(e) => setArtikelText(e.target.value)}
+              />
+
+              <div className="flex pt-2">
+                <Button 
+                  className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl h-12 px-8 font-bold shadow-lg shadow-indigo-600/20 gap-2"
+                  onClick={() => {
+                    navigator.clipboard.writeText(artikelText)
+                    import('sonner').then((m) => m.toast.success("Artikel berhasil disalin!"))
+                  }}
+                >
+                  <Copy className="w-5 h-5" />
+                  Salin Artikel
                 </Button>
               </div>
             </div>

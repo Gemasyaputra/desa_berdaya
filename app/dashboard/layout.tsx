@@ -15,6 +15,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { useSession, signOut } from 'next-auth/react'
+import { getMyProfile } from '@/app/dashboard/profil/actions'
 import {
   LayoutDashboard,
   Building2,
@@ -32,6 +33,7 @@ import {
   MapPin,
   User,
   FileText,
+  UserCircle,
   TrendingUp,
   Heart,
 } from 'lucide-react'
@@ -52,6 +54,7 @@ export default function DashboardLayout({
   const [userClinicId, setUserClinicId] = useState<number | null>(null)
   const [userJabatan, setUserJabatan] = useState<string | null>(null)
   const [userNamaOffice, setUserNamaOffice] = useState<string | null>(null)
+  const [userFoto, setUserFoto] = useState<string | null>(null)
   const [brandColor, setBrandColor] = useState('#7a1200')
   const [logoUrl, setLogoUrl] = useState('')
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false)
@@ -66,12 +69,23 @@ export default function DashboardLayout({
     // Load user info dari session NextAuth
     if (status === 'authenticated') {
       const user = session?.user
+      const role = (user as any)?.role || 'User'
+      
       setUserName(user?.name || 'User')
-      setUserRole((user as any)?.role || 'User')
+      setUserRole(role)
       const clinicId = (user as any)?.clinic_id
       setUserClinicId(typeof clinicId === 'number' ? clinicId : clinicId ? Number(clinicId) : null)
       setUserJabatan((user as any)?.jabatan || null)
       setUserNamaOffice((user as any)?.nama_office || null)
+      setUserFoto((user as any)?.image || null) // fallback to Google image if available
+
+      if (role === 'RELAWAN' || role === 'USER') {
+        getMyProfile().then((res) => {
+          if (res.success && (res.data as any)?.foto_url) {
+            setUserFoto((res.data as any).foto_url)
+          }
+        }).catch(console.error)
+      }
     }
     
     // Load sidebar state from localStorage
@@ -122,6 +136,7 @@ export default function DashboardLayout({
   const isKorwil = !!(session?.user as any)?.is_korwil
   const isOffice = userRole === 'OFFICE'
   const isAdminRole = userRole === 'ADMIN'
+  const isRelawan = userRole === 'USER' || userRole === 'RELAWAN'
 
   const menuItems: MenuItem[] = !isRoleReady
     ? []
@@ -161,6 +176,7 @@ export default function DashboardLayout({
           ...(isOffice ? [] : [{ href: '/dashboard/master-program', label: 'Master Program', icon: BookOpen }]),
           ...(isKorwil ? [{ href: '/dashboard/manajemen-tim', label: 'Manajemen Tim', icon: UsersRound }] : []),
           ...(isKorwil ? [{ href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch }] : []),
+          ...(isRelawan ? [{ href: '/dashboard/profil', label: 'Profil Saya', icon: UserCircle }] : []),
         ]
 
   const isActive = (href: string) => pathname === href
@@ -191,8 +207,12 @@ export default function DashboardLayout({
           <div className={`p-4 border-b border-white/20 transition-opacity duration-300 ${sidebarCollapsed ? 'lg:opacity-0 lg:hidden' : 'lg:opacity-100'}`}>
             {isUserReady ? (
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
-                  <User className="w-5 h-5" />
+                <div className="w-10 h-10 bg-white/20 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0">
+                  {userFoto ? (
+                    <img src={userFoto} alt="Profil" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-5 h-5" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm truncate leading-tight mb-0.5">{userName}</p>

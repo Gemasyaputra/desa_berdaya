@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Target, LayoutGrid, Search, Filter, X, Check, FileSpreadsheet, Trash2 } from 'lucide-react'
-import { getIntervensiPrograms, deleteIntervensiProgram } from './actions'
+import { Plus, Target, LayoutGrid, Search, Filter, X, Check, FileSpreadsheet, Trash2, Download, Loader2 } from 'lucide-react'
+import { getIntervensiPrograms, deleteIntervensiProgram, getIntervensiExportData } from './actions'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
@@ -106,6 +106,8 @@ export default function IntervensiListPage() {
   })
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<any>(null)
+  const [isExporting, setIsExporting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     loadData()
@@ -196,6 +198,164 @@ export default function IntervensiListPage() {
     setDeleteTarget(row)
   }
 
+  // ── Selection helpers ───────────────────────────────────────────────
+  const allFilteredSelected = filtered.length > 0 && filtered.every(r => selectedIds.has(r.id))
+  const someFilteredSelected = filtered.some(r => selectedIds.has(r.id))
+
+  const toggleRow = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const toggleAllFiltered = () => {
+    if (allFilteredSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        filtered.forEach(r => next.delete(r.id))
+        return next
+      })
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        filtered.forEach(r => next.add(r.id))
+        return next
+      })
+    }
+  }
+
+  const clearSelection = () => setSelectedIds(new Set())
+
+  const handleExport = async () => {
+    if (selectedIds.size === 0) return
+    setIsExporting(true)
+    try {
+      const ids = Array.from(selectedIds)
+      const rows = (await getIntervensiExportData(ids)) as any[]
+      const XLSX = await import('xlsx')
+
+      const BULAN_ORDER = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']
+      const fmt = (n: any) => (n === null || n === undefined || n === '') ? 0 : Number(n)
+      const fmtBool = (v: any) => (String(v).toLowerCase() === 'true' || v === true) ? 'Ya' : 'Tidak'
+
+      // Group rows by intervensi_id
+      const grouped = new Map<number, any[]>()
+      for (const r of rows) {
+        if (!grouped.has(r.intervensi_id)) grouped.set(r.intervensi_id, [])
+        grouped.get(r.intervensi_id)!.push(r)
+      }
+
+      const wb = XLSX.utils.book_new()
+
+      // ── Sheet 1: Ringkasan ────────────────────────────────────────────
+      const summaryData = Array.from(grouped.values()).map(grp => {
+        const h = grp[0]
+        const anggaran = grp.filter(r => r.anggaran_id != null)
+        return {
+          'ID': h.intervensi_id,
+          'Nama Desa': h.nama_desa || '-',
+          'Kategori Program': h.kategori_program || '-',
+          'Program': h.nama_program || '-',
+          'Relawan': h.nama_relawan || '-',
+          'Sumber Dana': h.sumber_dana || '-',
+          'Fundraiser': h.fundraiser || '-',
+          'Deskripsi': h.deskripsi || '-',
+          'Status': h.status || '-',
+          'Tanggal Dibuat': h.created_at ? new Date(h.created_at).toLocaleDateString('id-ID') : '-',
+          'Jml Anggaran': anggaran.length,
+          'Total Ajuan RI': anggaran.reduce((s, r) => s + fmt(r.ajuan_ri), 0),
+          'Total Disetujui': anggaran.reduce((s, r) => s + fmt(r.anggaran_disetujui), 0),
+          'Total Dicairkan': anggaran.reduce((s, r) => s + fmt(r.anggaran_dicairkan), 0),
+        }
+      })
+      const wsSummary = XLSX.utils.json_to_sheet(summaryData)
+      wsSummary['!cols'] = [
+        {wch:6},{wch:20},{wch:18},{wch:24},{wch:20},{wch:14},{wch:20},{wch:30},{wch:12},{wch:15},{wch:14},{wch:18},{wch:18},{wch:18}
+      ]
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Ringkasan')
+
+      // ── One sheet per Intervensi ──────────────────────────────────────
+      let totalDetailRows = 0
+      for (const [, grp] of grouped) {
+        const h = grp[0]
+
+        // Build sheet as array-of-arrays to replicate the detail page layout
+        const wsData: any[][] = [
+          // ── Header info block ─────────────────────────────────────────
+          ['DESA', h.nama_desa || '-',          '', 'SUMBER DANA', h.sumber_dana || '-'],
+          ['KATEGORI PROGRAM', h.kategori_program || '-', '', 'FUNDRAISER', h.fundraiser || '-'],
+          ['PROGRAM', h.nama_program || '-',    '', 'RELAWAN', h.nama_relawan || '-'],
+          ['DESKRIPSI', h.deskripsi || '-',     '', 'STATUS', h.status || '-'],
+          ['TANGGAL DIBUAT', h.created_at ? new Date(h.created_at).toLocaleDateString('id-ID') : '-'],
+          [],
+          // ── Anggaran table header ─────────────────────────────────────
+          ['TAHUN', 'BULAN', 'AJUAN RI', 'ANGGARAN DISETUJUI', 'ANGGARAN DICAIRKAN', 'STATUS PENCAIRAN', 'ID STP', 'CATATAN', 'IS DBF', 'IS RZ'],
+        ]
+
+        // Sort anggaran rows calendar-wise
+        const anggaranRows = grp
+          .filter(r => r.anggaran_id != null)
+          .sort((a, b) => {
+            if (Number(a.tahun) !== Number(b.tahun)) return Number(a.tahun) - Number(b.tahun)
+            return BULAN_ORDER.indexOf(a.bulan) - BULAN_ORDER.indexOf(b.bulan)
+          })
+
+        for (const r of anggaranRows) {
+          wsData.push([
+            r.tahun,
+            r.bulan,
+            fmt(r.ajuan_ri),
+            fmt(r.anggaran_disetujui),
+            fmt(r.anggaran_dicairkan),
+            r.status_pencairan || '-',
+            r.id_stp || '-',
+            r.catatan || '-',
+            fmtBool(r.is_dbf),
+            fmtBool(r.is_rz),
+          ])
+        }
+
+        // Totals row
+        if (anggaranRows.length > 0) {
+          wsData.push([
+            'TOTAL', '',
+            anggaranRows.reduce((s, r) => s + fmt(r.ajuan_ri), 0),
+            anggaranRows.reduce((s, r) => s + fmt(r.anggaran_disetujui), 0),
+            anggaranRows.reduce((s, r) => s + fmt(r.anggaran_dicairkan), 0),
+          ])
+        }
+
+        totalDetailRows += anggaranRows.length
+
+        const ws = XLSX.utils.aoa_to_sheet(wsData)
+        ws['!cols'] = [
+          {wch:18},{wch:12},{wch:20},{wch:22},{wch:22},{wch:18},{wch:14},{wch:28},{wch:8},{wch:8}
+        ]
+
+        // Safe sheet name (max 31 chars)
+        const sheetName = `${h.nama_desa || 'Desa'}_${h.nama_program || 'Program'}`
+          .replace(/[*?:/\\[\]]/g, '')
+          .slice(0, 28)
+          + `_${h.intervensi_id}`
+
+        XLSX.utils.book_append_sheet(wb, ws, sheetName)
+      }
+
+      const now = new Date().toISOString().slice(0, 10)
+      XLSX.writeFile(wb, `export_intervensi_${now}.xlsx`)
+
+      const { toast } = await import('sonner')
+      toast.success(`Export berhasil! ${summaryData.length} Intervensi, ${totalDetailRows} baris anggaran.`)
+    } catch (err: any) {
+      const { toast } = await import('sonner')
+      toast.error(err.message || 'Export gagal')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   const executeDelete = async () => {
     if (!deleteTarget) return
     try {
@@ -234,6 +394,23 @@ export default function IntervensiListPage() {
               <span className="text-[10px] font-medium text-[#008784]/60 leading-tight mt-0.5">Template tersedia di dalam</span>
             </div>
           </Button>
+          <Button
+            variant="outline"
+            className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 shadow-sm px-5 h-auto py-2 rounded-xl transition-all w-full sm:w-auto gap-2 items-start disabled:opacity-60"
+            onClick={handleExport}
+            disabled={isExporting || selectedIds.size === 0}
+          >
+            {isExporting
+              ? <Loader2 className="w-4 h-4 mt-0.5 flex-shrink-0 animate-spin" />
+              : <Download className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            }
+            <div className="flex flex-col text-left">
+              <span className="font-bold text-sm leading-tight">{isExporting ? 'Mengexport...' : 'Export Excel'}</span>
+              <span className="text-[10px] font-medium text-slate-400 leading-tight mt-0.5">
+                {selectedIds.size > 0 ? `${selectedIds.size} dipilih` : 'Pilih baris dulu'}
+              </span>
+            </div>
+          </Button>
           <Button 
             className="bg-[#008784] hover:bg-[#006e6b] text-white shadow-lg shadow-[#008784]/20 px-6 h-12 rounded-xl font-bold transition-all w-full md:w-auto active:scale-95"
             onClick={() => router.push('/dashboard/intervensi/tambah')}
@@ -256,6 +433,34 @@ export default function IntervensiListPage() {
                 </span>
               )}
             </CardTitle>
+
+            {/* Selection action bar */}
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-3 bg-[#008784]/5 border border-[#008784]/20 rounded-2xl px-4 py-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 bg-[#008784] rounded-md flex items-center justify-center">
+                    <Check className="w-3 h-3 text-white stroke-[3px]" />
+                  </div>
+                  <span className="text-sm font-bold text-[#008784]">{selectedIds.size} dipilih</span>
+                </div>
+                <div className="w-px h-4 bg-[#008784]/20" />
+                <button
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors"
+                  onClick={clearSelection}
+                >
+                  Batal pilih
+                </button>
+                <Button
+                  size="sm"
+                  className="bg-[#008784] hover:bg-[#006e6b] text-white rounded-xl font-bold px-4 h-8 gap-1.5 shadow-sm shadow-[#008784]/20"
+                  disabled={isExporting}
+                  onClick={handleExport}
+                >
+                  {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  Export {selectedIds.size} data
+                </Button>
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
               {/* Search box */}
@@ -324,6 +529,24 @@ export default function IntervensiListPage() {
             <table className="w-full text-sm text-left">
               <thead className="bg-[#f8fafc] text-[11px] uppercase font-bold text-slate-500 tracking-wider">
                 <tr>
+                  {/* Select-all checkbox */}
+                  <th className="px-5 py-4 w-10">
+                    <div
+                      className={`w-4 h-4 rounded border-2 cursor-pointer flex items-center justify-center transition-colors ${
+                        allFilteredSelected
+                          ? 'bg-[#008784] border-[#008784]'
+                          : someFilteredSelected
+                          ? 'bg-[#008784]/30 border-[#008784]'
+                          : 'border-slate-300 hover:border-[#008784]/60'
+                      }`}
+                      onClick={toggleAllFiltered}
+                      title={allFilteredSelected ? 'Batal pilih semua' : 'Pilih semua'}
+                    >
+                      {(allFilteredSelected || someFilteredSelected) && (
+                        <Check className="w-2.5 h-2.5 text-white stroke-[3.5px]" />
+                      )}
+                    </div>
+                  </th>
                   <th className="px-8 py-4 min-w-[200px]">Desa Binaan & Program</th>
                   <th className="px-8 py-4">Relawan</th>
                   <th className="px-8 py-4">Sumber Dana / Fundraiser</th>
@@ -335,11 +558,11 @@ export default function IntervensiListPage() {
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-8 py-12 text-center text-slate-400 font-medium whitespace-nowrap">Memuat data...</td>
+                    <td colSpan={7} className="px-8 py-12 text-center text-slate-400 font-medium whitespace-nowrap">Memuat data...</td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-8 py-14 text-center">
+                    <td colSpan={7} className="px-8 py-14 text-center">
                       <div className="flex flex-col items-center gap-3 text-slate-400">
                         <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center">
                           <Search className="w-6 h-6 opacity-30" />
@@ -363,7 +586,27 @@ export default function IntervensiListPage() {
                   </tr>
                 ) : (
                   filtered.map((row) => (
-                    <tr key={row.id} className="hover:bg-slate-50/80 transition-colors group">
+                    <tr
+                      key={row.id}
+                      className={`hover:bg-slate-50/80 transition-colors group ${
+                        selectedIds.has(row.id) ? 'bg-[#008784]/5' : ''
+                      }`}
+                    >
+                      {/* Per-row checkbox */}
+                      <td className="px-5 py-5">
+                        <div
+                          className={`w-4 h-4 rounded border-2 cursor-pointer flex items-center justify-center transition-colors ${
+                            selectedIds.has(row.id)
+                              ? 'bg-[#008784] border-[#008784]'
+                              : 'border-slate-300 hover:border-[#008784]/60'
+                          }`}
+                          onClick={() => toggleRow(row.id)}
+                        >
+                          {selectedIds.has(row.id) && (
+                            <Check className="w-2.5 h-2.5 text-white stroke-[3.5px]" />
+                          )}
+                        </div>
+                      </td>
                       <td className="px-8 py-5">
                         <div className="font-bold text-slate-800 mb-1 group-hover:text-[#008784] transition-colors">{row.nama_desa || '-'}</div>
                         <div className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">

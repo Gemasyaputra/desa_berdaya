@@ -173,6 +173,81 @@ export async function getAnggaranByIntervensi(headerId: number) {
   return Array.isArray(rawData) ? rawData : []
 }
 
+// EXPORT: Full data with anggaran rows (single query, no N+1)
+export async function getIntervensiExportData(ids?: number[]) {
+  await checkAdmin();
+  // Build a safe comma-separated list for SQL IN clause
+  const idList = ids && ids.length > 0 ? ids : null
+
+  const rawData = idList
+    ? await sql`
+        SELECT 
+          ip.id as intervensi_id,
+          ip.status,
+          ip.sumber_dana,
+          ip.fundraiser,
+          ip.deskripsi,
+          ip.created_at,
+          dc.nama_desa,
+          kp.nama_kategori as kategori_program,
+          p.nama_program,
+          r.nama as nama_relawan,
+          ia.id as anggaran_id,
+          ia.tahun,
+          ia.bulan,
+          ia.ajuan_ri,
+          ia.anggaran_disetujui,
+          ia.anggaran_dicairkan,
+          ia.status_pencairan,
+          ia.id_stp,
+          ia.catatan,
+          ia.is_dbf,
+          ia.is_rz
+        FROM intervensi_program ip
+        LEFT JOIN desa_berdaya db ON ip.desa_berdaya_id = db.id
+        LEFT JOIN desa_config dc ON db.desa_id = dc.id
+        LEFT JOIN kategori_program kp ON ip.kategori_program_id = kp.id
+        LEFT JOIN program p ON ip.program_id = p.id
+        LEFT JOIN relawan r ON ip.relawan_id = r.id
+        LEFT JOIN intervensi_anggaran ia ON ia.intervensi_program_id = ip.id
+        WHERE ip.id = ANY(${idList})
+        ORDER BY ip.created_at DESC, ia.tahun ASC, ia.bulan ASC
+      `
+    : await sql`
+        SELECT 
+          ip.id as intervensi_id,
+          ip.status,
+          ip.sumber_dana,
+          ip.fundraiser,
+          ip.deskripsi,
+          ip.created_at,
+          dc.nama_desa,
+          kp.nama_kategori as kategori_program,
+          p.nama_program,
+          r.nama as nama_relawan,
+          ia.id as anggaran_id,
+          ia.tahun,
+          ia.bulan,
+          ia.ajuan_ri,
+          ia.anggaran_disetujui,
+          ia.anggaran_dicairkan,
+          ia.status_pencairan,
+          ia.id_stp,
+          ia.catatan,
+          ia.is_dbf,
+          ia.is_rz
+        FROM intervensi_program ip
+        LEFT JOIN desa_berdaya db ON ip.desa_berdaya_id = db.id
+        LEFT JOIN desa_config dc ON db.desa_id = dc.id
+        LEFT JOIN kategori_program kp ON ip.kategori_program_id = kp.id
+        LEFT JOIN program p ON ip.program_id = p.id
+        LEFT JOIN relawan r ON ip.relawan_id = r.id
+        LEFT JOIN intervensi_anggaran ia ON ia.intervensi_program_id = ip.id
+        ORDER BY ip.created_at DESC, ia.tahun ASC, ia.bulan ASC
+      `
+  return Array.isArray(rawData) ? rawData : []
+}
+
 export async function createAnggaran(data: any) {
   await checkAdmin();
   

@@ -10,6 +10,13 @@ const DEFAULT_PASSWORD = 'DesaBerdaya2025'
 // ============================================================
 // Tipe Data
 // ============================================================
+export type AdminRow = {
+  id: number
+  email: string
+  role: string
+  created_at: string | null
+}
+
 export type MonevRow = {
   id: number
   nama: string
@@ -97,6 +104,90 @@ export async function getKorwilOptions(monevId?: number | null): Promise<OptionI
     ? await sql`SELECT id, nama FROM relawan WHERE is_korwil = true AND monev_id = ${monevId} ORDER BY nama`
     : await sql`SELECT id, nama FROM relawan WHERE is_korwil = true ORDER BY nama`
   return (rows as any[]).map((r) => ({ id: Number(r.id), nama: r.nama }))
+}
+
+// ============================================================
+// ADMIN — CRUD (ADMIN only)
+// ============================================================
+export async function getAdminList(): Promise<AdminRow[]> {
+  const auth = await getAuthContext()
+  if (!auth || auth.role !== 'ADMIN') return []
+
+  const rows = await sql`
+    SELECT id, email, role, created_at
+    FROM users 
+    WHERE role = 'ADMIN'
+    ORDER BY email
+  `
+  return (rows as any[]).map((r) => ({
+    id: Number(r.id),
+    email: r.email,
+    role: r.role,
+    created_at: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : null,
+  }))
+}
+
+export async function createAdmin(data: { email: string }) {
+  const auth = await getAuthContext()
+  if (!auth || auth.role !== 'ADMIN') return { success: false, error: 'Akses ditolak' }
+
+  try {
+    const existing = await sql`SELECT id FROM users WHERE email = ${data.email} LIMIT 1`
+    if ((existing as any[]).length > 0) return { success: false, error: 'Email sudah digunakan' }
+
+    const hash = await bcrypt.hash(DEFAULT_PASSWORD, 10)
+    await sql`
+      INSERT INTO users (email, password_encrypted, role)
+      VALUES (${data.email}, ${hash}, 'ADMIN')
+    `
+    return { success: true }
+  } catch (e: any) {
+    return { success: false, error: e.message }
+  }
+}
+
+export async function updateAdmin(id: number, data: { email: string }) {
+  const auth = await getAuthContext()
+  if (!auth || auth.role !== 'ADMIN') return { success: false, error: 'Akses ditolak' }
+
+  try {
+    // Cek apakah email yang baru sudah digunakan oleh user lain
+    const existing = await sql`SELECT id FROM users WHERE email = ${data.email} AND id != ${id} LIMIT 1`
+    if ((existing as any[]).length > 0) return { success: false, error: 'Email sudah digunakan' }
+
+    await sql`UPDATE users SET email = ${data.email} WHERE id = ${id}`
+    return { success: true }
+  } catch (e: any) {
+    return { success: false, error: e.message }
+  }
+}
+
+export async function deleteAdmin(id: number) {
+  const auth = await getAuthContext()
+  if (!auth || auth.role !== 'ADMIN') return { success: false, error: 'Akses ditolak' }
+
+  // Cegah admin menghapus dirinya sendiri (opsional tapi baik)
+  const session = await getServerSession(authOptions)
+  if (session?.user?.id === String(id)) return { success: false, error: 'Tidak dapat menghapus akun Anda sendiri' }
+
+  try {
+    await sql`DELETE FROM users WHERE id = ${id} AND role = 'ADMIN'`
+    return { success: true }
+  } catch (e: any) {
+    return { success: false, error: e.message }
+  }
+}
+
+export async function resetPasswordAdmin(id: number) {
+  const auth = await getAuthContext()
+  if (!auth || auth.role !== 'ADMIN') return { success: false, error: 'Akses ditolak' }
+  try {
+    const hash = await bcrypt.hash(DEFAULT_PASSWORD, 10)
+    await sql`UPDATE users SET password_encrypted = ${hash} WHERE id = ${id} AND role = 'ADMIN'`
+    return { success: true }
+  } catch (e: any) {
+    return { success: false, error: e.message }
+  }
 }
 
 // ============================================================

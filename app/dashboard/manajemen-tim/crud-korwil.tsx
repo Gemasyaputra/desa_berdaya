@@ -11,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Trash2, Edit, X, Save, RefreshCw, KeyRound, UserCheck, MapPin, Shield, Users, UploadCloud, Loader2 } from 'lucide-react'
+import { Plus, Trash2, Edit, X, Save, RefreshCw, KeyRound, UserCheck, MapPin, Shield, Users, UploadCloud, Loader2, Search } from 'lucide-react'
 import { upload } from '@vercel/blob/client'
 import { toast } from 'sonner'
 import {
@@ -40,6 +40,7 @@ export function CRUDKorwil({ isAdmin, isMonev }: { isAdmin: boolean; isMonev: bo
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState(emptyForm())
+  const [searchQuery, setSearchQuery] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -154,7 +155,10 @@ export function CRUDKorwil({ isAdmin, isMonev }: { isAdmin: boolean; isMonev: bo
     else toast.error(result.error || 'Gagal menghapus')
   }
 
-
+  const filteredList = list.filter((row) => 
+    row.nama.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (row.email && row.email.toLowerCase().includes(searchQuery.toLowerCase()))
+  )
 
   return (
     <div className="space-y-4">
@@ -169,8 +173,17 @@ export function CRUDKorwil({ isAdmin, isMonev }: { isAdmin: boolean; isMonev: bo
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Total: <span className="text-amber-600">{list.length}</span> Pengguna Aktif</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={load} disabled={loading} className="h-10 rounded-xl px-4 border-slate-200 hover:bg-slate-50 text-slate-600 font-bold shadow-sm">
+        <div className="flex items-center gap-3 w-full md:w-auto mt-4 md:mt-0 flex-wrap md:flex-nowrap">
+          <div className="relative w-full md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input 
+              placeholder="Cari nama/email..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10 rounded-xl"
+            />
+          </div>
+          <Button variant="outline" size="sm" onClick={load} disabled={loading} className="h-10 rounded-xl px-4 border-slate-200 hover:bg-slate-50 text-slate-600 font-bold shadow-sm shrink-0">
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -376,7 +389,7 @@ export function CRUDKorwil({ isAdmin, isMonev }: { isAdmin: boolean; isMonev: bo
                     <div className="space-y-4">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="h-6 w-1 bg-blue-500 rounded-full"></div>
-                        <h4 className="text-sm font-black text-slate-800 tracking-tight">INFORMASI BANK</h4>
+                        <h4 className="text-sm font-semibold text-slate-800 tracking-tight">INFORMASI BANK</h4>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                         <div className="space-y-2">
@@ -397,7 +410,7 @@ export function CRUDKorwil({ isAdmin, isMonev }: { isAdmin: boolean; isMonev: bo
                     <div className="space-y-4">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="h-6 w-1 bg-rose-500 rounded-full"></div>
-                        <h4 className="text-sm font-black text-slate-800 tracking-tight">SOCIAL MEDIA</h4>
+                        <h4 className="text-sm font-semibold text-slate-800 tracking-tight">SOCIAL MEDIA</h4>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                         <div className="space-y-2">
@@ -456,17 +469,17 @@ export function CRUDKorwil({ isAdmin, isMonev }: { isAdmin: boolean; isMonev: bo
                   </tr>
                 </thead>
                 <tbody>
-                  {list.map((row, i) => (
+                  {filteredList.map((row, i) => (
                     <tr key={row.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors group">
                       <td className="py-4 px-4 text-sm font-bold text-center text-slate-400">{i + 1}</td>
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center font-black text-slate-800 group-hover:bg-amber-500 group-hover:border-amber-500 group-hover:text-white transition-colors duration-300 flex-shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center font-bold text-slate-800 group-hover:bg-amber-500 group-hover:border-amber-500 group-hover:text-white transition-colors duration-300 flex-shrink-0">
                             {row.nama.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <span className="text-sm font-black text-slate-800 block truncate leading-none mb-1">{row.nama}</span>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Koordinator Wilayah</span>
+                            <span className="text-sm font-semibold text-slate-800 block truncate leading-none mb-1">{row.nama}</span>
+                            <span className="text-[11px] font-medium text-slate-500">Koordinator Wilayah</span>
                           </div>
                         </div>
                       </td>
@@ -503,6 +516,11 @@ export function CRUDKorwil({ isAdmin, isMonev }: { isAdmin: boolean; isMonev: bo
                       </td>
                     </tr>
                   ))}
+                  {filteredList.length === 0 && list.length > 0 && (
+                    <tr>
+                      <td colSpan={isAdmin ? 6 : 5} className="py-8 text-center text-slate-400 text-sm">Tidak ada hasil pencarian.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

@@ -2,14 +2,15 @@
 
 import { useSession } from 'next-auth/react'
 import { useState } from 'react'
-import { Shield, UserCheck, Users, UsersRound, Building2, BriefcaseBusiness } from 'lucide-react'
+import { Shield, UserCheck, Users, UsersRound, Building2, BriefcaseBusiness, UserCog } from 'lucide-react'
+import { CRUDAdmin } from './crud-admin'
 import { CRUDMonev } from './crud-monev'
 import { CRUDKorwil } from './crud-korwil'
 import { CRUDRelawan } from './crud-relawan'
 import { CRUDOffice } from './crud-office'
 import { CRUDOfficeUser } from './crud-office-user'
 
-type Tab = 'monev' | 'korwil' | 'relawan' | 'office' | 'officeuser'
+type Tab = 'admin' | 'monev' | 'korwil' | 'relawan' | 'office' | 'officeuser'
 
 export default function ManajemenTimPage() {
   const { data: session, status } = useSession()
@@ -44,6 +45,7 @@ export default function ManajemenTimPage() {
 
   // Tentukan tab yang tersedia
   const tabs: { key: Tab; label: string; icon: React.ElementType; show: boolean }[] = [
+    { key: 'admin', label: 'Admin', icon: UserCog, show: isAdmin },
     { key: 'monev', label: 'Monev', icon: Shield, show: isAdmin },
     { key: 'korwil', label: 'Korwil', icon: UserCheck, show: isAdmin || isMonev },
     { key: 'relawan', label: 'Relawan', icon: Users, show: isAdmin || isMonev || isKorwil },
@@ -67,14 +69,14 @@ export default function ManajemenTimPage() {
               Manajemen Tim
               <span className="px-2.5 py-0.5 bg-[#7a1200]/5 text-[#7a1200] text-[10px] font-bold rounded-full uppercase tracking-widest border border-red-100">Management</span>
             </h1>
-            <p className="text-slate-400 text-xs font-medium">Pengaturan Akses & Keanggotaan <span className="text-slate-500 font-bold">Monev, Korwil, dan Relawan</span></p>
+            <p className="text-slate-400 text-xs font-medium">Pengaturan Akses & Keanggotaan <span className="text-slate-500 font-bold">Admin, Monev, Korwil, dan Relawan</span></p>
           </div>
         </div>
       </header>
 
       <div className="max-w-[1600px] mx-auto p-8 py-10 space-y-10">
         {/* Tabs */}
-        <div className="flex gap-2 bg-slate-100/80 p-1.5 rounded-2xl mb-8 w-fit border border-slate-200/50 shadow-inner">
+        <div className="flex gap-2 bg-slate-100/80 p-1.5 rounded-2xl mb-8 w-fit border border-slate-200/50 shadow-inner overflow-x-auto max-w-full">
           {visibleTabs.map((tab) => {
             const Icon = tab.icon
             const isActive = validActive === tab.key
@@ -82,7 +84,7 @@ export default function ManajemenTimPage() {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm transition-all duration-300 ${
+                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm transition-all duration-300 whitespace-nowrap ${
                   isActive
                     ? 'bg-white text-[#7a1200] shadow-[0_2px_10px_rgba(0,0,0,0.06)] font-bold'
                     : 'text-slate-500 hover:text-slate-700 font-medium hover:bg-slate-200/50 hover:shadow-sm'
@@ -97,6 +99,7 @@ export default function ManajemenTimPage() {
 
         {/* Content */}
         <div>
+          {validActive === 'admin' && isAdmin && <CRUDAdmin />}
           {validActive === 'monev' && isAdmin && <CRUDMonev />}
           {validActive === 'korwil' && (isAdmin || isMonev) && (
             <CRUDKorwil isAdmin={isAdmin} isMonev={isMonev} />

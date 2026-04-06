@@ -37,6 +37,7 @@ import {
   TrendingUp,
   Heart,
   Target,
+  Receipt,
 } from 'lucide-react'
 
 export default function DashboardLayout({
@@ -151,6 +152,7 @@ export default function DashboardLayout({
           { href: '/dashboard/kelompok', label: 'Daftar Kelompok', icon: UsersRound },
           { href: '/dashboard/keuangan', label: 'Keuangan', icon: ClipboardList },
           { href: '/dashboard/laporan-kegiatan', label: 'Laporan Kegiatan', icon: FileText },
+          { href: '/dashboard/laporan-keuangan-intervensi', label: 'Laporan Keuangan', icon: Receipt },
           { href: '/dashboard/manajemen-tim', label: 'Manajemen Tim', icon: UsersRound },
           { href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch },
           { href: '/dashboard/master-program', label: 'Master Program', icon: BookOpen },
@@ -177,8 +179,8 @@ export default function DashboardLayout({
           { href: '/dashboard/ekonomi', label: 'Update Ekonomi', icon: TrendingUp },
           { href: '/dashboard/kesehatan', label: 'Update Kesehatan', icon: Heart },
           { href: '/dashboard/kelompok', label: 'Daftar Kelompok', icon: UsersRound },
-          { href: '/dashboard/keuangan', label: 'Keuangan', icon: ClipboardList },
           { href: '/dashboard/laporan-kegiatan', label: 'Laporan Kegiatan', icon: FileText },
+          { href: '/dashboard/laporan-keuangan-intervensi', label: 'Laporan Keuangan', icon: Receipt },
           ...(isOffice ? [] : [{ href: '/dashboard/master-program', label: 'Master Program', icon: BookOpen }]),
           ...(isKorwil ? [{ href: '/dashboard/manajemen-tim', label: 'Manajemen Tim', icon: UsersRound }] : []),
           ...(isKorwil ? [{ href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch }] : []),

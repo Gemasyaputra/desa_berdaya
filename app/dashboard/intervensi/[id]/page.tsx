@@ -1,13 +1,13 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { ChevronLeft, Save, Plus, X, FileText, CheckCircle2, ListFilter, Briefcase, Trash2 } from 'lucide-react'
+import { ChevronLeft, Save, Plus, X, FileText, CheckCircle2, ListFilter, Briefcase, Trash2, Copy, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { 
   getIntervensiProgramById, 
   updateIntervensiProgram, 
@@ -33,6 +33,8 @@ export default function DetailIntervensiPage() {
   const [activeTab, setActiveTab] = useState<'ANGGARAN'|'KPI'>('ANGGARAN')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBudget, setEditingBudget] = useState<any>(null)
+  const [clipboard, setClipboard] = useState<any>(null)
+  const [sortConfig, setSortConfig] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(null)
 
   // Options
   const [desaOptions, setDesaOptions] = useState<any[]>([])
@@ -141,6 +143,57 @@ export default function DetailIntervensiPage() {
       const updated = await getAnggaranByIntervensi(idNum)
       setAnggaranData(updated)
     }
+  }
+
+  const handleCopyRow = (row: any) => {
+    setClipboard(row)
+    import('sonner').then(m => m.toast.success(`Anggaran ${row.bulan} ${row.tahun} disalin! Klik 'Paste' untuk menduplikasi.`, {
+      action: { label: 'Paste Sekarang', onClick: () => handlePasteRow(row) },
+    }))
+  }
+
+  const handlePasteRow = (sourceRow?: any) => {
+    const source = sourceRow || clipboard
+    if (!source) return
+    const { id, created_at, updated_at, intervensi_program_id, ...rest } = source
+    setEditingBudget({ ...rest, _isCopy: true })
+    setIsModalOpen(true)
+  }
+
+  const bulanOrder: Record<string, number> = {
+    'Januari': 1, 'Februari': 2, 'Maret': 3, 'April': 4, 'Mei': 5, 'Juni': 6,
+    'Juli': 7, 'Agustus': 8, 'September': 9, 'Oktober': 10, 'November': 11, 'Desember': 12
+  }
+
+  const sortedData = useMemo(() => {
+    if (!sortConfig) return anggaranData
+    return [...anggaranData].sort((a, b) => {
+      let aVal = a[sortConfig.key]
+      let bVal = b[sortConfig.key]
+      // Special sort for bulan (by calendar order, not alphabetically)
+      if (sortConfig.key === 'bulan') {
+        aVal = bulanOrder[aVal] ?? 99
+        bVal = bulanOrder[bVal] ?? 99
+      }
+      if (aVal === bVal) return 0
+      const cmp = aVal > bVal ? 1 : -1
+      return sortConfig.dir === 'asc' ? cmp : -cmp
+    })
+  }, [anggaranData, sortConfig])
+
+  const handleSort = (key: string) => {
+    setSortConfig(prev => {
+      if (prev?.key !== key) return { key, dir: 'asc' }
+      if (prev.dir === 'asc') return { key, dir: 'desc' }
+      return null // third click clears sort
+    })
+  }
+
+  const SortIcon = ({ colKey }: { colKey: string }) => {
+    if (sortConfig?.key !== colKey) return <ArrowUpDown className="w-3 h-3 opacity-30 inline ml-1" />
+    return sortConfig.dir === 'asc'
+      ? <ArrowUp className="w-3 h-3 text-[#008784] inline ml-1" />
+      : <ArrowDown className="w-3 h-3 text-[#008784] inline ml-1" />
   }
 
   if (loading) return <div className="p-8 text-center text-slate-500">Memuat detail intervensi...</div>
@@ -327,12 +380,36 @@ export default function DetailIntervensiPage() {
                 <table className="w-full text-sm text-left align-middle border-collapse">
                   <thead className="bg-[#f8fafc] text-[10px] uppercase font-bold text-slate-500 tracking-wide border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-3 w-16">Tahun</th>
-                      <th className="px-4 py-3 w-28">Bulan</th>
-                      <th className="px-4 py-3 w-32 text-right">Ajuan RI</th>
-                      <th className="px-4 py-3 w-32 text-right">Agg. Disetujui</th>
-                      <th className="px-4 py-3 w-32 text-right">Agg. Dicairkan</th>
-                      <th className="px-4 py-3 w-32">Status</th>
+                      <th className="px-4 py-3 w-16">
+                        <button onClick={() => handleSort('tahun')} className="flex items-center gap-0.5 hover:text-slate-800 transition-colors">
+                          Tahun <SortIcon colKey="tahun" />
+                        </button>
+                      </th>
+                      <th className="px-4 py-3 w-28">
+                        <button onClick={() => handleSort('bulan')} className="flex items-center gap-0.5 hover:text-slate-800 transition-colors">
+                          Bulan <SortIcon colKey="bulan" />
+                        </button>
+                      </th>
+                      <th className="px-4 py-3 w-32 text-right">
+                        <button onClick={() => handleSort('ajuan_ri')} className="flex items-center gap-0.5 hover:text-slate-800 transition-colors ml-auto">
+                          Ajuan RI <SortIcon colKey="ajuan_ri" />
+                        </button>
+                      </th>
+                      <th className="px-4 py-3 w-32 text-right">
+                        <button onClick={() => handleSort('anggaran_disetujui')} className="flex items-center gap-0.5 hover:text-slate-800 transition-colors ml-auto">
+                          Agg. Disetujui <SortIcon colKey="anggaran_disetujui" />
+                        </button>
+                      </th>
+                      <th className="px-4 py-3 w-32 text-right">
+                        <button onClick={() => handleSort('anggaran_dicairkan')} className="flex items-center gap-0.5 hover:text-slate-800 transition-colors ml-auto">
+                          Agg. Dicairkan <SortIcon colKey="anggaran_dicairkan" />
+                        </button>
+                      </th>
+                      <th className="px-4 py-3 w-32">
+                        <button onClick={() => handleSort('status_pencairan')} className="flex items-center gap-0.5 hover:text-slate-800 transition-colors">
+                          Status <SortIcon colKey="status_pencairan" />
+                        </button>
+                      </th>
                       <th className="px-4 py-3 min-w-[120px]">Catatan</th>
                       <th className="px-2 py-3 w-16 text-center">Is DBF</th>
                       <th className="px-2 py-3 w-16 text-center">Is RZ</th>
@@ -340,7 +417,7 @@ export default function DetailIntervensiPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {anggaranData.map((row) => (
+                    {sortedData.map((row) => (
                       <tr key={row.id} className="hover:bg-slate-50 group transition-colors">
                         <td className="px-4 py-3 font-semibold text-slate-700">{row.tahun}</td>
                         <td className="px-4 py-3 font-medium text-slate-600">{row.bulan}</td>
@@ -352,34 +429,55 @@ export default function DetailIntervensiPage() {
                         <td className="px-2 py-3 text-center">{row.is_dbf ? <CheckCircle2 className="w-4 h-4 text-slate-400 mx-auto" /> : ''}</td>
                         <td className="px-2 py-3 text-center">{row.is_rz ? <CheckCircle2 className="w-4 h-4 text-slate-400 mx-auto" /> : ''}</td>
                         <td className="px-2 py-3 text-center">
-                          {!isLocked && (
-                            <div className="flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          {!isLocked ? (
+                            <div className="flex justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button 
                                 onClick={() => { setEditingBudget(row); setIsModalOpen(true); }}
-                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded"
+                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded text-xs font-semibold"
+                                title="Edit"
                               >
                                 Edit
                               </button>
                               <button 
+                                onClick={() => handleCopyRow(row)}
+                                className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded"
+                                title="Copy baris ini"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                              <button 
                                 onClick={() => handleDeleteBudget(row.id)}
-                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded"
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded text-xs font-semibold"
+                                title="Hapus"
                               >
                                 Del
                               </button>
                             </div>
-                          )}
+                          ) : null}
                         </td>
                       </tr>
                     ))}
                     {!isLocked && (
                       <tr>
-                        <td colSpan={10} className="p-0 border-b-2 border-transparent hover:border-b-2 hover:border-[#008784]">
-                          <button 
-                            className="w-full text-left px-4 py-3 text-[13px] font-bold text-[#008784] hover:bg-slate-50 flex items-center gap-2"
-                            onClick={() => { setEditingBudget(null); setIsModalOpen(true); }}
-                          >
-                            <Plus className="w-4 h-4" /> Tambah Anggaran
-                          </button>
+                        <td colSpan={10} className="p-0">
+                          <div className="flex items-center border-t border-slate-100">
+                            <button 
+                              className="flex-1 text-left px-4 py-3 text-[13px] font-bold text-[#008784] hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                              onClick={() => { setEditingBudget(null); setIsModalOpen(true); }}
+                            >
+                              <Plus className="w-4 h-4" /> Tambah Anggaran
+                            </button>
+                            {clipboard && (
+                              <button
+                                className="flex items-center gap-1.5 px-4 py-2 mr-2 text-[12px] font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors border border-amber-200 mr-4"
+                                onClick={() => handlePasteRow()}
+                                title={`Paste salinan dari ${clipboard.bulan} ${clipboard.tahun}`}
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                                Paste: {clipboard.bulan} {clipboard.tahun}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )}

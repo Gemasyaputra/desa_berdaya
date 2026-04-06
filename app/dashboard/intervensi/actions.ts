@@ -149,6 +149,19 @@ export async function updateIntervensiStatus(id: number, status: string) {
   return { success: true }
 }
 
+export async function deleteIntervensiProgram(id: number) {
+  await checkAdmin();
+  // Only allow deletion of DRAFT records
+  const current = await getIntervensiProgramById(id);
+  if (!current) throw new Error('Data tidak ditemukan');
+  if (current.status !== 'DRAFT') throw new Error('Hanya Intervensi berstatus DRAFT yang dapat dihapus');
+  // Cascade delete anggaran lines first
+  await sql`DELETE FROM intervensi_anggaran WHERE intervensi_program_id = ${id}`
+  await sql`DELETE FROM intervensi_program WHERE id = ${id}`
+  revalidatePath('/dashboard/intervensi')
+  return { success: true }
+}
+
 // DETAIL: ANGGARAN
 export async function getAnggaranByIntervensi(headerId: number) {
   await checkAdmin();
@@ -222,4 +235,89 @@ export async function deleteAnggaran(id: number) {
   await checkAdmin();
   await sql`DELETE FROM intervensi_anggaran WHERE id = ${id}`
   return { success: true }
+}
+
+// BULK IMPORT: Create header + anggaran rows from Excel
+export async function importIntervensiProgram(data: {
+  desa_berdaya_id: number
+  kategori_program_id: number
+  program_id: number
+  relawan_id: number
+  sumber_dana?: string
+  fundraiser?: string
+  deskripsi?: string
+  rows: Array<{
+    tahun: number
+    bulan: string
+    ajuan_ri: number
+    anggaran_disetujui: number
+    anggaran_dicairkan: number
+    status_pencairan: string
+    id_stp?: string
+    catatan?: string
+    is_dbf: boolean
+    is_rz: boolean
+  }>
+}) {
+  await checkAdmin()
+
+  // 1. Create the intervensi_program header (status = DRAFT)
+  const result = await sql`
+    INSERT INTO intervensi_program (
+      desa_berdaya_id,
+      kategori_program_id,
+      program_id,
+      deskripsi,
+      sumber_dana,
+      fundraiser,
+      relawan_id,
+      status
+    ) VALUES (
+      ${data.desa_berdaya_id},
+      ${data.kategori_program_id},
+      ${data.program_id},
+      ${data.deskripsi || null},
+      ${data.sumber_dana || null},
+      ${data.fundraiser || null},
+      ${data.relawan_id},
+      'DRAFT'
+    ) RETURNING id
+  `
+  const headerId = (result as any[])[0].id
+
+  // 2. Bulk insert anggaran rows
+  let inserted = 0
+  for (const row of data.rows) {
+    await sql`
+      INSERT INTO intervensi_anggaran (
+        intervensi_program_id,
+        tahun,
+        bulan,
+        ajuan_ri,
+        anggaran_disetujui,
+        anggaran_dicairkan,
+        status_pencairan,
+        id_stp,
+        catatan,
+        is_dbf,
+        is_rz
+      ) VALUES (
+        ${headerId},
+        ${row.tahun},
+        ${row.bulan},
+        ${row.ajuan_ri || 0},
+        ${row.anggaran_disetujui || 0},
+        ${row.anggaran_dicairkan || 0},
+        ${row.status_pencairan || 'Dialokasikan'},
+        ${row.id_stp || null},
+        ${row.catatan || null},
+        ${row.is_dbf || false},
+        ${row.is_rz || false}
+      )
+    `
+    inserted++
+  }
+
+  revalidatePath('/dashboard/intervensi')
+  return { success: true, id: headerId, inserted }
 }

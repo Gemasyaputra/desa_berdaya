@@ -33,7 +33,8 @@ export default function CreateBudgetModal({ isOpen, onClose, onSaved, headerData
     is_rz: editData?.is_rz || false,
   })
 
-  // Reset safely when open or editData changes (Not perfectly robust but enough for this scope)
+
+  // Reset safely when open or editData changes
   React.useEffect(() => {
     if (isOpen) {
       setFormData({
@@ -51,6 +52,10 @@ export default function CreateBudgetModal({ isOpen, onClose, onSaved, headerData
     }
   }, [isOpen, editData])
 
+  const isCopy = !!editData?._isCopy
+  const isEditMode = !!(editData?.id && !isCopy)
+
+
   const handleSubmit = async (e: React.FormEvent, isSaveAndNew: boolean = false) => {
     e.preventDefault()
     setLoading(true)
@@ -62,7 +67,7 @@ export default function CreateBudgetModal({ isOpen, onClose, onSaved, headerData
       }
       
       let res;
-      if (editData?.id) {
+      if (isEditMode) {
         res = await updateAnggaran(editData.id, payload)
       } else {
         res = await createAnggaran(payload)
@@ -103,9 +108,18 @@ export default function CreateBudgetModal({ isOpen, onClose, onSaved, headerData
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-2xl bg-white max-h-[90vh] overflow-y-auto w-[95%]">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">{editData ? 'Edit Budget' : 'Create Budget'}</DialogTitle>
+          <DialogTitle className="text-xl font-bold flex items-center gap-2">
+            {isCopy && (
+              <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-600 rounded-md px-2 py-0.5 text-xs font-bold uppercase tracking-wider">
+                Duplikat
+              </span>
+            )}
+            {isCopy ? 'Duplikat Anggaran' : isEditMode ? 'Edit Anggaran' : 'Tambah Anggaran'}
+          </DialogTitle>
           <DialogDescription>
-            Rencanakan anggaran intervensi untuk bulan spesifik.
+            {isCopy 
+              ? 'Data anggaran disalin. Ubah bulan/tahun sesuai kebutuhan lalu simpan.' 
+              : 'Rencanakan anggaran intervensi untuk bulan spesifik.'}
           </DialogDescription>
         </DialogHeader>
         

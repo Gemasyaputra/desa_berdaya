@@ -111,11 +111,6 @@ export function CRUDAdmin() {
               <CardTitle className="text-sm">{editingId ? 'Edit Akses Admin' : 'Tambah Admin Baru'}</CardTitle>
               <Button variant="ghost" size="icon" onClick={closeForm}><X className="w-4 h-4" /></Button>
             </div>
-            {!editingId && (
-              <p className="text-xs text-slate-500 mt-1">
-                Catatan: Akun admin baru akan dibuat dengan password default <code className="bg-slate-100 px-1 rounded">DesaBerdaya2025</code>. Pengguna dianjurkan login via Google (SSO) agar lebih aman.
-              </p>
-            )}
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">

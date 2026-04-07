@@ -58,14 +58,20 @@ export async function getDetailLaporanKeuangan(id: number) {
       ip.*,
       dc.nama_desa,
       p.nama_program,
-      kp.nama_kategori,
-      r.nama as nama_relawan
+      kp.nama_kategori as kategori_program,
+      r.nama as relawan_nama,
+      r.hp as relawan_telepon,
+      u.email as relawan_email,
+      r.nomor_rekening as relawan_no_rekening,
+      r.bank as relawan_nama_bank,
+      r.atas_nama as relawan_atas_nama
     FROM intervensi_program ip
     JOIN desa_berdaya db ON ip.desa_berdaya_id = db.id
     JOIN desa_config dc ON db.desa_id = dc.id
     JOIN program p ON ip.program_id = p.id
     JOIN kategori_program kp ON ip.kategori_program_id = kp.id
     JOIN relawan r ON ip.relawan_id = r.id
+    LEFT JOIN users u ON r.user_id = u.id
     WHERE ip.id = ${id}
   `
 

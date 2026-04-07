@@ -266,7 +266,11 @@ export default function DetailIntervensiPage() {
                     <select 
                       className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:border-slate-400 disabled:bg-slate-50 disabled:text-slate-500 font-semibold"
                       value={formData.desa_berdaya_id}
-                      onChange={(e) => setFormData(p => ({ ...p, desa_berdaya_id: Number(e.target.value) }))}
+                      onChange={(e) => {
+                        const val = Number(e.target.value)
+                        const selDesa = desaOptions.find(d => d.id === val)
+                        setFormData(p => ({ ...p, desa_berdaya_id: val, relawan_id: selDesa?.relawan_id || 0 }))
+                      }}
                       disabled={isLocked}
                       required
                     >

@@ -53,13 +53,14 @@ export async function getIntervensiPrograms() {
       dc.nama_desa,
       kp.nama_kategori as kategori_program,
       p.nama_program,
-      r.nama as nama_relawan
+      COALESCE(r.nama, r_db.nama) as nama_relawan
     FROM intervensi_program ip
     LEFT JOIN desa_berdaya db ON ip.desa_berdaya_id = db.id
     LEFT JOIN desa_config dc ON db.desa_id = dc.id
     LEFT JOIN kategori_program kp ON ip.kategori_program_id = kp.id
     LEFT JOIN program p ON ip.program_id = p.id
     LEFT JOIN relawan r ON ip.relawan_id = r.id
+    LEFT JOIN relawan r_db ON db.relawan_id = r_db.id
     ORDER BY ip.created_at DESC
   `
   return Array.isArray(rawData) ? rawData : []
@@ -70,15 +71,16 @@ export async function getIntervensiProgramById(id: number) {
   const result = await sql`
     SELECT 
       ip.*,
+      COALESCE(ip.relawan_id, db.relawan_id) as relawan_id,
       dc.nama_desa,
       kp.nama_kategori as kategori_program,
       p.nama_program,
-      r.nama as relawan_nama,
-      r.hp as relawan_telepon,
-      u.email as relawan_email,
-      r.nomor_rekening as relawan_no_rekening,
-      r.bank as relawan_nama_bank,
-      r.atas_nama as relawan_atas_nama
+      COALESCE(r.nama, r_db.nama) as relawan_nama,
+      COALESCE(r.hp, r_db.hp) as relawan_telepon,
+      COALESCE(u.email, u_db.email) as relawan_email,
+      COALESCE(r.nomor_rekening, r_db.nomor_rekening) as relawan_no_rekening,
+      COALESCE(r.bank, r_db.bank) as relawan_nama_bank,
+      COALESCE(r.atas_nama, r_db.atas_nama) as relawan_atas_nama
     FROM intervensi_program ip
     LEFT JOIN desa_berdaya db ON ip.desa_berdaya_id = db.id
     LEFT JOIN desa_config dc ON db.desa_id = dc.id
@@ -86,6 +88,8 @@ export async function getIntervensiProgramById(id: number) {
     LEFT JOIN program p ON ip.program_id = p.id
     LEFT JOIN relawan r ON ip.relawan_id = r.id
     LEFT JOIN users u ON r.user_id = u.id
+    LEFT JOIN relawan r_db ON db.relawan_id = r_db.id
+    LEFT JOIN users u_db ON r_db.user_id = u_db.id
     WHERE ip.id = ${id}
   `
   return (result as any[])[0] || null
@@ -163,14 +167,14 @@ export async function deleteIntervensiProgram(id: number) {
 }
 
 // DETAIL: ANGGARAN
-export async function getAnggaranByIntervensi(headerId: number) {
+export async function getAnggaranByIntervensi(headerId: number): Promise<any[]> {
   await checkAdmin();
   const rawData = await sql`
     SELECT * FROM intervensi_anggaran 
     WHERE intervensi_program_id = ${headerId}
     ORDER BY tahun ASC, bulan ASC
   `
-  return Array.isArray(rawData) ? rawData : []
+  return (Array.isArray(rawData) ? rawData : []) as any[]
 }
 
 // EXPORT: Full data with anggaran rows (single query, no N+1)
@@ -191,7 +195,7 @@ export async function getIntervensiExportData(ids?: number[]) {
           dc.nama_desa,
           kp.nama_kategori as kategori_program,
           p.nama_program,
-          r.nama as nama_relawan,
+          COALESCE(r.nama, r_db.nama) as nama_relawan,
           ia.id as anggaran_id,
           ia.tahun,
           ia.bulan,
@@ -209,6 +213,7 @@ export async function getIntervensiExportData(ids?: number[]) {
         LEFT JOIN kategori_program kp ON ip.kategori_program_id = kp.id
         LEFT JOIN program p ON ip.program_id = p.id
         LEFT JOIN relawan r ON ip.relawan_id = r.id
+        LEFT JOIN relawan r_db ON db.relawan_id = r_db.id
         LEFT JOIN intervensi_anggaran ia ON ia.intervensi_program_id = ip.id
         WHERE ip.id = ANY(${idList})
         ORDER BY ip.created_at DESC, ia.tahun ASC, ia.bulan ASC
@@ -224,7 +229,7 @@ export async function getIntervensiExportData(ids?: number[]) {
           dc.nama_desa,
           kp.nama_kategori as kategori_program,
           p.nama_program,
-          r.nama as nama_relawan,
+          COALESCE(r.nama, r_db.nama) as nama_relawan,
           ia.id as anggaran_id,
           ia.tahun,
           ia.bulan,
@@ -242,6 +247,7 @@ export async function getIntervensiExportData(ids?: number[]) {
         LEFT JOIN kategori_program kp ON ip.kategori_program_id = kp.id
         LEFT JOIN program p ON ip.program_id = p.id
         LEFT JOIN relawan r ON ip.relawan_id = r.id
+        LEFT JOIN relawan r_db ON db.relawan_id = r_db.id
         LEFT JOIN intervensi_anggaran ia ON ia.intervensi_program_id = ip.id
         ORDER BY ip.created_at DESC, ia.tahun ASC, ia.bulan ASC
       `
@@ -395,4 +401,80 @@ export async function importIntervensiProgram(data: {
 
   revalidatePath('/dashboard/intervensi')
   return { success: true, id: headerId, inserted }
+}
+
+export async function duplicateIntervensiProgram(originalId: number, data: {
+  desa_berdaya_id: number;
+  program_id: number;
+  kategori_program_id: number;
+  relawan_id: number;
+}) {
+  await checkAdmin();
+  
+  // Get original header
+  const original = await getIntervensiProgramById(originalId);
+  if (!original) throw new Error('Data original tidak ditemukan');
+
+  // 1. Create new header in DRAFT
+  const result = await sql`
+    INSERT INTO intervensi_program (
+      desa_berdaya_id,
+      kategori_program_id,
+      program_id,
+      deskripsi,
+      sumber_dana,
+      fundraiser,
+      relawan_id,
+      status
+    ) VALUES (
+      ${data.desa_berdaya_id},
+      ${data.kategori_program_id},
+      ${data.program_id},
+      ${original.deskripsi || null},
+      ${original.sumber_dana || null},
+      ${original.fundraiser || null},
+      ${data.relawan_id},
+      'DRAFT'
+    ) RETURNING id
+  `;
+  const newHeaderId = (result as any[])[0].id;
+
+  // 2. Fetch original anggaran rows
+  const anggaranRows = await getAnggaranByIntervensi(originalId);
+  
+  // 3. Duplicate anggaran rows
+  let inserted = 0;
+  for (const row of anggaranRows) {
+    await sql`
+      INSERT INTO intervensi_anggaran (
+        intervensi_program_id,
+        tahun,
+        bulan,
+        ajuan_ri,
+        anggaran_disetujui,
+        anggaran_dicairkan,
+        status_pencairan,
+        id_stp,
+        catatan,
+        is_dbf,
+        is_rz
+      ) VALUES (
+        ${newHeaderId},
+        ${row.tahun},
+        ${row.bulan},
+        ${row.ajuan_ri || 0},
+        ${row.anggaran_disetujui || 0},
+        ${row.anggaran_dicairkan || 0},
+        'Dialokasikan',
+        null,
+        null,
+        ${row.is_dbf || false},
+        ${row.is_rz || false}
+      )
+    `;
+    inserted++;
+  }
+
+  revalidatePath('/dashboard/intervensi');
+  return { success: true, id: newHeaderId, inserted };
 }

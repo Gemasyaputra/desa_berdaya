@@ -6,13 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Plus, Target, LayoutGrid, Search, Filter, X, Check, FileSpreadsheet, Trash2, Download, Loader2 } from 'lucide-react'
-import { getIntervensiPrograms, deleteIntervensiProgram, getIntervensiExportData } from './actions'
+import { getIntervensiPrograms, deleteIntervensiProgram, getIntervensiExportData, duplicateIntervensiProgram, getDesaBerdayaOptions, getProgramOptions } from './actions'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { cn } from '@/lib/utils'
 import ImportExcelModal from '@/components/intervensi/ImportExcelModal'
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Copy } from 'lucide-react'
 
 interface MultiSelectFilterProps {
   label: string
@@ -108,6 +110,17 @@ export default function IntervensiListPage() {
   const [deleteTarget, setDeleteTarget] = useState<any>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+
+  // Duplicate states
+  const [duplicateTarget, setDuplicateTarget] = useState<any>(null)
+  const [isDuplicating, setIsDuplicating] = useState(false)
+  const [desaOptions, setDesaOptions] = useState<any[]>([])
+  const [programOptions, setProgramOptions] = useState<any[]>([])
+  const [duplicateForm, setDuplicateForm] = useState({
+    desa_id: '',
+    program_id: ''
+  })
+
 
   useEffect(() => {
     loadData()
@@ -240,114 +253,47 @@ export default function IntervensiListPage() {
       const fmt = (n: any) => (n === null || n === undefined || n === '') ? 0 : Number(n)
       const fmtBool = (v: any) => (String(v).toLowerCase() === 'true' || v === true) ? 'Ya' : 'Tidak'
 
-      // Group rows by intervensi_id
-      const grouped = new Map<number, any[]>()
-      for (const r of rows) {
-        if (!grouped.has(r.intervensi_id)) grouped.set(r.intervensi_id, [])
-        grouped.get(r.intervensi_id)!.push(r)
-      }
-
       const wb = XLSX.utils.book_new()
 
-      // ── Sheet 1: Ringkasan ────────────────────────────────────────────
-      const summaryData = Array.from(grouped.values()).map(grp => {
-        const h = grp[0]
-        const anggaran = grp.filter(r => r.anggaran_id != null)
-        return {
-          'ID': h.intervensi_id,
-          'Nama Desa': h.nama_desa || '-',
-          'Kategori Program': h.kategori_program || '-',
-          'Program': h.nama_program || '-',
-          'Relawan': h.nama_relawan || '-',
-          'Sumber Dana': h.sumber_dana || '-',
-          'Fundraiser': h.fundraiser || '-',
-          'Deskripsi': h.deskripsi || '-',
-          'Status': h.status || '-',
-          'Tanggal Dibuat': h.created_at ? new Date(h.created_at).toLocaleDateString('id-ID') : '-',
-          'Jml Anggaran': anggaran.length,
-          'Total Ajuan RI': anggaran.reduce((s, r) => s + fmt(r.ajuan_ri), 0),
-          'Total Disetujui': anggaran.reduce((s, r) => s + fmt(r.anggaran_disetujui), 0),
-          'Total Dicairkan': anggaran.reduce((s, r) => s + fmt(r.anggaran_dicairkan), 0),
-        }
-      })
-      const wsSummary = XLSX.utils.json_to_sheet(summaryData)
-      wsSummary['!cols'] = [
-        {wch:6},{wch:20},{wch:18},{wch:24},{wch:20},{wch:14},{wch:20},{wch:30},{wch:12},{wch:15},{wch:14},{wch:18},{wch:18},{wch:18}
+      const flatData = rows.map(r => ({
+        'ID': r.intervensi_id,
+        'Nama Desa': r.nama_desa || '-',
+        'Kategori Program': r.kategori_program || '-',
+        'Program': r.nama_program || '-',
+        'Relawan': r.nama_relawan || '-',
+        'Sumber Dana': r.sumber_dana || '-',
+        'Fundraiser': r.fundraiser || '-',
+        'Deskripsi': r.deskripsi || '-',
+        'Status': r.status || '-',
+        'Tanggal Dibuat': r.created_at ? new Date(r.created_at).toLocaleDateString('id-ID') : '-',
+        'Tahun': r.tahun || '-',
+        'Bulan': r.bulan || '-',
+        'Ajuan RI': fmt(r.ajuan_ri),
+        'Agg. Disetujui': fmt(r.anggaran_disetujui),
+        'Agg. Dicairkan': fmt(r.anggaran_dicairkan),
+        'Status Pencairan': r.status_pencairan || '-',
+        'ID STP': r.id_stp || '-',
+        'Catatan': r.catatan || '-',
+        'Is DBF': fmtBool(r.is_dbf),
+        'Is RZ': fmtBool(r.is_rz),
+      }))
+
+      const ws = XLSX.utils.json_to_sheet(flatData)
+      
+      ws['!cols'] = [
+        {wch:6},{wch:20},{wch:18},{wch:24},{wch:20},{wch:14},{wch:20},{wch:30},{wch:12},{wch:15},
+        {wch:10},{wch:12},{wch:18},{wch:18},{wch:18},{wch:18},{wch:12},{wch:24},{wch:8},{wch:8}
       ]
-      XLSX.utils.book_append_sheet(wb, wsSummary, 'Ringkasan')
 
-      // ── One sheet per Intervensi ──────────────────────────────────────
-      let totalDetailRows = 0
-      for (const [, grp] of grouped) {
-        const h = grp[0]
-
-        // Build sheet as array-of-arrays to replicate the detail page layout
-        const wsData: any[][] = [
-          // ── Header info block ─────────────────────────────────────────
-          ['DESA', h.nama_desa || '-',          '', 'SUMBER DANA', h.sumber_dana || '-'],
-          ['KATEGORI PROGRAM', h.kategori_program || '-', '', 'FUNDRAISER', h.fundraiser || '-'],
-          ['PROGRAM', h.nama_program || '-',    '', 'RELAWAN', h.nama_relawan || '-'],
-          ['DESKRIPSI', h.deskripsi || '-',     '', 'STATUS', h.status || '-'],
-          ['TANGGAL DIBUAT', h.created_at ? new Date(h.created_at).toLocaleDateString('id-ID') : '-'],
-          [],
-          // ── Anggaran table header ─────────────────────────────────────
-          ['TAHUN', 'BULAN', 'AJUAN RI', 'ANGGARAN DISETUJUI', 'ANGGARAN DICAIRKAN', 'STATUS PENCAIRAN', 'ID STP', 'CATATAN', 'IS DBF', 'IS RZ'],
-        ]
-
-        // Sort anggaran rows calendar-wise
-        const anggaranRows = grp
-          .filter(r => r.anggaran_id != null)
-          .sort((a, b) => {
-            if (Number(a.tahun) !== Number(b.tahun)) return Number(a.tahun) - Number(b.tahun)
-            return BULAN_ORDER.indexOf(a.bulan) - BULAN_ORDER.indexOf(b.bulan)
-          })
-
-        for (const r of anggaranRows) {
-          wsData.push([
-            r.tahun,
-            r.bulan,
-            fmt(r.ajuan_ri),
-            fmt(r.anggaran_disetujui),
-            fmt(r.anggaran_dicairkan),
-            r.status_pencairan || '-',
-            r.id_stp || '-',
-            r.catatan || '-',
-            fmtBool(r.is_dbf),
-            fmtBool(r.is_rz),
-          ])
-        }
-
-        // Totals row
-        if (anggaranRows.length > 0) {
-          wsData.push([
-            'TOTAL', '',
-            anggaranRows.reduce((s, r) => s + fmt(r.ajuan_ri), 0),
-            anggaranRows.reduce((s, r) => s + fmt(r.anggaran_disetujui), 0),
-            anggaranRows.reduce((s, r) => s + fmt(r.anggaran_dicairkan), 0),
-          ])
-        }
-
-        totalDetailRows += anggaranRows.length
-
-        const ws = XLSX.utils.aoa_to_sheet(wsData)
-        ws['!cols'] = [
-          {wch:18},{wch:12},{wch:20},{wch:22},{wch:22},{wch:18},{wch:14},{wch:28},{wch:8},{wch:8}
-        ]
-
-        // Safe sheet name (max 31 chars)
-        const sheetName = `${h.nama_desa || 'Desa'}_${h.nama_program || 'Program'}`
-          .replace(/[*?:/\\[\]]/g, '')
-          .slice(0, 28)
-          + `_${h.intervensi_id}`
-
-        XLSX.utils.book_append_sheet(wb, ws, sheetName)
-      }
+      XLSX.utils.book_append_sheet(wb, ws, 'Data Intervensi')
 
       const now = new Date().toISOString().slice(0, 10)
       XLSX.writeFile(wb, `export_intervensi_${now}.xlsx`)
 
       const { toast } = await import('sonner')
-      toast.success(`Export berhasil! ${summaryData.length} Intervensi, ${totalDetailRows} baris anggaran.`)
+      const totalIntervensi = new Set(rows.map(r => r.intervensi_id)).size
+      const totalAnggaran = rows.filter(r => r.anggaran_id != null).length
+      toast.success(`Export berhasil! ${totalIntervensi} Intervensi disusun dalam 1 sheet.`)
     } catch (err: any) {
       const { toast } = await import('sonner')
       toast.error(err.message || 'Export gagal')
@@ -366,6 +312,48 @@ export default function IntervensiListPage() {
       import('sonner').then(m => m.toast.error(err.message || 'Gagal menghapus intervensi'))
     } finally {
       setDeleteTarget(null)
+    }
+  }
+
+  const handleDuplicateClick = async (row: any) => {
+    setDuplicateTarget(row)
+    setDuplicateForm({ desa_id: '', program_id: '' })
+    if (desaOptions.length === 0 || programOptions.length === 0) {
+      try {
+        const [desas, progs] = await Promise.all([
+          getDesaBerdayaOptions(),
+          getProgramOptions()
+        ])
+        setDesaOptions(desas)
+        setProgramOptions(progs)
+      } catch (err) {
+        import('sonner').then(m => m.toast.error('Gagal memuat opsi desa & program'))
+      }
+    }
+  }
+
+  const executeDuplicate = async () => {
+    if (!duplicateTarget || !duplicateForm.desa_id || !duplicateForm.program_id) return
+    setIsDuplicating(true)
+    try {
+      const selectedDesa = desaOptions.find(d => d.id === Number(duplicateForm.desa_id))
+      const selectedProg = programOptions.find(p => p.id === Number(duplicateForm.program_id))
+      
+      const payload = {
+        desa_berdaya_id: Number(duplicateForm.desa_id),
+        program_id: Number(duplicateForm.program_id),
+        kategori_program_id: selectedProg?.kategori_id,
+        relawan_id: selectedDesa?.relawan_id // Automatically inherited from the chosen Desa
+      }
+
+      await duplicateIntervensiProgram(duplicateTarget.id, payload)
+      import('sonner').then(m => m.toast.success('Intervensi berhasil diduplikasi ke DRAFT.'))
+      loadData()
+      setDuplicateTarget(null)
+    } catch (err: any) {
+      import('sonner').then(m => m.toast.error(err.message || 'Gagal menduplikasi intervensi'))
+    } finally {
+      setIsDuplicating(false)
     }
   }
 
@@ -637,6 +625,15 @@ export default function IntervensiListPage() {
                           >
                             Detail
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 px-2 transition-all active:scale-95 group/copy relative"
+                            onClick={() => handleDuplicateClick(row)}
+                            title="Duplikasi Program"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Button>
                           {row.status === 'DRAFT' && (
                             <Button
                               variant="ghost"
@@ -699,6 +696,74 @@ export default function IntervensiListPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Duplicate Modal */}
+      <Dialog open={!!duplicateTarget} onOpenChange={(open) => !open && setDuplicateTarget(null)}>
+        <DialogContent className="rounded-2xl max-w-lg bg-white p-6 shadow-2xl border-none">
+          <DialogHeader className="mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                <Copy className="w-5 h-5 text-indigo-500" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-black text-slate-800">Duplikasi Intervensi</DialogTitle>
+                <DialogDescription className="text-xs font-semibold text-slate-500">
+                  Salin kerangka anggaran ke desa binaan baru.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-1">
+              <div className="text-[10px] uppercase font-black tracking-widest text-slate-400">Data Asal:</div>
+              <div className="font-bold text-slate-700 text-sm">{duplicateTarget?.nama_desa}</div>
+              <div className="font-medium text-slate-600 text-xs">Program: {duplicateTarget?.nama_program}</div>
+            </div>
+
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700">Pilih Desa Binaan Baru <span className="text-rose-500">*</span></label>
+                <select 
+                  className="flex h-10 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#008784]/20 focus:border-[#008784] hover:bg-slate-50/50 cursor-pointer transition-colors"
+                  value={duplicateForm.desa_id}
+                  onChange={(e) => setDuplicateForm(prev => ({...prev, desa_id: e.target.value}))}
+                >
+                  <option value="" disabled>-- Pilih Desa --</option>
+                  {desaOptions.map(d => <option key={d.id} value={d.id}>{d.nama} {d.relawan_nama ? `— (${d.relawan_nama})` : ''}</option>)}
+                </select>
+                <p className="text-[10px] font-medium text-slate-400">Relawan akan otomatis mengikuti nama relawan yang terdaftar di Desa ini.</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700">Pilih Program Baru <span className="text-rose-500">*</span></label>
+                <select 
+                  className="flex h-10 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#008784]/20 focus:border-[#008784] hover:bg-slate-50/50 cursor-pointer transition-colors"
+                  value={duplicateForm.program_id}
+                  onChange={(e) => setDuplicateForm(prev => ({...prev, program_id: e.target.value}))}
+                >
+                  <option value="" disabled>-- Pilih Program --</option>
+                  {programOptions.map(p => <option key={p.id} value={p.id}>{p.nama_program}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-6 gap-2">
+            <Button variant="ghost" className="rounded-xl font-semibold text-slate-600 hover:bg-slate-100" onClick={() => setDuplicateTarget(null)}>
+              Batal
+            </Button>
+            <Button 
+              className="rounded-xl shadow-lg shadow-indigo-500/20 bg-indigo-500 hover:bg-indigo-600 text-white font-bold gap-2 px-6"
+              onClick={executeDuplicate}
+              disabled={isDuplicating || !duplicateForm.desa_id || !duplicateForm.program_id}
+            >
+              {isDuplicating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+              {isDuplicating ? 'Memproses...' : 'Duplikasi'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

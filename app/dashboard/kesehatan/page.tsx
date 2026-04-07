@@ -17,12 +17,17 @@ import {
   Baby,
   Heart,
   Activity,
-  Check
+  Check,
+  LayoutGrid,
+  List,
+  Download,
+  Clock
 } from 'lucide-react'
 import { getKesehatanUpdates, deleteKesehatanUpdate } from './actions'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
+import * as XLSX from 'xlsx'
 
 export default function KesehatanPage() {
   const router = useRouter()
@@ -31,6 +36,7 @@ export default function KesehatanPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'selesai'>('all')
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
 
   useEffect(() => {
     loadData()
@@ -112,6 +118,64 @@ export default function KesehatanPage() {
     return names[month - 1] || '-'
   }
 
+  const exportToExcel = () => {
+    const dataToExport = filteredUpdates.map((u: any) => ({
+      'Kelompok': u.nama_kelompok || 'Tanpa Kelompok',
+      'Nama PM': u.nama_pm,
+      'NIK': u.nik_pm,
+      'Tahun': u.tahun,
+      'Bulan': getBulanName(u.bulan),
+      'Status Verifikasi': u.checked ? 'Selesai' : 'Draft',
+      'Relawan': u.nama_relawan || '',
+      'Status Kader': u.is_kader ? 'Ya' : 'Bukan',
+      'Program Kesehatan': u.program_kesehatan || '',
+      // Anak
+      'Tgl Pemeriksaan Anak': u.tgl_pemeriksaan_anak ? new Date(u.tgl_pemeriksaan_anak).toLocaleDateString('id-ID') : '',
+      'Nama Ibu (Anak)': u.anak_nama_ibu || '',
+      'Anak Ke': u.anak_ke || '',
+      'Tgl Lahir Anak': u.anak_tgl_lahir ? new Date(u.anak_tgl_lahir).toLocaleDateString('id-ID') : '',
+      'BB Lahir Anak (kg)': u.anak_bb_lahir || 0,
+      'Berat Badan Anak (kg)': u.anak_berat_badan || 0,
+      'Tinggi Badan Anak (cm)': u.anak_tinggi_badan || 0,
+      'Lingkar Kepala Anak (cm)': u.anak_lingkar_kepala || 0,
+      'Asi Eksklusif (Bulan)': u.anak_asi_eksklusif || 0,
+      'Pendampingan Khusus Anak': u.anak_pendampingan_khusus || '',
+      'IMD Anak': u.anak_imd ? 'Ya' : 'Tidak',
+      'Diare Anak': u.anak_menderita_diare ? 'Ya' : 'Tidak',
+      'Imunisasi Anak': u.anak_imunisasi ? (typeof u.anak_imunisasi === 'string' ? JSON.parse(u.anak_imunisasi).join(', ') : u.anak_imunisasi.join(', ')) : '',
+      // Ibu
+      'Tgl Pemeriksaan Ibu': u.tgl_pemeriksaan_ibu ? new Date(u.tgl_pemeriksaan_ibu).toLocaleDateString('id-ID') : '',
+      'NIK Ibu': u.ibu_nik || '',
+      'Tgl Lahir Ibu': u.ibu_tgl_lahir ? new Date(u.ibu_tgl_lahir).toLocaleDateString('id-ID') : '',
+      'Berat Badan Ibu Sebelum Hamil (kg)': u.ibu_bb_sebelum_hamil || 0,
+      'Berat Badan Ibu Hamil (kg)': u.ibu_berat_badan || 0,
+      'Tinggi Badan Ibu Hamil (cm)': u.ibu_tinggi_badan || 0,
+      'LILA Ibu Hamil (cm)': u.ibu_lila || 0,
+      'Umur Kehamilan (Bulan)': u.ibu_umur_kehamilan || 0,
+      'Konsumsi TTD (HB)': u.ibu_hb ? 'Ya' : 'Tidak',
+      'Imunisasi Ibu Hamil': u.ibu_imunisasi ? (typeof u.ibu_imunisasi === 'string' ? JSON.parse(u.ibu_imunisasi).join(', ') : u.ibu_imunisasi.join(', ')) : '',
+      // Lansia
+      'Tgl Pemeriksaan Lansia': u.tgl_pemeriksaan_lansia ? new Date(u.tgl_pemeriksaan_lansia).toLocaleDateString('id-ID') : '',
+      'Tgl Lahir Lansia': u.lansia_tgl_lahir ? new Date(u.lansia_tgl_lahir).toLocaleDateString('id-ID') : '',
+      'Berat Badan Lansia (kg)': u.lansia_berat_badan || 0,
+      'Tinggi Badan Lansia (cm)': u.lansia_tinggi_badan || 0,
+      'Tekanan Darah Lansia': u.lansia_tekanan_darah || '',
+      'Kolesterol Lansia': u.lansia_kolesterol || 0,
+      'Gula Darah Lansia': u.lansia_gula || 0,
+      'Asam Urat Lansia': u.lansia_asam_urat || 0,
+      'Aktivitas Harian Lansia': u.lansia_aktivitas_harian || '',
+      'Penanggung Biaya Lansia': u.lansia_penanggung_biaya || '',
+      'Status Kepemilikan BPJS Lansia': u.lansia_kepemilikan_bpjs || '',
+      'Riwayat Penyakit Lansia': u.lansia_riwayat_penyakit || '',
+      'Riwayat Pengobatan Lansia': u.lansia_riwayat_pengobatan || ''
+    }))
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Data Kesehatan")
+    XLSX.writeFile(workbook, "Data_Kesehatan_Detail.xlsx")
+  }
+
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-8 bg-slate-50/50 min-h-screen">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
@@ -147,31 +211,124 @@ export default function KesehatanPage() {
               />
             </div>
             
-            <div className="flex items-center gap-2 mb-6">
-              <Button 
-                variant={statusFilter === 'all' ? 'default' : 'outline'} 
-                size="sm" 
-                onClick={() => setStatusFilter('all')}
-                className={statusFilter === 'all' ? 'bg-slate-800 text-white rounded-xl' : 'rounded-xl text-slate-500'}
-              >Semua</Button>
-              <Button 
-                variant={statusFilter === 'pending' ? 'default' : 'outline'} 
-                size="sm" 
-                onClick={() => setStatusFilter('pending')}
-                className={statusFilter === 'pending' ? 'bg-amber-500 hover:bg-amber-600 text-white rounded-xl' : 'rounded-xl text-slate-500'}
-              >Pending</Button>
-              <Button 
-                variant={statusFilter === 'selesai' ? 'default' : 'outline'} 
-                size="sm" 
-                onClick={() => setStatusFilter('selesai')}
-                className={statusFilter === 'selesai' ? 'bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl' : 'rounded-xl text-slate-500'}
-              >Selesai</Button>
+            <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant={statusFilter === 'all' ? 'default' : 'outline'} 
+                  size="sm" 
+                  onClick={() => setStatusFilter('all')}
+                  className={statusFilter === 'all' ? 'bg-slate-800 text-white rounded-xl' : 'rounded-xl text-slate-500'}
+                >Semua</Button>
+                <Button 
+                  variant={statusFilter === 'pending' ? 'default' : 'outline'} 
+                  size="sm" 
+                  onClick={() => setStatusFilter('pending')}
+                  className={statusFilter === 'pending' ? 'bg-amber-500 hover:bg-amber-600 text-white rounded-xl' : 'rounded-xl text-slate-500'}
+                >Pending</Button>
+                <Button 
+                  variant={statusFilter === 'selesai' ? 'default' : 'outline'} 
+                  size="sm" 
+                  onClick={() => setStatusFilter('selesai')}
+                  className={statusFilter === 'selesai' ? 'bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl' : 'rounded-xl text-slate-500'}
+                >Selesai</Button>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`rounded-lg h-8 px-3 ${viewMode === 'grid' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+                    onClick={() => setViewMode('grid')}
+                  >
+                    <LayoutGrid className="w-4 h-4 mr-2" />
+                    Grid
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`rounded-lg h-8 px-3 ${viewMode === 'table' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+                    onClick={() => setViewMode('table')}
+                  >
+                    <List className="w-4 h-4 mr-2" />
+                    Table
+                  </Button>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={exportToExcel}
+                  className="rounded-xl border-emerald-200 text-emerald-700 hover:bg-emerald-50 h-10 px-4"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Export Excel</span>
+                </Button>
+              </div>
             </div>
 
             {loading ? (
               <div className="py-12 text-center text-slate-400 font-medium">Memuat data...</div>
             ) : filteredUpdates.length === 0 ? (
               <div className="py-12 text-center text-slate-400 font-medium italic">Tidak ada data ditemukan</div>
+            ) : viewMode === 'table' ? (
+              <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3 min-w-[200px]">Kelompok & PM</th>
+                      <th className="px-4 py-3 min-w-[150px]">Program</th>
+                      {Array.from({length: 12}).map((_, i) => (
+                        <th key={i} className="px-2 py-3 text-center">{getBulanName(i+1).substring(0,3)}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100/80">
+                    {groupsArray.flatMap((group: any) => 
+                       group.membersArray.map((person: any) => (
+                         <tr key={person.penerima_manfaat_id} className="hover:bg-slate-50/50 transition-colors">
+                           <td className="px-4 py-3">
+                             <div className="font-bold text-slate-800">{person.nama_pm}</div>
+                             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{person.nik_pm}</div>
+                             <div className="text-[10px] text-emerald-600 font-black tracking-widest mt-0.5">{group.nama_kelompok}</div>
+                           </td>
+                           <td className="px-4 py-3">
+                             <div className="flex flex-wrap items-center gap-2 mt-1">
+                               <Badge variant="secondary" className="bg-rose-50 text-rose-700 font-bold text-[10px] px-2 py-0 border-none">
+                                 {person.program_kesehatan}
+                               </Badge>
+                               <div className="flex items-center gap-1">
+                                 {person.is_anak && <Baby className="w-3 h-3 text-emerald-500" />}
+                                 {person.is_ibu && <Heart className="w-3 h-3 text-rose-500" />}
+                                 {person.is_lansia && <Activity className="w-3 h-3 text-blue-500" />}
+                               </div>
+                             </div>
+                           </td>
+                           {person.updates.map((update: any, idx: number) => (
+                             <td 
+                               key={idx} 
+                               className={`px-2 py-3 text-center align-middle ${update ? 'cursor-pointer hover:bg-slate-100 transition-colors group' : ''}`}
+                               onClick={() => update && router.push(`/dashboard/kesehatan/${update.id}/edit`)}
+                               title={update ? "Klik untuk edit" : undefined}
+                             >
+                               {update ? (
+                                  update.checked ? (
+                                    <Check className="w-4 h-4 text-emerald-500 mx-auto shrink-0 group-hover:scale-110 transition-transform" strokeWidth={3} />
+                                  ) : (
+                                    <div title="Draft" className="flex items-center justify-center">
+                                      <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" strokeWidth={3} />
+                                    </div>
+                                  )
+                               ) : (
+                                  <span className="text-slate-300">-</span>
+                               )}
+                             </td>
+                           ))}
+                         </tr>
+                       ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             ) : (
               <div className="space-y-6">
                 {groupsArray.map((group: any) => {

@@ -148,9 +148,13 @@ export default function EditPMPage() {
     
     try {
       setLoading(true)
-      await updatePenerimaManfaat(pmId, formData)
-      alert('Data Penerima Manfaat berhasil diperbarui!')
-      router.push('/dashboard/pm')
+      const res = await updatePenerimaManfaat(pmId, formData)
+      if (res && res.success) {
+        alert('Data Penerima Manfaat berhasil diperbarui!')
+        router.push('/dashboard/pm')
+      } else {
+        alert(res?.error || 'Gagal memperbarui data Penerima Manfaat.')
+      }
     } catch (error: any) {
       console.error(error)
       alert(error.message || 'Gagal menyimpan data')

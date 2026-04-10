@@ -123,8 +123,7 @@ export default function TambahPMPage() {
         setLastCreatedPM({ id: res.data.id, desaId: formData.desa_berdaya_id })
         setIsPostCreateDialogOpen(true)
       } else {
-        alert('Data Penerima Manfaat berhasil disimpan, namun terjadi kendala pada respon server.')
-        router.push('/dashboard/pm')
+        alert(res?.error || 'Gagal menyimpan data Penerima Manfaat.')
       }
     } catch (error: any) {
       console.error(error)

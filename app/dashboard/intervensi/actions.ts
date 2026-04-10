@@ -114,7 +114,7 @@ export async function createIntervensiProgram(data: any) {
       ${data.deskripsi || null},
       ${data.sumber_dana || null},
       ${data.fundraiser || null},
-      ${data.relawan_id},
+      ${data.relawan_id}, 
       'DRAFT'
     ) RETURNING id
   `

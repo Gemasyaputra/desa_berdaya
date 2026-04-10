@@ -130,16 +130,16 @@ export async function createPenerimaManfaat(data: {
   kewarganegaraan?: string;
   kategori_pm: string;
   foto_ktp_url?: string;
-}) {
+}): Promise<{ success: boolean; data?: any; error?: string }> {
   const session = await getServerSession(authOptions)
-  if (!session?.user) throw new Error('Unauthorized')
+  if (!session?.user) return { success: false, error: 'Unauthorized' }
 
   if (!data.desa_berdaya_id || !data.nik || !data.nama) {
-    throw new Error('Desa Berdaya, NIK, dan Nama wajib diisi')
+    return { success: false, error: 'Desa Berdaya, NIK, dan Nama wajib diisi' }
   }
 
   if (data.nik.length !== 16) {
-    throw new Error('NIK harus terdiri dari 16 karakter')
+    return { success: false, error: 'NIK harus terdiri dari 16 karakter' }
   }
 
   try {
@@ -173,9 +173,9 @@ export async function createPenerimaManfaat(data: {
   } catch (error: any) {
     console.error('Save PM error:', error)
     if (error.code === '23505') { // Postgres Unique Violation
-      throw new Error('NIK ini sudah terdaftar sebagai Penerima Manfaat.')
+      return { success: false, error: 'NIK ini sudah terdaftar sebagai Penerima Manfaat.' }
     }
-    throw new Error('Gagal menyimpan data ke database.')
+    return { success: false, error: 'Gagal menyimpan data ke database.' }
   }
 }
 
@@ -277,9 +277,9 @@ export async function updatePenerimaManfaat(id: number, data: {
   } catch (error: any) {
     console.error('Update PM error:', error)
     if (error.code === '23505') { 
-      throw new Error('NIK ini sudah digunakan oleh Penerima Manfaat lain.')
+      return { success: false, error: 'NIK ini sudah digunakan oleh Penerima Manfaat lain.' }
     }
-    throw new Error('Gagal memperbarui data ke database.')
+    return { success: false, error: 'Gagal memperbarui data ke database.' }
   }
 }
 

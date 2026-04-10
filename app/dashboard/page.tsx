@@ -130,6 +130,11 @@ export default function DashboardPage() {
   const [mapPoints, setMapPoints] = useState<VillageMapPoint[]>([])
   const [distStats, setDistStats] = useState<DistributionStats | null>(null)
   const [expandedKorwils, setExpandedKorwils] = useState<Set<number>>(new Set())
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -177,18 +182,20 @@ export default function DashboardPage() {
             <p className="text-slate-400 text-xs font-medium">Monitoring Program Pemberdayaan <span className="text-slate-500 font-bold">Desa Berdaya</span></p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
-              <Select value={tahun} onValueChange={setTahun}>
-                <SelectTrigger className="w-[100px] border-0 bg-transparent shadow-none focus:ring-0 font-bold text-slate-600">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200">
-                  {yearOptions.map((y) => (
-                    <SelectItem key={y} value={String(y)} className="font-medium">{y}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {mounted && (
+              <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
+                <Select value={tahun} onValueChange={setTahun}>
+                  <SelectTrigger className="w-[100px] border-0 bg-transparent shadow-none focus:ring-0 font-bold text-slate-600">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-200">
+                    {yearOptions.map((y) => (
+                      <SelectItem key={y} value={String(y)} className="font-medium">{y}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Button
               onClick={fetchAll}
               disabled={loading}

@@ -150,7 +150,7 @@ export default function EkonomiPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Update Ekonomi</h1>
-            <p className="text-slate-500 text-sm font-medium">Monitoring status ekonomi Penerima Manfaat secara berkala.</p>
+            <p className="text-slate-500 text-sm font-medium">Monitoring Status Ekonomi Penerima Manfaat Secara Berkala.</p>
           </div>
         </div>
         <Button 
@@ -165,35 +165,35 @@ export default function EkonomiPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="md:col-span-3">
           <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 overflow-hidden border-none p-6">
-            <div className="flex items-center gap-3 bg-slate-50 rounded-2xl px-4 h-12 mb-6 border border-slate-100 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
-              <Search className="w-4 h-4 text-slate-400" />
+            <div className="relative flex items-center mb-6">
+              <Search className="absolute left-4 w-5 h-5 text-slate-400 pointer-events-none" />
               <input 
                 type="text" 
                 placeholder="Cari nama atau NIK..."
-                className="bg-transparent border-none outline-none text-sm font-medium w-full"
+                className="w-full bg-slate-50 rounded-2xl pl-12 pr-4 h-12 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all text-sm font-medium text-slate-800 placeholder:text-slate-400"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-xl">
                 <Button 
-                  variant={statusFilter === 'all' ? 'default' : 'outline'} 
+                  variant={statusFilter === 'all' ? 'default' : 'ghost'} 
                   size="sm" 
                   onClick={() => setStatusFilter('all')}
-                  className={statusFilter === 'all' ? 'bg-slate-800 text-white rounded-xl' : 'rounded-xl text-slate-500'}
+                  className={`rounded-lg h-8 px-4 ${statusFilter === 'all' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >Semua</Button>
                 <Button 
-                  variant={statusFilter === 'pending' ? 'default' : 'outline'} 
+                  variant={statusFilter === 'pending' ? 'default' : 'ghost'} 
                   size="sm" 
                   onClick={() => setStatusFilter('pending')}
-                  className={statusFilter === 'pending' ? 'bg-amber-500 hover:bg-amber-600 text-white rounded-xl' : 'rounded-xl text-slate-500'}
+                  className={`rounded-lg h-8 px-4 ${statusFilter === 'pending' ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm' : 'text-slate-500 hover:text-amber-600'}`}
                 >Pending</Button>
                 <Button 
-                  variant={statusFilter === 'selesai' ? 'default' : 'outline'} 
+                  variant={statusFilter === 'selesai' ? 'default' : 'ghost'} 
                   size="sm" 
                   onClick={() => setStatusFilter('selesai')}
-                  className={statusFilter === 'selesai' ? 'bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl' : 'rounded-xl text-slate-500'}
+                  className={`rounded-lg h-8 px-4 ${statusFilter === 'selesai' ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-emerald-600'}`}
                 >Selesai</Button>
               </div>
 
@@ -239,7 +239,7 @@ export default function EkonomiPage() {
                 <table className="w-full text-sm text-left">
                   <thead className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-3 min-w-[200px]">Kelompok & PM</th>
+                      <th className="px-4 py-3 min-w-[200px] sticky left-0 bg-slate-50 z-10 border-r border-slate-100">Kelompok & PM</th>
                       <th className="px-4 py-3 min-w-[120px]">Kategori</th>
                       {Array.from({length: 12}).map((_, i) => (
                         <th key={i} className="px-2 py-3 text-center">{getBulanName(i+1).substring(0,3)}</th>
@@ -249,8 +249,8 @@ export default function EkonomiPage() {
                   <tbody className="divide-y divide-slate-100/80">
                     {groupsArray.flatMap((group: any) => 
                        group.membersArray.map((person: any) => (
-                         <tr key={person.penerima_manfaat_id} className="hover:bg-slate-50/50 transition-colors">
-                           <td className="px-4 py-3">
+                         <tr key={person.penerima_manfaat_id} className="hover:bg-slate-50/50 transition-colors group/row">
+                           <td className="px-4 py-3 sticky left-0 bg-white group-hover/row:bg-slate-50 z-10 border-r border-slate-100/50">
                              <div className="font-bold text-slate-800">{person.nama_pm}</div>
                              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{person.nik_pm}</div>
                              <div className="text-[10px] text-emerald-600 font-black tracking-widest mt-0.5">{group.nama_kelompok}</div>
@@ -269,10 +269,10 @@ export default function EkonomiPage() {
                              >
                                {update ? (
                                   update.checked ? (
-                                    <Check className="w-4 h-4 text-emerald-500 mx-auto shrink-0 group-hover:scale-110 transition-transform" strokeWidth={3} />
+                                    <Check className="w-5 h-5 text-emerald-600 mx-auto shrink-0 group-hover:scale-110 transition-transform" strokeWidth={3} />
                                   ) : (
                                     <div title="Draft" className="flex items-center justify-center">
-                                      <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" strokeWidth={3} />
+                                      <Clock className="w-5 h-5 text-amber-600 shrink-0 group-hover:scale-110 transition-all" strokeWidth={3} />
                                     </div>
                                   )
                                ) : (
@@ -387,7 +387,7 @@ export default function EkonomiPage() {
           <Card className="bg-emerald-600 border-none shadow-xl shadow-emerald-600/20 overflow-hidden rounded-[2rem] text-white">
             <CardContent className="p-8 space-y-4">
               <div className="p-3 bg-white/20 rounded-2xl w-fit">
-                <Filter className="w-6 h-6" />
+                <TrendingUp className="w-6 h-6" />
               </div>
               <div>
                 <h3 className="text-xl font-bold tracking-tight">Estatistik</h3>

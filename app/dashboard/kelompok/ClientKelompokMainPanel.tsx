@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, Users } from 'lucide-react'
+import { Plus, Edit, Trash2, Users, LayoutGrid, List, Download } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -60,6 +61,26 @@ export default function ClientKelompokMainPanel({
   // Filter States
   const [filterUmur, setFilterUmur] = useState<string[]>([])
   const [filterGender, setFilterGender] = useState<string[]>([])
+
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+
+  const exportToExcel = () => {
+    const dataToExport = initialKelompok.map((kel: any) => ({
+      'Nama Kelompok': kel.nama_kelompok,
+      'Desa Binaan': kel.nama_desa,
+      'Program': kel.nama_program,
+      'Tahun': kel.tahun,
+      'Nama Pembina': kel.nama_pembina,
+      'Relawan Penanggung Jawab': kel.nama_relawan || '-',
+      'Jumlah Anggota': kel.anggota?.length || 0,
+      'Daftar Anggota PM': kel.anggota ? kel.anggota.map((a:any) => a.nama_pm).join(', ') : ''
+    }))
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Daftar Kelompok")
+    XLSX.writeFile(workbook, "Daftar_Kelompok_PM.xlsx")
+  }
 
   // Helper
   const getAgeCategory = (tanggal_lahir: string | null) => {
@@ -243,13 +264,119 @@ export default function ClientKelompokMainPanel({
           </h2>
           <p className="text-sm text-slate-500">Kumpulan kelompok dari semua daftar Desa Binaan Anda.</p>
         </div>
-        {canMod && (
-          <Button onClick={handleOpenAddKelompok} className="!bg-[var(--brand-primary)] hover:brightness-90 text-white shadow-sm transition-all">
-            <Plus className="w-4 h-4 mr-2" /> Tambah Kelompok
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+           <div className="hidden sm:flex items-center bg-slate-100 p-1 rounded-xl mr-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`rounded-lg h-8 px-3 ${viewMode === 'grid' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+                onClick={() => setViewMode('grid')}
+              >
+                <LayoutGrid className="w-4 h-4 mr-2" /> Grid
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`rounded-lg h-8 px-3 ${viewMode === 'table' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+                onClick={() => setViewMode('table')}
+              >
+                <List className="w-4 h-4 mr-2" /> Table
+              </Button>
+           </div>
+           
+           <Button variant="outline" size="sm" onClick={exportToExcel} className="h-9 px-3 text-emerald-700 border-emerald-200 hover:bg-emerald-50 rounded-lg">
+             <Download className="w-4 h-4 sm:mr-2" />
+             <span className="hidden sm:inline">Export Excel</span>
+           </Button>
+
+          {canMod && (
+            <Button onClick={handleOpenAddKelompok} className="!bg-[var(--brand-primary)] hover:brightness-90 text-white shadow-sm transition-all h-9 rounded-lg">
+              <Plus className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Tambah Kelompok</span>
+            </Button>
+          )}
+        </div>
       </div>
 
+      {viewMode === 'table' ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">
+                <tr>
+                  <th className="px-4 py-3 min-w-[200px] sticky left-0 bg-slate-50 z-10 border-r border-slate-100">Nama Kelompok</th>
+                  <th className="px-4 py-3 min-w-[150px]">Atribut</th>
+                  <th className="px-4 py-3 min-w-[150px]">Kepengurusan</th>
+                  <th className="px-4 py-3 min-w-[200px]">Anggota PM</th>
+                  {canMod && <th className="px-4 py-3 min-w-[100px] text-right">Aksi</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {initialKelompok.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">Belum Ada Kelompok</td>
+                  </tr>
+                ) : (
+                  initialKelompok.map(kel => (
+                    <tr key={kel.id} className="hover:bg-slate-50/50 group/row transition-colors">
+                      <td className="px-4 py-3 sticky left-0 bg-white group-hover/row:bg-slate-50 z-10 border-r border-slate-100/50 align-top">
+                        <div className="font-bold text-slate-800">{kel.nama_kelompok}</div>
+                        <div className="text-[10px] text-slate-500 font-bold mt-1 tracking-wider">TAHUN: {kel.tahun}</div>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex flex-col items-start gap-1.5">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border-none">
+                            <span className="mr-1 opacity-70">Desa:</span> {kel.nama_desa}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border-none">
+                            <span className="mr-1 opacity-70">Prog:</span> {kel.nama_program} 
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <div className="text-[11px] font-semibold text-slate-700"><span className="text-slate-400 font-normal">Pembina:</span> {kel.nama_pembina}</div>
+                        <div className="text-[11px] font-semibold text-slate-700 mt-1.5"><span className="text-slate-400 font-normal">Relawan:</span> {kel.nama_relawan || '-'}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-between items-center mb-2">
+                           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{kel.anggota?.length || 0} Anggota</span>
+                           {canMod && (
+                             <button onClick={() => handleOpenTambahAnggota(kel)} className="text-[10px] font-bold text-[var(--brand-primary)] hover:underline flex items-center bg-rose-50 px-2 py-0.5 rounded cursor-pointer">
+                               <Plus className="w-3 h-3 mr-0.5"/> Tambah
+                             </button>
+                           )}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1 custom-scrollbar">
+                           {kel.anggota && kel.anggota.length > 0 ? (
+                             kel.anggota.map((a: any) => (
+                               <span key={a.id} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/60">
+                                 {a.nama_pm}
+                               </span>
+                             ))
+                           ) : (
+                             <span className="text-[10px] text-slate-400 italic font-medium">Belum ada PM</span>
+                           )}
+                        </div>
+                      </td>
+                      {canMod && (
+                        <td className="px-4 py-3 align-top text-right">
+                           <div className="flex justify-end gap-2">
+                             <Button variant="ghost" size="icon" onClick={() => handleOpenEditKelompok(kel)} className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50">
+                                <Edit className="w-4 h-4" />
+                             </Button>
+                             <Button variant="ghost" size="icon" onClick={() => handleDeleteKelompok(kel.id, kel.desa_berdaya_id)} className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50">
+                                <Trash2 className="w-4 h-4" />
+                             </Button>
+                           </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-4">
         {initialKelompok.length === 0 ? (
           <div className="text-center py-12 px-6 border border-dashed border-slate-300 rounded-xl bg-white">
@@ -324,6 +451,7 @@ export default function ClientKelompokMainPanel({
           ))
         )}
       </div>
+      )}
 
       {/* MODAL KELOMPOK */}
       <Dialog open={isOpenKelompok} onOpenChange={setIsOpenKelompok}>

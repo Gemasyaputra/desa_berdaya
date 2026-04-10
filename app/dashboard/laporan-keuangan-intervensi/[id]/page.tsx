@@ -755,6 +755,28 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                           {a.status_ca === 'DIVERIFIKASI' && (
                             <Button variant="ghost" className="h-6 text-[9px] text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg" onClick={() => handleVerify(a.id, 'UPLOADED', '')}>Batalkan</Button>
                           )}
+                          {/* Approve Refund */}
+                          {a.bukti_pengembalian_url && (
+                            <>
+                              <div className="border-t border-slate-100 my-1" />
+                              <Button 
+                                size="sm" 
+                                className={`h-8 rounded-lg text-[10px] font-bold transition-all ${
+                                  a.status_pengembalian === 'DIVERIFIKASI'
+                                    ? 'bg-indigo-50 text-indigo-700 pointer-events-none shadow-none border border-indigo-100'
+                                    : 'bg-rose-500 hover:bg-rose-600 text-white'
+                                }`}
+                                onClick={() => handleVerifyPengembalian(a.id, 'DIVERIFIKASI', '')}
+                                disabled={verifyingId === a.id}
+                              >
+                                {verifyingId === a.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle2 className="w-3 h-3 mr-1" />}
+                                {a.status_pengembalian === 'DIVERIFIKASI' ? 'Approved Refund' : 'Approve Refund'}
+                              </Button>
+                              {a.status_pengembalian === 'DIVERIFIKASI' && (
+                                <Button variant="ghost" className="h-6 text-[9px] text-slate-400 hover:bg-slate-50 rounded-lg" onClick={() => handleVerifyPengembalian(a.id, 'UPLOADED', '')}>Batalkan</Button>
+                              )}
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -823,10 +845,10 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                       </div>
                     </td>
                     <td className="px-8 py-6 text-center align-top">
-                      <BuktiPengembalianUploader a={a} compact={true} />
-                    </td>
-                    <td className="px-8 py-6 text-center align-top flex justify-center flex-col items-center gap-2">
                       <BuktiCAUploader a={a} compact={true} />
+                    </td>
+                    <td className="px-8 py-6 text-center align-top">
+                      <BuktiPengembalianUploader a={a} compact={true} />
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex flex-col items-center gap-1">
@@ -849,8 +871,9 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                       />
                     </td>
                     {isAdminOrFinance && (
-                      <td className="px-8 py-6 text-center">
-                        <div className="flex flex-col gap-1">
+                      <td className="px-8 py-6 text-center align-top">
+                        <div className="flex flex-col gap-2 min-w-[110px]">
+                          {/* Verif CA */}
                           <Button 
                             size="sm" 
                             className={`h-8 rounded-lg text-[10px] font-bold transition-all ${a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50 text-emerald-700 pointer-events-none shadow-none border border-emerald-100' : 'bg-[#008784] hover:bg-[#007370] text-white'}`}
@@ -861,10 +884,32 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                             disabled={!a.bukti_ca_url || verifyingId === a.id}
                           >
                             {verifyingId === a.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle2 className={`w-3 h-3 mr-1 ${a.status_ca === 'DIVERIFIKASI' ? 'text-emerald-500' : ''}`} />}
-                            {a.status_ca === 'DIVERIFIKASI' ? 'Diverifikasi' : 'Verif'}
+                            {a.status_ca === 'DIVERIFIKASI' ? 'Verified CA' : 'Verif CA'}
                           </Button>
                           {a.status_ca === 'DIVERIFIKASI' && (
                             <Button variant="ghost" className="h-6 text-[9px] text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg" onClick={() => handleVerify(a.id, 'UPLOADED', '')}>Batalkan</Button>
+                          )}
+                          {/* Verif Refund — hanya tampil jika ada bukti pengembalian */}
+                          {a.bukti_pengembalian_url && (
+                            <>
+                              <div className="border-t border-slate-100 my-1" />
+                              <Button 
+                                size="sm" 
+                                className={`h-8 rounded-lg text-[10px] font-bold transition-all ${
+                                  a.status_pengembalian === 'DIVERIFIKASI'
+                                    ? 'bg-indigo-50 text-indigo-700 pointer-events-none shadow-none border border-indigo-100'
+                                    : 'bg-rose-500 hover:bg-rose-600 text-white'
+                                }`}
+                                onClick={() => handleVerifyPengembalian(a.id, 'DIVERIFIKASI', '')}
+                                disabled={verifyingId === a.id}
+                              >
+                                {verifyingId === a.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle2 className={`w-3 h-3 mr-1`} />}
+                                {a.status_pengembalian === 'DIVERIFIKASI' ? 'Approved Refund' : 'Approve Refund'}
+                              </Button>
+                              {a.status_pengembalian === 'DIVERIFIKASI' && (
+                                <Button variant="ghost" className="h-6 text-[9px] text-slate-400 hover:bg-slate-50 rounded-lg" onClick={() => handleVerifyPengembalian(a.id, 'UPLOADED', '')}>Batalkan</Button>
+                              )}
+                            </>
                           )}
                         </div>
                       </td>
@@ -886,14 +931,21 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
         </DialogContent>
       </Dialog>
       <Dialog open={!!detailAnggaran} onOpenChange={(open) => !open && setDetailAnggaran(null)}>
-        <DialogContent className="sm:max-w-2xl bg-white max-h-[90vh] overflow-y-auto w-[95%] border-slate-100 shadow-2xl rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black text-slate-800">Detail Laporan {detailAnggaran?.bulan} {detailAnggaran?.tahun}</DialogTitle>
-            <DialogDescription className="text-xs font-bold text-slate-500">
-              Rincian data anggaran dan pencairan.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6 pt-4 pb-2">
+        <DialogContent className="sm:max-w-2xl bg-white max-h-[90vh] overflow-y-auto w-[95%] border-slate-100 shadow-2xl rounded-2xl p-0 [&>button]:hidden">
+          {/* Floating sticky header dengan tombol close */}
+          <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-100 px-6 py-4 flex items-start justify-between rounded-t-2xl">
+            <div>
+              <DialogTitle className="text-xl font-black text-slate-800">Detail Laporan {detailAnggaran?.bulan} {detailAnggaran?.tahun}</DialogTitle>
+              <p className="text-xs font-bold text-slate-400 mt-0.5">Rincian data anggaran dan pencairan.</p>
+            </div>
+            <button
+              onClick={() => setDetailAnggaran(null)}
+              className="ml-4 mt-0.5 flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 hover:bg-rose-100 hover:text-rose-600 flex items-center justify-center transition-all text-slate-500 shadow-sm"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="space-y-6 px-6 pt-4 pb-6">
             <div>
               <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-wider mb-3 border-b border-slate-100 pb-2">Anggaran & Pencairan</h4>
               <div className="grid grid-cols-2 gap-4 gap-y-2 text-sm text-slate-600 mb-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
@@ -1003,13 +1055,28 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
             </div>
             
             {/* Bukti CA Section */}
-            <div className="pt-2">
-              <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-wider mb-4 border-b border-slate-100 pb-2">Bukti CA & Laporan</h4>
-              <div className="flex flex-col md:flex-row justify-center md:justify-start gap-4">
+            <div className="pt-2 rounded-2xl bg-emerald-50 border border-emerald-100 p-4 -mx-1">
+              <div className="flex items-center gap-2 mb-4 border-b border-emerald-200/60 pb-2">
+                <div className="w-1.5 h-4 rounded-full bg-emerald-400" />
+                <h4 className="text-[11px] font-black uppercase text-emerald-600 tracking-wider">Bukti CA &amp; Laporan</h4>
+              </div>
+              <div className="flex justify-center md:justify-start">
                  <BuktiCAUploader a={detailAnggaran} />
-                 <BuktiPengembalianUploader a={detailAnggaran} />
               </div>
             </div>
+
+            {/* Bukti Pengembalian Section - hanya tampil jika ada data */}
+            {detailAnggaran?.bukti_pengembalian_url && (
+              <div className="pt-2 rounded-2xl bg-rose-50 border border-rose-100 p-4 -mx-1">
+                <div className="flex items-center gap-2 mb-4 border-b border-rose-200/60 pb-2">
+                  <div className="w-1.5 h-4 rounded-full bg-rose-400" />
+                  <h4 className="text-[11px] font-black uppercase text-rose-500 tracking-wider">Bukti Pengembalian Dana</h4>
+                </div>
+                <div className="flex justify-center md:justify-start">
+                   <BuktiPengembalianUploader a={detailAnggaran} />
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end pt-4">
                <Button variant="outline" onClick={() => setDetailAnggaran(null)} className="rounded-xl font-bold border-slate-200">
@@ -1100,6 +1167,84 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
               <Button variant="outline" className="rounded-xl" onClick={() => setRejectDialog({ open: false, anggaranId: null, entryId: null })}>Batal</Button>
               <Button className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl" onClick={handleRejectCA}>Tolak Laporan</Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* PENGEMBALIAN UPLOAD DIALOG */}
+      <Dialog open={pengUploadDialog.open} onOpenChange={(open) => !open && setPengUploadDialog({ open: false, anggaranId: null })}>
+        <DialogContent className="max-w-md p-0 overflow-hidden bg-white md:rounded-3xl rounded-2xl border-0 shadow-2xl">
+          <DialogHeader className="bg-slate-50 border-b border-slate-100 px-6 py-5">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-slate-800">
+              <Upload className="w-5 h-5 text-[#008784]" />
+              Upload Bukti Kembalian
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-6 space-y-5">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Deskripsi / Keterangan</label>
+              <textarea
+                value={pengDeskripsi}
+                onChange={e => setPengDeskripsi(e.target.value)}
+                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#008784] focus:ring-4 focus:ring-[#008784]/10 transition-all outline-none resize-none min-h-[80px]"
+                placeholder="Ex: Kembalian Sisa Kegiatan"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Nominal Dikembalikan (Rp)</label>
+              <input
+                type="number"
+                value={pengNominal}
+                onChange={e => setPengNominal(e.target.value)}
+                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#008784] focus:ring-4 focus:ring-[#008784]/10 transition-all outline-none"
+                placeholder="50000"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Foto/File Bukti (Bisa Multi)</label>
+              <input
+                type="file"
+                multiple
+                accept="image/*,.pdf"
+                onChange={e => setPengFiles(Array.from(e.target.files || []))}
+                className="w-full px-4 py-3 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-[#008784]/10 file:text-[#008784] hover:file:bg-[#008784]/20 transition-all cursor-pointer text-sm text-slate-500"
+              />
+              {pengFiles.length > 0 && <span className="text-xs font-bold text-[#008784] block mt-1">{pengFiles.length} file terpilih</span>}
+            </div>
+            <Button
+              onClick={handlePengembalianUpload}
+              disabled={uploadingId === pengUploadDialog.anggaranId}
+              className="w-full bg-[#008784] hover:bg-[#007370] text-white py-6 rounded-xl font-bold shadow-lg shadow-[#008784]/20"
+            >
+              {uploadingId === pengUploadDialog.anggaranId ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Upload className="w-5 h-5 mr-2" />}
+              Upload Kembalian
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* PENGEMBALIAN REJECT DIALOG */}
+      <Dialog open={rejectPengDialog.open} onOpenChange={(open) => !open && setRejectPengDialog({ open: false, anggaranId: null, entryId: null })}>
+        <DialogContent className="max-w-md p-0 overflow-hidden bg-white md:rounded-3xl rounded-2xl border-0 shadow-2xl">
+          <DialogHeader className="bg-rose-50 border-b border-rose-100 px-6 py-5">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-rose-700">
+              <AlertCircle className="w-5 h-5" />
+              Tolak Bukti Kembalian
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-6 space-y-5">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-rose-700/70 uppercase tracking-widest ml-1">Alasan Penolakan</label>
+              <textarea
+                value={rejectPengReason}
+                onChange={e => setRejectPengReason(e.target.value)}
+                className="w-full px-4 py-3 bg-white border border-rose-200 rounded-xl focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all outline-none resize-none min-h-[100px] placeholder:text-rose-200"
+                placeholder="Ex: Foto buram, tidak dapat terbaca..."
+              />
+            </div>
+            <Button onClick={handleRejectPengembalian} className="w-full bg-rose-500 hover:bg-rose-600 text-white py-6 rounded-xl font-bold shadow-lg shadow-rose-500/20">
+              Tolak & Minta Upload Ulang
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

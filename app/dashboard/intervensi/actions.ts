@@ -70,7 +70,17 @@ export async function getIntervensiProgramById(id: number) {
   await checkAdmin();
   const result = await sql`
     SELECT 
-      ip.*,
+      ip.id,
+      ip.desa_berdaya_id,
+      ip.kategori_program_id,
+      ip.program_id,
+      ip.deskripsi,
+      ip.sumber_dana,
+      ip.fundraiser,
+      ip.relawan_id,
+      ip.status,
+      ip.created_at,
+      ip.updated_at,
       COALESCE(ip.relawan_id, db.relawan_id) as relawan_id,
       dc.nama_desa,
       kp.nama_kategori as kategori_program,
@@ -162,8 +172,75 @@ export async function deleteIntervensiProgram(id: number) {
   // Cascade delete anggaran lines first
   await sql`DELETE FROM intervensi_anggaran WHERE intervensi_program_id = ${id}`
   await sql`DELETE FROM intervensi_program WHERE id = ${id}`
-  revalidatePath('/dashboard/intervensi')
-  return { success: true }
+  revalidatePath('/dashboard/intervensi');
+  return { success: true };
+}
+
+// Simple: get occupied months for specific program IDs in a given year
+// For basic mode (same desa), target program = source program itself
+export async function getOccupiedMonthsByProgramIds(
+  programIds: number[],
+  targetYear: number
+): Promise<string[]> {
+  await checkAdmin();
+  if (programIds.length === 0) return [];
+
+  const rows = await sql`
+    SELECT DISTINCT bulan
+    FROM intervensi_anggaran
+    WHERE intervensi_program_id = ANY(${programIds})
+      AND tahun = ${targetYear}
+  `;
+
+  return (rows as any[]).map(r => r.bulan);
+}
+
+// Advanced: get occupied months in target desas for a given year, matched by program_id
+export async function getExistingMonthsForTarget(
+  sourceProgramIds: number[],
+  targetYear: number,
+  targetDesaIds: number[]
+): Promise<Record<string, string[]>> {
+  await checkAdmin();
+
+  // Get source program details
+  const sourceDetails = (await sql`
+    SELECT id, program_id
+    FROM intervensi_program 
+    WHERE id = ANY(${sourceProgramIds})
+  `) as any[];
+
+  if (!Array.isArray(sourceDetails) || sourceDetails.length === 0) return {};
+
+  const results: Record<string, string[]> = {};
+
+  for (const desaId of targetDesaIds) {
+    for (const source of sourceDetails) {
+      // Find the existing header in target desa for same program
+      const targetHeaders = (await sql`
+        SELECT id FROM intervensi_program 
+        WHERE desa_berdaya_id = ${desaId}
+          AND program_id = ${source.program_id}
+      `) as any[];
+
+      const headerIds = targetHeaders.map(h => h.id);
+      if (headerIds.length === 0) continue;
+
+      const occupied = await sql`
+        SELECT DISTINCT bulan
+        FROM intervensi_anggaran
+        WHERE intervensi_program_id = ANY(${headerIds})
+          AND tahun = ${targetYear}
+      `;
+
+      const monthList = (occupied as any[]).map(r => r.bulan);
+      if (monthList.length > 0) {
+        results[`${desaId}-${source.id}`] = monthList;
+      }
+    }
+  }
+
+  return results;
 }
 
 // DETAIL: ANGGARAN
@@ -175,6 +252,35 @@ export async function getAnggaranByIntervensi(headerId: number): Promise<any[]> 
     ORDER BY tahun ASC, bulan ASC
   `
   return (Array.isArray(rawData) ? rawData : []) as any[]
+}
+
+// Fetch source anggaran data for bulk duplicate preview
+// Returns map: programId -> { bulan -> {ajuan_ri, anggaran_disetujui, anggaran_dicairkan, is_dbf, is_rz} }
+export async function getAnggaranForPreview(
+  programIds: number[]
+): Promise<Record<number, Record<string, any>>> {
+  await checkAdmin();
+  if (programIds.length === 0) return {};
+
+  const rows = await sql`
+    SELECT intervensi_program_id, bulan, ajuan_ri, anggaran_disetujui, anggaran_dicairkan, is_dbf, is_rz
+    FROM intervensi_anggaran
+    WHERE intervensi_program_id = ANY(${programIds})
+    ORDER BY bulan ASC
+  `;
+
+  const result: Record<number, Record<string, any>> = {};
+  for (const row of (rows as any[])) {
+    if (!result[row.intervensi_program_id]) result[row.intervensi_program_id] = {};
+    result[row.intervensi_program_id][row.bulan] = {
+      ajuan_ri: Number(row.ajuan_ri) || 0,
+      anggaran_disetujui: Number(row.anggaran_disetujui) || 0,
+      anggaran_dicairkan: Number(row.anggaran_dicairkan) || 0,
+      is_dbf: row.is_dbf || false,
+      is_rz: row.is_rz || false,
+    };
+  }
+  return result;
 }
 
 // EXPORT: Full data with anggaran rows (single query, no N+1)
@@ -477,4 +583,168 @@ export async function duplicateIntervensiProgram(originalId: number, data: {
 
   revalidatePath('/dashboard/intervensi');
   return { success: true, id: newHeaderId, inserted };
+}
+
+export async function getIntervensiProgramsForDuplicate() {
+  await checkAdmin();
+  const rawData = await sql`
+    SELECT 
+      ip.id,
+      ip.status,
+      ip.sumber_dana,
+      ip.desa_berdaya_id,
+      ip.program_id,
+      ip.kategori_program_id,
+      ip.relawan_id,
+      ip.created_at,
+      dc.nama_desa,
+      p.nama_program,
+      COALESCE(r.nama, r_db.nama) as nama_relawan,
+      ARRAY_AGG(DISTINCT ia.bulan ORDER BY ia.bulan) FILTER (WHERE ia.bulan IS NOT NULL) as bulan_list,
+      COUNT(ia.id) as row_count
+    FROM intervensi_program ip
+    LEFT JOIN desa_berdaya db ON ip.desa_berdaya_id = db.id
+    LEFT JOIN desa_config dc ON db.desa_id = dc.id
+    LEFT JOIN program p ON ip.program_id = p.id
+    LEFT JOIN relawan r ON ip.relawan_id = r.id
+    LEFT JOIN relawan r_db ON db.relawan_id = r_db.id
+    LEFT JOIN intervensi_anggaran ia ON ia.intervensi_program_id = ip.id
+    GROUP BY ip.id, dc.nama_desa, p.nama_program, r.nama, r_db.nama
+    ORDER BY ip.created_at DESC
+  `
+  return Array.isArray(rawData) ? rawData : []
+}
+
+export async function bulkDuplicateIntervensi(
+  sourceSelections: Array<{ programId: number; months: string[] }>,
+  targetYear: number,
+  targetDesaIds?: number[],
+  targetMonths?: string[],
+  previewRows?: any[]
+): Promise<{ success: boolean; created: number }> {
+  await checkAdmin();
+
+  let createdCount = 0;
+
+  for (const selection of sourceSelections) {
+    const { programId: sourceId, months: selectedSourceMonths } = selection
+    if (selectedSourceMonths.length === 0) continue
+
+    const original = await getIntervensiProgramById(sourceId);
+    if (!original) continue;
+
+    const allRowsFromSource = await getAnggaranByIntervensi(sourceId);
+    const templateRows = allRowsFromSource.filter(r => selectedSourceMonths.includes(r.bulan));
+    if (templateRows.length === 0) continue;
+
+    const desaTargets =
+      targetDesaIds && targetDesaIds.length > 0
+        ? targetDesaIds
+        : [original.desa_berdaya_id];
+
+    for (const desaId of desaTargets) {
+      let targetProgramId: number;
+      
+      if (desaId === original.desa_berdaya_id) {
+        // Same desa as source → directly reuse the source program header
+        targetProgramId = sourceId;
+      } else {
+        // Different desa (Advanced mode) → find existing header or create new one
+        const existingHeader = (await sql`
+          SELECT id FROM intervensi_program 
+          WHERE desa_berdaya_id = ${desaId}
+            AND program_id = ${original.program_id}
+          LIMIT 1
+        `) as any[];
+        
+        if (Array.isArray(existingHeader) && existingHeader.length > 0) {
+          targetProgramId = existingHeader[0].id;
+        } else {
+          // Create new header for the new desa
+          const desaInfo = await sql`
+            SELECT relawan_id FROM desa_berdaya WHERE id = ${desaId} LIMIT 1
+          `;
+          const relawanId = (desaInfo as any[])[0]?.relawan_id ?? original.relawan_id;
+
+          // Double check program & kategori IDs are present
+          const kategorId = original.kategori_program_id || 0;
+          const progId = original.program_id || 0;
+
+          const result = await sql`
+            INSERT INTO intervensi_program (
+              desa_berdaya_id, kategori_program_id, program_id,
+              deskripsi, sumber_dana, fundraiser, relawan_id, status
+            ) VALUES (
+              ${desaId},
+              ${kategorId},
+              ${progId},
+              ${original.deskripsi || null},
+              ${original.sumber_dana || null},
+              ${original.fundraiser || null},
+              ${relawanId},
+              'DRAFT'
+            ) RETURNING id
+          `;
+          targetProgramId = (result as any[])[0].id;
+        }
+      }
+
+      // Decide which months to create
+      const monthsToProcess = (targetMonths && targetMonths.length > 0) 
+        ? targetMonths 
+        : templateRows.map(r => r.bulan);
+
+      for (const tMonth of monthsToProcess) {
+        // CHECK IF ALREADY EXISTS in targetYear
+        const exists = await sql`
+          SELECT 1 FROM intervensi_anggaran 
+          WHERE intervensi_program_id = ${targetProgramId} 
+            AND tahun = ${targetYear} 
+            AND bulan = ${tMonth}
+          LIMIT 1
+        `;
+
+        if (Array.isArray(exists) && exists.length > 0) {
+          // Skip if already exists
+          continue;
+        }
+
+        // Get preview data if available (user edits from Step 2)
+        let rowData;
+        if (previewRows) {
+          rowData = previewRows.find(r => r.programId === sourceId && r.targetMonth === tMonth);
+        }
+
+        if (!rowData) {
+          // Fallback to source template
+          rowData = (targetMonths && targetMonths.length > 0)
+            ? templateRows[0]
+            : templateRows.find(r => r.bulan === tMonth) || templateRows[0];
+        }
+
+        await sql`
+          INSERT INTO intervensi_anggaran (
+            intervensi_program_id, tahun, bulan, ajuan_ri,
+            anggaran_disetujui, anggaran_dicairkan, status_pencairan,
+            id_stp, catatan, is_dbf, is_rz
+          ) VALUES (
+            ${targetProgramId},
+            ${targetYear},
+            ${tMonth},
+            ${rowData.ajuan_ri || 0},
+            ${rowData.anggaran_disetujui || 0},
+            ${rowData.anggaran_dicairkan || 0},
+            'Dialokasikan',
+            null, null,
+            ${rowData.is_dbf || false},
+            ${rowData.is_rz || false}
+          )
+        `;
+      }
+      createdCount++;
+    }
+  }
+
+  revalidatePath('/dashboard/intervensi');
+  return { success: true, created: createdCount };
 }

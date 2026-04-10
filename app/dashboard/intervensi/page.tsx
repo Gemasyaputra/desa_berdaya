@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Target, LayoutGrid, Search, Filter, X, Check, FileSpreadsheet, Trash2, Download, Loader2 } from 'lucide-react'
-import { getIntervensiPrograms, deleteIntervensiProgram, getIntervensiExportData, duplicateIntervensiProgram, getDesaBerdayaOptions, getProgramOptions } from './actions'
+import { Plus, Target, LayoutGrid, Search, Filter, X, Check, FileSpreadsheet, Trash2, Download, Loader2, Copy, Layers, ChevronRight, ChevronLeft, Calendar, MapPin, BookOpen, ChevronsRight } from 'lucide-react'
+import { getIntervensiPrograms, deleteIntervensiProgram, getIntervensiExportData, duplicateIntervensiProgram, getDesaBerdayaOptions, getProgramOptions, getIntervensiProgramsForDuplicate, bulkDuplicateIntervensi, getExistingMonthsForTarget, getOccupiedMonthsByProgramIds, getAnggaranForPreview } from './actions'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 import ImportExcelModal from '@/components/intervensi/ImportExcelModal'
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { Copy } from 'lucide-react'
+
 
 interface MultiSelectFilterProps {
   label: string
@@ -121,6 +121,46 @@ export default function IntervensiListPage() {
     program_id: ''
   })
 
+  // Bulk Duplicate states
+  const [bulkDupOpen, setBulkDupOpen] = useState(false)
+  const [bdPrograms, setBdPrograms] = useState<any[]>([])
+  const [bdLoading, setBdLoading] = useState(false)
+  const [bdStep, setBdStep] = useState(1)
+  // bdSelectedMonths: programId -> set of selected month strings
+  const [bdSelectedMonths, setBdSelectedMonths] = useState<Record<number, Set<string>>>({})
+  // bdExpanded: which program rows are expanded
+  const [bdExpanded, setBdExpanded] = useState<Set<number>>(new Set())
+  const [bdSearch, setBdSearch] = useState('')
+  const [bdFilterDesa, setBdFilterDesa] = useState<string[]>([])
+  const [bdFilterBulan, setBdFilterBulan] = useState<string[]>([])
+  const [bdFilterProgram, setBdFilterProgram] = useState<string[]>([])
+  const [bdTargetYear, setBdTargetYear] = useState(String(new Date().getFullYear()))
+  const [bdTargetMonths, setBdTargetMonths] = useState<Set<string>>(new Set())
+  const [bdOccupiedMonths, setBdOccupiedMonths] = useState<Set<string>>(new Set())
+  const [bdMode, setBdMode] = useState<'basic' | 'advanced'>('basic')
+  const [bdTargetDesaIds, setBdTargetDesaIds] = useState<Set<number>>(new Set())
+  const [isBulkDuplicating, setIsBulkDuplicating] = useState(false)
+  // Preview rows: editable before saving
+  const [bdPreviewRows, setBdPreviewRows] = useState<Array<{
+    key: string; programId: number; desaName: string; programName: string;
+    sourceMonth: string; targetMonth: string;
+    ajuan_ri: number; anggaran_disetujui: number; anggaran_dicairkan: number;
+    is_dbf: boolean; is_rz: boolean;
+  }>>([])
+  const [bdSourceAnggaran, setBdSourceAnggaran] = useState<Record<number, Record<string, any>>>({})
+  const [bdHasDraft, setBdHasDraft] = useState(false)
+
+  const BD_DRAFT_KEY = 'bd_duplicate_draft'
+
+
+
+  // Check for saved draft on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(BD_DRAFT_KEY);
+      if (saved) setBdHasDraft(true);
+    } catch {}
+  }, [])
 
   useEffect(() => {
     loadData()
@@ -332,6 +372,189 @@ export default function IntervensiListPage() {
     }
   }
 
+  const openBulkDup = async (resumeDraft = false) => {
+    setBulkDupOpen(true)
+
+    if (resumeDraft) {
+      try {
+        const saved = localStorage.getItem(BD_DRAFT_KEY);
+        if (saved) {
+          const draft = JSON.parse(saved);
+          setBdStep(draft.step ?? 1)
+          // Re-hydrate Sets from arrays
+          const months: Record<number, Set<string>> = {};
+          for (const [k, v] of Object.entries(draft.selectedMonths ?? {})) {
+            months[Number(k)] = new Set(v as string[]);
+          }
+          setBdSelectedMonths(months)
+          setBdTargetYear(draft.targetYear ?? String(new Date().getFullYear()))
+          setBdTargetMonths(new Set(draft.targetMonths ?? []))
+          setBdMode(draft.mode ?? 'basic')
+          setBdTargetDesaIds(new Set(draft.targetDesaIds ?? []))
+          if (draft.previewRows) setBdPreviewRows(draft.previewRows)
+        }
+      } catch {}
+    } else {
+      setBdStep(1)
+      setBdSelectedMonths({})
+      setBdExpanded(new Set())
+      setBdSearch('')
+      setBdFilterDesa([])
+      setBdFilterBulan([])
+      setBdFilterProgram([])
+      setBdMode('basic')
+      setBdTargetDesaIds(new Set())
+      setBdTargetMonths(new Set())
+      setBdTargetYear(String(new Date().getFullYear()))
+      setBdPreviewRows([])
+    }
+
+    if (bdPrograms.length === 0) {
+      setBdLoading(true)
+      try {
+        const [programs, desas] = await Promise.all([
+          getIntervensiProgramsForDuplicate(),
+          desaOptions.length > 0 ? Promise.resolve(desaOptions) : getDesaBerdayaOptions()
+        ])
+        setBdPrograms(programs)
+        setDesaOptions(desas)
+      } catch {
+        import('sonner').then(m => m.toast.error('Gagal memuat data'))
+      } finally {
+        setBdLoading(false)
+      }
+    }
+  }
+
+  // Auto-save draft to localStorage
+  useEffect(() => {
+    if (!bulkDupOpen) return;
+    try {
+      const serializable: Record<string, string[]> = {};
+      for (const [k, v] of Object.entries(bdSelectedMonths)) {
+        serializable[k] = Array.from(v);
+      }
+      const draft = {
+        step: bdStep,
+        selectedMonths: serializable,
+        targetYear: bdTargetYear,
+        targetMonths: Array.from(bdTargetMonths),
+        mode: bdMode,
+        targetDesaIds: Array.from(bdTargetDesaIds),
+        previewRows: bdPreviewRows,
+      };
+      localStorage.setItem(BD_DRAFT_KEY, JSON.stringify(draft));
+      setBdHasDraft(true);
+    } catch {}
+  }, [bulkDupOpen, bdStep, bdSelectedMonths, bdTargetYear, bdTargetMonths, bdMode, bdTargetDesaIds, bdPreviewRows])
+
+  // Build/refresh preview rows when selections or targets change in Step 2
+  useEffect(() => {
+    if (bdStep !== 2) return;
+    async function buildPreview() {
+      const progIds = Object.keys(bdSelectedMonths).map(Number).filter(id => (bdSelectedMonths[id]?.size ?? 0) > 0);
+      if (progIds.length === 0) { setBdPreviewRows([]); return; }
+
+      // Fetch source anggaran data if not yet available
+      let anggaranData = bdSourceAnggaran;
+      const missing = progIds.filter(id => !anggaranData[id]);
+      if (missing.length > 0) {
+        const fresh = await getAnggaranForPreview(progIds);
+        anggaranData = { ...anggaranData, ...fresh };
+        setBdSourceAnggaran(anggaranData);
+      }
+
+      const MONTHS_ORDER = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+      const newRows: typeof bdPreviewRows = [];
+      for (const progId of progIds) {
+        const prog = bdPrograms.find(p => p.id === progId);
+        if (!prog) continue;
+        const selectedSrcMonths = Array.from(bdSelectedMonths[progId] ?? []).sort(
+          (a, b) => MONTHS_ORDER.indexOf(a) - MONTHS_ORDER.indexOf(b)
+        );
+        const targetMonthsList = bdTargetMonths.size > 0
+          ? Array.from(bdTargetMonths).sort((a,b) => MONTHS_ORDER.indexOf(a) - MONTHS_ORDER.indexOf(b))
+          : selectedSrcMonths;
+
+        for (let i = 0; i < targetMonthsList.length; i++) {
+          const targetMonth = targetMonthsList[i];
+          // Use corresponding source month (or first if fewer source months)
+          const srcMonth = selectedSrcMonths[i] ?? selectedSrcMonths[0];
+          const srcData = anggaranData[progId]?.[srcMonth] ?? { ajuan_ri: 0, anggaran_disetujui: 0, anggaran_dicairkan: 0, is_dbf: false, is_rz: false };
+
+          const key = `${progId}-${targetMonth}`;
+          // Preserve user edits if row already exists
+          const existing = bdPreviewRows.find(r => r.key === key);
+          newRows.push(existing ?? {
+            key,
+            programId: progId,
+            desaName: prog.nama_desa,
+            programName: prog.nama_program,
+            sourceMonth: srcMonth,
+            targetMonth,
+            ajuan_ri: srcData.ajuan_ri,
+            anggaran_disetujui: srcData.anggaran_disetujui,
+            anggaran_dicairkan: srcData.anggaran_dicairkan,
+            is_dbf: srcData.is_dbf,
+            is_rz: srcData.is_rz,
+          });
+        }
+      }
+      setBdPreviewRows(newRows);
+    }
+    buildPreview();
+  }, [bdStep, bdSelectedMonths, bdTargetMonths, bdTargetYear])
+
+  useEffect(() => {
+    async function updateOccupied() {
+      if (bdStep !== 2) return;
+      const progIds = Object.keys(bdSelectedMonths)
+        .map(Number)
+        .filter(id => (bdSelectedMonths[id]?.size ?? 0) > 0);
+      if (progIds.length === 0) { setBdOccupiedMonths(new Set()); return; }
+
+      let allOccupied: string[] = [];
+
+      if (bdMode === 'basic') {
+        allOccupied = await getOccupiedMonthsByProgramIds(progIds, Number(bdTargetYear));
+      } else {
+        const desaIds = Array.from(bdTargetDesaIds);
+        if (desaIds.length === 0) { setBdOccupiedMonths(new Set()); return; }
+        const res = await getExistingMonthsForTarget(progIds, Number(bdTargetYear), desaIds);
+        allOccupied = Array.from(new Set(Object.values(res).flat()));
+      }
+
+      setBdOccupiedMonths(new Set(allOccupied));
+    }
+    updateOccupied();
+  }, [bdStep, bdTargetYear, bdTargetDesaIds, bdMode, bdSelectedMonths]);
+
+  const executeBulkDuplicate = async () => {
+    const sourceSelections = Object.entries(bdSelectedMonths)
+      .map(([id, months]) => ({ programId: Number(id), months: Array.from(months) }))
+      .filter(s => s.months.length > 0)
+    if (sourceSelections.length === 0) return
+    setIsBulkDuplicating(true)
+    try {
+      const targetDesaIds = bdMode === 'advanced' && bdTargetDesaIds.size > 0
+        ? Array.from(bdTargetDesaIds)
+        : undefined
+      const targetMonths = bdTargetMonths.size > 0 ? Array.from(bdTargetMonths) : undefined
+      const res = await bulkDuplicateIntervensi(sourceSelections, Number(bdTargetYear), targetDesaIds, targetMonths, bdPreviewRows)
+      import('sonner').then(m => m.toast.success(`Berhasil! ${res.created} program berhasil diperbarui.`))
+      // Clear draft
+      try { localStorage.removeItem(BD_DRAFT_KEY); setBdHasDraft(false); } catch {}
+      setBulkDupOpen(false)
+      loadData()
+      setBdPrograms([])
+    } catch (err: any) {
+      import('sonner').then(m => m.toast.error(err.message || 'Gagal menduplikasi'))
+    } finally {
+      setIsBulkDuplicating(false)
+    }
+  }
+
   const executeDuplicate = async () => {
     if (!duplicateTarget || !duplicateForm.desa_id || !duplicateForm.program_id) return
     setIsDuplicating(true)
@@ -399,6 +622,30 @@ export default function IntervensiListPage() {
               </span>
             </div>
           </Button>
+          <Button
+            variant="outline"
+            className="border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 shadow-sm px-5 h-auto py-2 rounded-xl transition-all w-full sm:w-auto gap-2 items-start"
+            onClick={() => openBulkDup(false)}
+          >
+            <Layers className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <div className="flex flex-col text-left">
+              <span className="font-bold text-sm leading-tight">Duplikat Massal</span>
+              <span className="text-[10px] font-medium text-indigo-400 leading-tight mt-0.5">Copy struktur ke tahun lain</span>
+            </div>
+          </Button>
+          {bdHasDraft && (
+            <Button
+              variant="outline"
+              className="border-amber-300 text-amber-600 hover:bg-amber-50 shadow-sm px-4 h-auto py-2 rounded-xl transition-all w-full sm:w-auto gap-2 items-start"
+              onClick={() => openBulkDup(true)}
+            >
+              <BookOpen className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-sm leading-tight">Lanjut Draft</span>
+                <span className="text-[10px] font-medium text-amber-500 leading-tight mt-0.5">Duplikat belum selesai</span>
+              </div>
+            </Button>
+          )}
           <Button 
             className="bg-[#008784] hover:bg-[#006e6b] text-white shadow-lg shadow-[#008784]/20 px-6 h-12 rounded-xl font-bold transition-all w-full md:w-auto active:scale-95"
             onClick={() => router.push('/dashboard/intervensi/tambah')}
@@ -762,6 +1009,565 @@ export default function IntervensiListPage() {
               {isDuplicating ? 'Memproses...' : 'Duplikasi'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── BULK DUPLICATE MODAL ─────────────────────────────────── */}
+      <Dialog open={bulkDupOpen} onOpenChange={(open) => !open && setBulkDupOpen(false)}>
+        <DialogContent className="max-w-3xl bg-white rounded-3xl border-none shadow-2xl p-0 [&>button]:hidden max-h-[90vh] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center">
+                <Layers className="w-5 h-5 text-indigo-500" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-black text-slate-800">Duplikat Massal</DialogTitle>
+                <p className="text-xs text-slate-400 font-medium mt-0.5">
+                  Langkah {bdStep} dari 2 — {bdStep === 1 ? 'Pilih program sumber' : 'Konfigurasi target'}
+                </p>
+              </div>
+            </div>
+            {/* Step indicator */}
+            <div className="flex items-center gap-2">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all ${
+                bdStep >= 1 ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-400'
+              }`}>1</div>
+              <ChevronsRight className="w-4 h-4 text-slate-300" />
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all ${
+                bdStep >= 2 ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-400'
+              }`}>2</div>
+            </div>
+          </div>
+
+          {/* Step 1: Source Selection */}
+          {bdStep === 1 && (() => {
+            const BULAN_ORDER = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']
+            const allBulan = BULAN_ORDER.filter(b =>
+              bdPrograms.some(p => (p.bulan_list || []).includes(b))
+            )
+            const allDesasBd = Array.from(new Set(bdPrograms.map(p => p.nama_desa).filter(Boolean))).sort() as string[]
+            const allProgramsBd = Array.from(new Set(bdPrograms.map(p => p.nama_program).filter(Boolean))).sort() as string[]
+
+            const bdFiltered = bdPrograms.filter(p => {
+              const q = bdSearch.toLowerCase()
+              const matchQ = !q || (p.nama_desa||'').toLowerCase().includes(q) || (p.nama_program||'').toLowerCase().includes(q)
+              const matchDesa = bdFilterDesa.length === 0 || bdFilterDesa.includes(p.nama_desa)
+              const matchProgram = bdFilterProgram.length === 0 || bdFilterProgram.includes(p.nama_program)
+              const matchBulan = bdFilterBulan.length === 0 || (p.bulan_list||[]).some((b: string) => bdFilterBulan.includes(b))
+              return matchQ && matchDesa && matchProgram && matchBulan
+            })
+            
+            const allFilteredSelected = bdFiltered.length > 0 && bdFiltered.every(p => {
+              const all: string[] = p.bulan_list || []
+              return all.length > 0 && all.every(b => bdSelectedMonths[p.id]?.has(b))
+            })
+
+            const isProgSelected = (id: number) => (bdSelectedMonths[id]?.size ?? 0) > 0
+            const isMonthSelected = (id: number, b: string) => bdSelectedMonths[id]?.has(b) ?? false
+            const allMonthsSelected = (p: any) => {
+              const all: string[] = p.bulan_list || []
+              return all.length > 0 && all.every(b => bdSelectedMonths[p.id]?.has(b))
+            }
+            const someSelected = Object.values(bdSelectedMonths).some(s => s.size > 0)
+            const totalSelectedProgs = Object.keys(bdSelectedMonths).filter(k => (bdSelectedMonths[Number(k)]?.size ?? 0) > 0).length
+
+            const toggleAllFiltered = () => {
+              if (allFilteredSelected) {
+                setBdSelectedMonths(prev => {
+                  const next = { ...prev }
+                  bdFiltered.forEach(p => delete next[p.id])
+                  return next
+                })
+              } else {
+                setBdSelectedMonths(prev => {
+                  const next = { ...prev }
+                  bdFiltered.forEach(p => {
+                    next[p.id] = new Set(p.bulan_list || [])
+                  })
+                  return next
+                })
+              }
+            }
+
+            const toggleAllMonths = (p: any) => {
+              const all: string[] = p.bulan_list || []
+              setBdSelectedMonths(prev => {
+                const next = { ...prev }
+                if (allMonthsSelected(p)) {
+                  delete next[p.id]
+                } else {
+                  next[p.id] = new Set(all)
+                }
+                return next
+              })
+            }
+
+            const toggleMonth = (id: number, b: string) => {
+              setBdSelectedMonths(prev => {
+                const next = { ...prev }
+                const cur = new Set(next[id] || [])
+                cur.has(b) ? cur.delete(b) : cur.add(b)
+                if (cur.size === 0) delete next[id]
+                else next[id] = cur
+                return next
+              })
+            }
+
+            const toggleExpand = (id: number, e: React.MouseEvent) => {
+              e.stopPropagation()
+              setBdExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+            }
+
+            return (
+              <div className="flex flex-col flex-1 overflow-hidden">
+                {/* Filter bar */}
+                <div className="px-8 py-4 border-b border-slate-50 bg-slate-50/60 space-y-3 flex-shrink-0">
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <div className="relative flex-1 min-w-[200px]">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        value={bdSearch}
+                        onChange={e => setBdSearch(e.target.value)}
+                        placeholder="Cari desa atau program..."
+                        className="w-full pl-9 pr-4 h-9 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                      />
+                    </div>
+                    {/* Filter Desa */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className={`flex items-center gap-1.5 h-9 px-3 rounded-xl border text-xs font-bold transition-all ${
+                          bdFilterDesa.length > 0 ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}>
+                          <MapPin className="w-3.5 h-3.5" />Desa
+                          {bdFilterDesa.length > 0 && <span className="bg-indigo-500 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px]">{bdFilterDesa.length}</span>}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-2 rounded-2xl border-slate-100 shadow-xl" align="start">
+                        <p className="text-[10px] font-black uppercase text-slate-400 px-2 mb-2">Filter Desa</p>
+                        <div className="space-y-0.5 max-h-48 overflow-y-auto">
+                          {allDesasBd.map(d => (
+                            <button key={d} onClick={() => setBdFilterDesa(prev => prev.includes(d) ? prev.filter(x => x!==d) : [...prev, d])}
+                              className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all ${
+                                bdFilterDesa.includes(d) ? 'bg-indigo-50 text-indigo-700 font-bold' : 'hover:bg-slate-50 text-slate-600'
+                              }`}>
+                              <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
+                                bdFilterDesa.includes(d) ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300'
+                              }`}>{bdFilterDesa.includes(d) && <Check className="w-2.5 h-2.5 text-white stroke-[3px]" />}</div>
+                              {d}
+                            </button>
+                          ))}
+                        </div>
+                        {bdFilterDesa.length > 0 && <button onClick={() => setBdFilterDesa([])} className="w-full mt-2 text-xs font-bold text-rose-500 hover:bg-rose-50 rounded-lg py-1.5">Reset</button>}
+                      </PopoverContent>
+                    </Popover>
+                    {/* Filter Program */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className={`flex items-center gap-1.5 h-9 px-3 rounded-xl border text-xs font-bold transition-all ${
+                          bdFilterProgram.length > 0 ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}>
+                          <BookOpen className="w-3.5 h-3.5" />Program
+                          {bdFilterProgram.length > 0 && <span className="bg-indigo-500 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px]">{bdFilterProgram.length}</span>}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-2 rounded-2xl border-slate-100 shadow-xl" align="start">
+                        <p className="text-[10px] font-black uppercase text-slate-400 px-2 mb-2">Filter Program</p>
+                        <div className="space-y-0.5 max-h-48 overflow-y-auto">
+                          {allProgramsBd.map(pg => (
+                            <button key={pg} onClick={() => setBdFilterProgram(prev => prev.includes(pg) ? prev.filter(x => x!==pg) : [...prev, pg])}
+                              className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all ${
+                                bdFilterProgram.includes(pg) ? 'bg-indigo-50 text-indigo-700 font-bold' : 'hover:bg-slate-50 text-slate-600'
+                              }`}>
+                              <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
+                                bdFilterProgram.includes(pg) ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300'
+                              }`}>{bdFilterProgram.includes(pg) && <Check className="w-2.5 h-2.5 text-white stroke-[3px]" />}</div>
+                              {pg}
+                            </button>
+                          ))}
+                        </div>
+                        {bdFilterProgram.length > 0 && <button onClick={() => setBdFilterProgram([])} className="w-full mt-2 text-xs font-bold text-rose-500 hover:bg-rose-50 rounded-lg py-1.5">Reset</button>}
+                      </PopoverContent>
+                    </Popover>
+                    {/* Filter Bulan */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className={`flex items-center gap-1.5 h-9 px-3 rounded-xl border text-xs font-bold transition-all ${
+                          bdFilterBulan.length > 0 ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}>
+                          <Calendar className="w-3.5 h-3.5" />Bulan
+                          {bdFilterBulan.length > 0 && <span className="bg-indigo-500 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px]">{bdFilterBulan.length}</span>}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-2 rounded-2xl border-slate-100 shadow-xl" align="start">
+                        <p className="text-[10px] font-black uppercase text-slate-400 px-2 mb-2">Filter Bulan</p>
+                        <div className="space-y-0.5 max-h-48 overflow-y-auto">
+                          {allBulan.map(b => (
+                            <button key={b} onClick={() => setBdFilterBulan(prev => prev.includes(b) ? prev.filter(x => x!==b) : [...prev, b])}
+                              className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all ${
+                                bdFilterBulan.includes(b) ? 'bg-indigo-50 text-indigo-700 font-bold' : 'hover:bg-slate-50 text-slate-600'
+                              }`}>
+                              <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
+                                bdFilterBulan.includes(b) ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300'
+                              }`}>{bdFilterBulan.includes(b) && <Check className="w-2.5 h-2.5 text-white stroke-[3px]" />}</div>
+                              {b}
+                            </button>
+                          ))}
+                        </div>
+                        {bdFilterBulan.length > 0 && <button onClick={() => setBdFilterBulan([])} className="w-full mt-2 text-xs font-bold text-rose-500 hover:bg-rose-50 rounded-lg py-1.5">Reset</button>}
+                      </PopoverContent>
+                    </Popover>
+                    {(bdFilterDesa.length > 0 || bdFilterBulan.length > 0 || bdFilterProgram.length > 0 || bdSearch) && (
+                      <button onClick={() => { setBdSearch(''); setBdFilterDesa([]); setBdFilterBulan([]); setBdFilterProgram([]) }}
+                        className="h-9 px-3 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-50 border border-red-100 transition-all flex items-center gap-1">
+                        <X className="w-3.5 h-3.5" />Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Expandable list */}
+                <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
+                  {bdLoading ? (
+                    <div className="flex items-center justify-center py-16 text-slate-400">
+                      <Loader2 className="w-6 h-6 animate-spin mr-2" />Memuat data...
+                    </div>
+                  ) : bdFiltered.length === 0 ? (
+                    <div className="text-center py-10 text-slate-400 text-sm">Tidak ada data yang cocok</div>
+                  ) : bdFiltered.map(p => {
+                    const months: string[] = p.bulan_list || []
+                    const expanded = bdExpanded.has(p.id)
+                    const allSel = allMonthsSelected(p)
+                    const prog_sel = isProgSelected(p.id)
+                    return (
+                      <div key={p.id} className={`transition-colors ${ prog_sel ? 'bg-indigo-50/60' : '' }`}>
+                        {/* Main row */}
+                        <div className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50/80 transition-colors">
+                          {/* Select-all checkbox for this program */}
+                          <div
+                            className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 cursor-pointer transition-all ${
+                              allSel ? 'bg-indigo-500 border-indigo-500' :
+                              prog_sel ? 'bg-indigo-200 border-indigo-400' :
+                              'border-slate-300 hover:border-indigo-400'
+                            }`}
+                            onClick={() => toggleAllMonths(p)}
+                          >
+                            {allSel && <Check className="w-2.5 h-2.5 text-white stroke-[3px]" />}
+                            {prog_sel && !allSel && <div className="w-2 h-0.5 bg-indigo-600 rounded" />}
+                          </div>
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold text-slate-800 text-sm">{p.nama_desa || '-'}</div>
+                            <div className="text-xs text-slate-500">{p.nama_program || '-'} · {p.nama_relawan || '-'}</div>
+                          </div>
+                          {/* Month count badge */}
+                          <div className="text-xs font-bold text-slate-400">
+                            {prog_sel ? (
+                              <span className="text-indigo-600">{bdSelectedMonths[p.id]?.size ?? 0}/{months.length} bulan</span>
+                            ) : (
+                              <span>{months.length} bulan</span>
+                            )}
+                          </div>
+                          {/* Expand toggle */}
+                          {months.length > 0 && (
+                            <button
+                              onClick={e => toggleExpand(p.id, e)}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-all flex-shrink-0"
+                            >
+                              <ChevronRight className={`w-4 h-4 transition-transform ${ expanded ? 'rotate-90' : '' }`} />
+                            </button>
+                          )}
+                        </div>
+                        {/* Expanded month picker */}
+                        {expanded && months.length > 0 && (
+                          <div className="pl-12 pr-5 pb-3">
+                            <div className="flex flex-wrap gap-1.5">
+                              {BULAN_ORDER.filter(b => months.includes(b)).map(b => (
+                                <button
+                                  key={b}
+                                  onClick={() => toggleMonth(p.id, b)}
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all ${
+                                    isMonthSelected(p.id, b)
+                                      ? 'bg-indigo-500 border-indigo-500 text-white shadow-sm shadow-indigo-500/30'
+                                      : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
+                                  }`}
+                                >
+                                  {b}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Footer Step 1 */}
+                <div className="px-8 py-4 border-t border-slate-100 flex items-center justify-between flex-shrink-0 bg-white">
+                  <div className="text-sm font-bold">
+                    {someSelected
+                      ? <span className="text-indigo-600">{totalSelectedProgs} program dipilih</span>
+                      : <span className="text-slate-400">Pilih minimal 1 bulan dari 1 program</span>
+                    }
+                  </div>
+                  <div className="flex gap-3">
+                    <Button variant="ghost" className="rounded-xl font-semibold text-slate-600 hover:bg-slate-100" onClick={() => setBulkDupOpen(false)}>Batal</Button>
+                    <Button
+                      className="rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold gap-2 px-6 shadow-lg shadow-indigo-500/20"
+                      disabled={!someSelected}
+                      onClick={() => setBdStep(2)}
+                    >
+                      Lanjut <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Step 2: Target Config */}
+          {bdStep === 2 && (() => {
+            const TAHUN_OPTIONS = Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() + i - 1))
+            const selectedProgramCount = Object.keys(bdSelectedMonths).filter(k => (bdSelectedMonths[Number(k)]?.size ?? 0) > 0).length
+            const totalWillCreate = bdMode === 'advanced' && bdTargetDesaIds.size > 0
+              ? selectedProgramCount * bdTargetDesaIds.size
+              : selectedProgramCount
+            return (
+              <div className="flex flex-col flex-1 overflow-hidden">
+                <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
+                  {/* Summary */}
+                  <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4">
+                    <p className="text-xs font-black uppercase text-indigo-400 tracking-wider mb-2">Program yang akan diduplikasi</p>
+                    <div className="space-y-1 max-h-28 overflow-y-auto">
+                      {Object.entries(bdSelectedMonths)
+                        .filter(([, months]) => months.size > 0)
+                        .map(([id, months]) => {
+                          const pg = bdPrograms.find(x => x.id === Number(id))
+                          return pg ? (
+                            <div key={id} className="flex items-start gap-2 text-sm">
+                              <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0 mt-1.5" />
+                              <div>
+                                <span className="font-bold text-indigo-800">{pg.nama_desa}</span>
+                                <span className="text-indigo-400 mx-1">—</span>
+                                <span className="text-indigo-600">{pg.nama_program}</span>
+                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                  {Array.from(months).map(b => (
+                                    <span key={b} className="text-[10px] bg-indigo-100 text-indigo-600 font-bold px-1.5 py-0.5 rounded-md">{b.slice(0,3)}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          ) : null
+                        })
+                      }
+                    </div>
+                  </div>
+
+                  {/* Target Year */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-xs font-black uppercase tracking-wider text-slate-500">Tahun Target <span className="text-rose-400">*</span></label>
+                      <select
+                        value={bdTargetYear}
+                        onChange={e => setBdTargetYear(e.target.value)}
+                        className="w-full h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 cursor-pointer"
+                      >
+                        {TAHUN_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                       <label className="text-xs font-black uppercase tracking-wider text-slate-500">Bulan Tujuan (Opsional)</label>
+                       <Popover>
+                        <PopoverTrigger asChild>
+                          <button className={`w-full h-11 px-4 rounded-xl border text-sm font-bold transition-all flex items-center justify-between ${
+                            bdTargetMonths.size > 0 ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}>
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4" />
+                              {bdTargetMonths.size > 0 ? `${bdTargetMonths.size} Bulan` : 'Gunakan Bulan Sumber'}
+                            </div>
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-3 rounded-2xl border-slate-100 shadow-xl" align="end">
+                          <p className="text-[10px] font-black uppercase text-slate-400 mb-3">Pilih Bulan Tujuan</p>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'].map(b => {
+                              const isOccupied = bdOccupiedMonths.has(b);
+                              return (
+                                <button key={b} 
+                                  disabled={isOccupied}
+                                  onClick={() => setBdTargetMonths(prev => { const n = new Set(prev); n.has(b) ? n.delete(b) : n.add(b); return n })}
+                                  className={`h-8 rounded-lg text-xs font-bold transition-all border ${
+                                    isOccupied ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed' :
+                                    bdTargetMonths.has(b) ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-100 text-slate-500 hover:bg-slate-50'
+                                  }`}>
+                                  {b.slice(0,3)}
+                                </button>
+                              )
+                            })}
+                          </div>
+                          {bdOccupiedMonths.size > 0 && (
+                            <div className="mt-2 text-[9px] text-amber-600 bg-amber-50 p-1.5 rounded-lg border border-amber-100 italic">
+                              Beberapa bulan di-disable karena sudah ada data di target.
+                            </div>
+                          )}
+                          {bdTargetMonths.size > 0 && (
+                            <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+                              {/* ... */}
+                              <button onClick={() => setBdTargetMonths(new Set())} className="w-full text-xs font-bold text-rose-500 hover:bg-rose-50 rounded-lg py-1.5">Reset</button>
+                            </div>
+                          )}
+                        </PopoverContent>
+                       </Popover>
+                    </div>
+                  </div>
+
+                  {/* Mode toggle */}
+                  <div className="space-y-3">
+                    <label className="text-xs font-black uppercase tracking-wider text-slate-500">Mode Duplikasi</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setBdMode('basic')}
+                        className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                          bdMode === 'basic' ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className={`text-sm font-black mb-1 ${ bdMode === 'basic' ? 'text-indigo-700' : 'text-slate-700' }`}>Basic</div>
+                        <div className="text-xs text-slate-400">Duplikasi ke desa yang sama, tahun baru</div>
+                      </button>
+                      <button
+                        onClick={() => setBdMode('advanced')}
+                        className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                          bdMode === 'advanced' ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className={`text-sm font-black mb-1 ${ bdMode === 'advanced' ? 'text-indigo-700' : 'text-slate-700' }`}>Advanced</div>
+                        <div className="text-xs text-slate-400">Pilih desa tujuan berbeda</div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Advanced: Desa target */}
+                  {bdMode === 'advanced' && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-black uppercase tracking-wider text-slate-500">
+                        Desa Tujuan <span className="text-rose-400">*</span>
+                        {bdTargetDesaIds.size > 0 && <span className="ml-2 text-indigo-600">({bdTargetDesaIds.size} dipilih)</span>}
+                      </label>
+                      <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                        <div className="max-h-48 overflow-y-auto divide-y divide-slate-50">
+                          {desaOptions.map(d => (
+                            <button key={d.id}
+                              onClick={() => setBdTargetDesaIds(prev => { const n = new Set(prev); n.has(d.id) ? n.delete(d.id) : n.add(d.id); return n })}
+                              className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all ${
+                                bdTargetDesaIds.has(d.id) ? 'bg-indigo-50 text-indigo-700 font-bold' : 'hover:bg-slate-50 text-slate-600'
+                              }`}>
+                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                                bdTargetDesaIds.has(d.id) ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300'
+                              }`}>{bdTargetDesaIds.has(d.id) && <Check className="w-2.5 h-2.5 text-white stroke-[3px]" />}</div>
+                              <span className="text-left">{d.nama}</span>
+                              {d.relawan_nama && <span className="ml-auto text-xs text-slate-400">({d.relawan_nama})</span>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Editable Preview Table */}
+                  {bdPreviewRows.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black uppercase tracking-wider text-slate-500">Preview Anggaran yang Akan Dibuat</label>
+                        <span className="text-[10px] text-slate-400 italic">Data bisa diedit sebelum disimpan</span>
+                      </div>
+                      <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                        {/* Header */}
+                        <div className="grid grid-cols-[1fr_80px_110px_110px_60px] gap-0 bg-slate-50 border-b border-slate-100 px-3 py-2">
+                          <span className="text-[10px] font-black uppercase text-slate-400">Program / Bulan</span>
+                          <span className="text-[10px] font-black uppercase text-slate-400 text-right">Ajuan RI</span>
+                          <span className="text-[10px] font-black uppercase text-slate-400 text-right">Disetujui</span>
+                          <span className="text-[10px] font-black uppercase text-slate-400 text-right">Dicairkan</span>
+                          <span className="text-[10px] font-black uppercase text-slate-400 text-center">DBF</span>
+                        </div>
+                        <div className="max-h-64 overflow-y-auto divide-y divide-slate-50">
+                          {bdPreviewRows.map((row, idx) => (
+                            <div key={row.key} className="grid grid-cols-[1fr_80px_110px_110px_60px] gap-0 px-3 py-2 items-center hover:bg-slate-50/50 transition-colors">
+                              <div>
+                                <div className="text-xs font-bold text-slate-700 truncate">{row.desaName}</div>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  {row.sourceMonth !== row.targetMonth && (
+                                    <span className="text-[10px] text-slate-400 line-through">{row.sourceMonth.slice(0,3)}</span>
+                                  )}
+                                  <span className="text-[10px] font-bold bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-md">{row.targetMonth.slice(0,3)} {bdTargetYear}</span>
+                                </div>
+                              </div>
+                              <input
+                                type="number"
+                                value={row.ajuan_ri}
+                                onChange={e => setBdPreviewRows(prev => prev.map((r, i) => i === idx ? {...r, ajuan_ri: Number(e.target.value)} : r))}
+                                className="w-full text-xs font-bold text-right bg-transparent border-b border-slate-200 focus:border-indigo-400 focus:outline-none py-1 text-slate-700"
+                              />
+                              <input
+                                type="number"
+                                value={row.anggaran_disetujui}
+                                onChange={e => setBdPreviewRows(prev => prev.map((r, i) => i === idx ? {...r, anggaran_disetujui: Number(e.target.value)} : r))}
+                                className="w-full text-xs font-bold text-right bg-transparent border-b border-slate-200 focus:border-indigo-400 focus:outline-none py-1 text-slate-700"
+                              />
+                              <input
+                                type="number"
+                                value={row.anggaran_dicairkan}
+                                onChange={e => setBdPreviewRows(prev => prev.map((r, i) => i === idx ? {...r, anggaran_dicairkan: Number(e.target.value)} : r))}
+                                className="w-full text-xs font-bold text-right bg-transparent border-b border-slate-200 focus:border-indigo-400 focus:outline-none py-1 text-slate-700"
+                              />
+                              <div className="flex justify-center">
+                                <button
+                                  onClick={() => setBdPreviewRows(prev => prev.map((r, i) => i === idx ? {...r, is_dbf: !r.is_dbf} : r))}
+                                  className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${row.is_dbf ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300'}`}
+                                >
+                                  {row.is_dbf && <Check className="w-3 h-3 text-white stroke-[3px]" />}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Summary */}
+                  <div className={`rounded-2xl p-4 border ${
+                    totalWillCreate > 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-100'
+                  }`}>
+                    <p className="text-xs font-black uppercase tracking-wider text-slate-400 mb-1">Estimasi Hasil</p>
+                    <p className="text-2xl font-black text-emerald-600">{bdPreviewRows.length} <span className="text-sm font-bold text-emerald-500">baris anggaran (DRAFT)</span></p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {selectedProgramCount} sumber × {bdMode === 'advanced' && bdTargetDesaIds.size > 0 ? bdTargetDesaIds.size : 1} desa tujuan
+                      {bdTargetMonths.size > 0 ? ` × ${bdTargetMonths.size} bulan target` : ''} → Tahun {bdTargetYear}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Footer Step 2 */}
+                <div className="px-8 py-4 border-t border-slate-100 flex items-center justify-between flex-shrink-0 bg-white">
+                  <Button variant="ghost" className="rounded-xl font-semibold text-slate-600 hover:bg-slate-100 gap-1" onClick={() => setBdStep(1)}>
+                    <ChevronLeft className="w-4 h-4" />Kembali
+                  </Button>
+                  <Button
+                    className="rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold gap-2 px-6 shadow-lg shadow-indigo-500/20"
+                    disabled={isBulkDuplicating || (bdMode === 'advanced' && bdTargetDesaIds.size === 0)}
+                    onClick={executeBulkDuplicate}
+                  >
+                    {isBulkDuplicating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Layers className="w-4 h-4" />}
+                    {isBulkDuplicating ? 'Membuat...' : `Duplikat ${totalWillCreate} Program`}
+                  </Button>
+                </div>
+              </div>
+            )
+          })()}
         </DialogContent>
       </Dialog>
     </div>

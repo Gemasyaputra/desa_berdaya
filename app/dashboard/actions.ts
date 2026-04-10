@@ -57,6 +57,13 @@ export type DistributionStats = {
   totalDesa: number
 }
 
+export type RangkumanDana = {
+  totalAjuan: number
+  totalCair: number
+  totalRealisasi: number
+  sisaSaldo: number
+}
+
 // =============================================================
 // Helper: role filter
 // =============================================================
@@ -134,6 +141,79 @@ export async function getDashboardStats(tahun: number): Promise<DashboardStats> 
     totalRealisasi: realisasi,
     totalAlokasi: 0,
     peresenRealisasi: 0,
+  }
+}
+
+// =============================================================
+// Rangkuman Dana Intervensi (Berdasarkan CA)
+// =============================================================
+export async function getRangkumanDana(tahun: number): Promise<RangkumanDana> {
+  const auth = await getRoleFilter()
+  if (!auth) return { totalAjuan: 0, totalCair: 0, totalRealisasi: 0, sisaSaldo: 0 }
+
+  let rows;
+  const isAdmin = auth.role === 'ADMIN' || auth.role === 'MONEV' || auth.role === 'FINANCE'
+
+  if (isAdmin) {
+    rows = await sql`SELECT ajuan_ri, anggaran_dicairkan, status_ca, bukti_ca_url, status_pengembalian, bukti_pengembalian_url FROM intervensi_anggaran WHERE tahun = ${tahun}`
+  } else if (auth.role === 'OFFICE' && auth.officeId) {
+    rows = await sql`
+      SELECT ia.ajuan_ri, ia.anggaran_dicairkan, ia.status_ca, ia.bukti_ca_url, ia.status_pengembalian, ia.bukti_pengembalian_url 
+      FROM intervensi_anggaran ia
+      JOIN intervensi_program ip ON ia.intervensi_program_id = ip.id
+      JOIN desa_berdaya db ON ip.desa_berdaya_id = db.id
+      JOIN desa_config dc ON db.desa_id = dc.id
+      WHERE ia.tahun = ${tahun} AND dc.office_id = ${auth.officeId}
+    `
+  } else if (auth.operatorId) {
+    rows = await sql`
+      SELECT ia.ajuan_ri, ia.anggaran_dicairkan, ia.status_ca, ia.bukti_ca_url, ia.status_pengembalian, ia.bukti_pengembalian_url 
+      FROM intervensi_anggaran ia
+      JOIN intervensi_program ip ON ia.intervensi_program_id = ip.id
+      WHERE ia.tahun = ${tahun} AND ip.relawan_id = ${auth.operatorId}
+    `
+  } else {
+    rows = []
+  }
+
+  let totalAjuan = 0
+  let totalCair = 0
+  let totalRealisasi = 0
+  let totalPengembalian = 0
+
+  for (const r of rows as any[]) {
+    totalAjuan += Number(r.ajuan_ri) || 0
+    totalCair += Number(r.anggaran_dicairkan) || 0
+
+    if (r.status_ca === 'DIVERIFIKASI' && r.bukti_ca_url) {
+      try {
+        if (r.bukti_ca_url.trim().startsWith('[')) {
+          const entries = JSON.parse(r.bukti_ca_url)
+          const ca = entries.filter((e: any) => !e.ditolak).reduce((acc: number, e: any) => acc + (Number(e.nominal) || 0), 0)
+          totalRealisasi += ca
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    if (r.status_pengembalian === 'DIVERIFIKASI' && r.bukti_pengembalian_url) {
+      try {
+        if (r.bukti_pengembalian_url.trim().startsWith('[')) {
+          const entries = JSON.parse(r.bukti_pengembalian_url)
+          const pengembalian = entries.filter((e: any) => !e.ditolak).reduce((acc: number, e: any) => acc + (Number(e.nominal) || 0), 0)
+          totalPengembalian += pengembalian
+        }
+      } catch (e) {
+      }
+    }
+  }
+
+  return {
+    totalAjuan,
+    totalCair,
+    totalRealisasi,
+    totalPengembalian,
+    sisaSaldo: totalCair - totalRealisasi - totalPengembalian
   }
 }
 

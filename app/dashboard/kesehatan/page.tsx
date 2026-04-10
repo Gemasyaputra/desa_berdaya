@@ -37,6 +37,14 @@ export default function KesehatanPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'selesai'>('all')
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+  const [kelompokFilter, setKelompokFilter] = useState<string>('all')
+  const [bulanFilter, setBulanFilter] = useState<string>('all')
+  const [itemsPerPage, setItemsPerPage] = useState<number>(50)
+  const [currentPage, setCurrentPage] = useState<number>(1)
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, statusFilter, kelompokFilter, bulanFilter, itemsPerPage])
 
   useEffect(() => {
     loadData()
@@ -68,8 +76,14 @@ export default function KesehatanPage() {
   const filteredUpdates = updates.filter(u => {
     const matchSearch = u.nama_pm.toLowerCase().includes(searchQuery.toLowerCase()) || u.nik_pm.includes(searchQuery)
     const matchStatus = statusFilter === 'all' ? true : (statusFilter === 'pending' ? !u.checked : u.checked)
-    return matchSearch && matchStatus
+    const matchKelompok = kelompokFilter === 'all' ? true : (u.nama_kelompok || 'Tanpa Kelompok') === kelompokFilter
+    const matchBulan = bulanFilter === 'all' ? true : u.bulan === parseInt(bulanFilter)
+    return matchSearch && matchStatus && matchKelompok && matchBulan
   })
+
+  // Pagination for table mode
+  const totalPages = Math.max(1, Math.ceil(filteredUpdates.length / itemsPerPage))
+  const displayTableUpdates = filteredUpdates.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const groupedByKelompok = filteredUpdates.reduce((acc, curr) => {
     const kId = curr.kelompok_id || 'tanpa_kelompok'
@@ -200,15 +214,48 @@ export default function KesehatanPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="md:col-span-3">
           <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 overflow-hidden border-none p-6">
-            <div className="relative flex items-center mb-6">
-              <Search className="absolute left-4 w-5 h-5 text-slate-400 pointer-events-none" />
-              <input 
-                type="text" 
-                placeholder="Cari nama atau NIK..."
-                className="w-full bg-slate-50 rounded-2xl pl-12 pr-4 h-12 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 transition-all text-sm font-medium text-slate-800 placeholder:text-slate-400"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-4 w-5 h-5 text-slate-400 pointer-events-none top-1/2 -translate-y-1/2" />
+                <input 
+                  type="text" 
+                  placeholder="Cari nama atau NIK..."
+                  className="w-full bg-slate-50 rounded-2xl pl-12 pr-4 h-12 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 transition-all text-sm font-medium text-slate-800 placeholder:text-slate-400"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <select 
+                className="bg-slate-50 rounded-2xl px-4 h-12 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 text-sm font-medium text-slate-800 capitalize"
+                value={kelompokFilter}
+                onChange={(e) => setKelompokFilter(e.target.value)}
+              >
+                <option value="all">Semua Kelompok</option>
+                {Array.from(new Set(updates.map(u => u.nama_kelompok || 'Tanpa Kelompok'))).sort().map(k => (
+                  <option key={k as string} value={k as string}>{k as string}</option>
+                ))}
+              </select>
+              <select 
+                className="bg-slate-50 rounded-2xl px-4 h-12 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 text-sm font-medium text-slate-800"
+                value={bulanFilter}
+                onChange={(e) => setBulanFilter(e.target.value)}
+              >
+                <option value="all">Semua Bulan</option>
+                {Array.from({length: 12}).map((_, i) => (
+                  <option key={i+1} value={(i+1).toString()}>{getBulanName(i+1)}</option>
+                ))}
+              </select>
+              <select 
+                className="bg-slate-50 rounded-2xl px-4 h-12 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 text-sm font-medium text-slate-800"
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              >
+                <option value={10}>10 Baris</option>
+                <option value={20}>20 Baris</option>
+                <option value={50}>50 Baris</option>
+                <option value={100}>100 Baris</option>
+                <option value={999999}>Semua Data</option>
+              </select>
             </div>
             
             <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
@@ -271,64 +318,171 @@ export default function KesehatanPage() {
             ) : filteredUpdates.length === 0 ? (
               <div className="py-12 text-center text-slate-400 font-medium italic">Tidak ada data ditemukan</div>
             ) : viewMode === 'table' ? (
-              <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">
+              <div className="space-y-4">
+                <div className="overflow-x-auto border border-slate-300 bg-white">
+                <table className="w-full text-sm text-left border-collapse whitespace-nowrap">
+                  <thead className="bg-[#f8f9fa] text-[11px] font-bold text-slate-700 border-b-2 border-slate-300">
                     <tr>
-                      <th className="px-4 py-3 min-w-[200px] sticky left-0 bg-slate-50 z-10 border-r border-slate-100">Kelompok & PM</th>
-                      <th className="px-4 py-3 min-w-[150px]">Program</th>
-                      {Array.from({length: 12}).map((_, i) => (
-                        <th key={i} className="px-2 py-3 text-center">{getBulanName(i+1).substring(0,3)}</th>
-                      ))}
+                      <th className="px-3 py-2 min-w-[80px] sticky left-0 bg-[#f8f9fa] z-20 border border-slate-300 text-center">Aksi</th>
+                      <th className="px-3 py-2 min-w-[200px] sticky left-[80px] bg-[#f8f9fa] z-20 border border-slate-300 shadow-[2px_0_0_0_#cbd5e1]">Kelompok & PM</th>
+                      <th className="px-3 py-2 min-w-[80px] border border-slate-300 text-center">Tahun</th>
+                      <th className="px-3 py-2 min-w-[100px] border border-slate-300 text-center">Bulan</th>
+                      <th className="px-3 py-2 min-w-[100px] border border-slate-300 text-center">Status</th>
+                      <th className="px-3 py-2 min-w-[120px] border border-slate-300">Relawan</th>
+                      <th className="px-3 py-2 min-w-[80px] border border-slate-300 text-center">Kader</th>
+                      <th className="px-3 py-2 min-w-[150px] border border-slate-300">Program Kesehatan</th>
+                      <th className="px-3 py-2 bg-emerald-50 border border-slate-300 text-center" colSpan={13}>Data Anak</th>
+                      <th className="px-3 py-2 bg-rose-50 border border-slate-300 text-center" colSpan={10}>Data Ibu Hamil</th>
+                      <th className="px-3 py-2 bg-blue-50 border border-slate-300 text-center" colSpan={13}>Data Lansia</th>
+                    </tr>
+                    <tr>
+                      <th className="px-3 py-2 sticky left-0 bg-[#f8f9fa] z-20 border border-slate-300"></th>
+                      <th className="px-3 py-2 sticky left-[80px] bg-[#f8f9fa] z-20 border border-slate-300 shadow-[2px_0_0_0_#cbd5e1]"></th>
+                      <th className="px-3 py-2 border border-slate-300" colSpan={6}></th>
+                      {/* Anak */}
+                      <th className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-slate-300">Tgl Pemeriksaan</th>
+                      <th className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-slate-300">Nama Ibu</th>
+                      <th className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-slate-300 text-center">Anak Ke</th>
+                      <th className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-slate-300">Tgl Lahir</th>
+                      <th className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-slate-300 text-right">BB Lahir (kg)</th>
+                      <th className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-slate-300 text-right">BB (kg)</th>
+                      <th className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-slate-300 text-right">TB (cm)</th>
+                      <th className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-slate-300 text-right">LK (cm)</th>
+                      <th className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-slate-300 text-center">ASI (Bulan)</th>
+                      <th className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-slate-300">Pend. Khusus</th>
+                      <th className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-slate-300 text-center">IMD</th>
+                      <th className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-slate-300 text-center">Diare</th>
+                      <th className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-slate-300">Imunisasi</th>
+                      {/* Ibu */}
+                      <th className="px-3 py-2 bg-rose-50 text-rose-800 border border-slate-300">Tgl Pemeriksaan</th>
+                      <th className="px-3 py-2 bg-rose-50 text-rose-800 border border-slate-300">NIK Ibu</th>
+                      <th className="px-3 py-2 bg-rose-50 text-rose-800 border border-slate-300">Tgl Lahir</th>
+                      <th className="px-3 py-2 bg-rose-50 text-rose-800 border border-slate-300 text-right">BB Sblm Hamil (kg)</th>
+                      <th className="px-3 py-2 bg-rose-50 text-rose-800 border border-slate-300 text-right">BB Hamil (kg)</th>
+                      <th className="px-3 py-2 bg-rose-50 text-rose-800 border border-slate-300 text-right">TB Hamil (cm)</th>
+                      <th className="px-3 py-2 bg-rose-50 text-rose-800 border border-slate-300 text-right">LILA (cm)</th>
+                      <th className="px-3 py-2 bg-rose-50 text-rose-800 border border-slate-300 text-right">Umur Kehamilan</th>
+                      <th className="px-3 py-2 bg-rose-50 text-rose-800 border border-slate-300 text-center">Konsumsi TTD</th>
+                      <th className="px-3 py-2 bg-rose-50 text-rose-800 border border-slate-300">Imunisasi</th>
+                      {/* Lansia */}
+                      <th className="px-3 py-2 bg-blue-50 text-blue-800 border border-slate-300">Tgl Pemeriksaan</th>
+                      <th className="px-3 py-2 bg-blue-50 text-blue-800 border border-slate-300">Tgl Lahir</th>
+                      <th className="px-3 py-2 bg-blue-50 text-blue-800 border border-slate-300 text-right">BB (kg)</th>
+                      <th className="px-3 py-2 bg-blue-50 text-blue-800 border border-slate-300 text-right">TB (cm)</th>
+                      <th className="px-3 py-2 bg-blue-50 text-blue-800 border border-slate-300">Tekanan Darah</th>
+                      <th className="px-3 py-2 bg-blue-50 text-blue-800 border border-slate-300 text-right">Kolesterol</th>
+                      <th className="px-3 py-2 bg-blue-50 text-blue-800 border border-slate-300 text-right">Gula Darah</th>
+                      <th className="px-3 py-2 bg-blue-50 text-blue-800 border border-slate-300 text-right">Asam Urat</th>
+                      <th className="px-3 py-2 bg-blue-50 text-blue-800 border border-slate-300">Aktivitas Harian</th>
+                      <th className="px-3 py-2 bg-blue-50 text-blue-800 border border-slate-300">Penanggung Biaya</th>
+                      <th className="px-3 py-2 bg-blue-50 text-blue-800 border border-slate-300">Kepemilikan BPJS</th>
+                      <th className="px-3 py-2 bg-blue-50 text-blue-800 border border-slate-300">Riwayat Penyakit</th>
+                      <th className="px-3 py-2 bg-blue-50 text-blue-800 border border-slate-300">Riwayat Pengobatan</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100/80">
-                    {groupsArray.flatMap((group: any) => 
-                       group.membersArray.map((person: any) => (
-                         <tr key={person.penerima_manfaat_id} className="hover:bg-slate-50/50 transition-colors group/row">
-                           <td className="px-4 py-3 sticky left-0 bg-white group-hover/row:bg-slate-50 z-10 border-r border-slate-100/50">
-                             <div className="font-bold text-slate-800">{person.nama_pm}</div>
-                             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{person.nik_pm}</div>
-                             <div className="text-[10px] text-emerald-600 font-black tracking-widest mt-0.5">{group.nama_kelompok}</div>
-                           </td>
-                           <td className="px-4 py-3">
-                             <div className="flex flex-wrap items-center gap-2 mt-1">
-                               <Badge variant="secondary" className="bg-rose-50 text-rose-700 font-bold text-[10px] px-2 py-0 border-none">
-                                 {person.program_kesehatan}
-                               </Badge>
-                               <div className="flex items-center gap-1">
-                                 {person.is_anak && <Baby className="w-3 h-3 text-emerald-500" />}
-                                 {person.is_ibu && <Heart className="w-3 h-3 text-rose-500" />}
-                                 {person.is_lansia && <Activity className="w-3 h-3 text-blue-500" />}
-                               </div>
-                             </div>
-                           </td>
-                           {person.updates.map((update: any, idx: number) => (
-                             <td 
-                               key={idx} 
-                               className={`px-2 py-3 text-center align-middle ${update ? 'cursor-pointer hover:bg-slate-100 transition-colors group' : ''}`}
-                               onClick={() => update && router.push(`/dashboard/kesehatan/${update.id}/edit`)}
-                               title={update ? "Klik untuk edit" : undefined}
-                             >
-                               {update ? (
-                                  update.checked ? (
-                                    <Check className="w-5 h-5 text-emerald-600 mx-auto shrink-0 group-hover:scale-110 transition-transform" strokeWidth={3} />
-                                  ) : (
-                                    <div title="Draft" className="flex items-center justify-center">
-                                      <Clock className="w-5 h-5 text-amber-600 shrink-0 group-hover:scale-110 transition-all" strokeWidth={3} />
-                                    </div>
-                                  )
-                               ) : (
-                                  <span className="text-slate-300">-</span>
-                               )}
-                             </td>
-                           ))}
-                         </tr>
-                       ))
-                    )}
+                  <tbody className="divide-y divide-slate-200">
+                    {displayTableUpdates.map((update: any) => (
+                      <tr key={update.id} className="hover:bg-slate-50 transition-colors group/row">
+                        <td className="px-3 py-2 sticky left-0 bg-white group-hover/row:bg-slate-50 z-10 border border-slate-300 text-center">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 text-rose-600 hover:text-rose-700 hover:bg-rose-100"
+                            onClick={() => router.push(`/dashboard/kesehatan/${update.id}/edit`)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </td>
+                        <td className="px-3 py-2 sticky left-[80px] bg-white group-hover/row:bg-slate-50 z-10 border border-slate-300 shadow-[2px_0_0_0_#cbd5e1]">
+                          <div className="font-semibold text-slate-800">{update.nama_pm}</div>
+                          <div className="text-[10px] text-slate-500 font-medium">{update.nik_pm}</div>
+                          <div className="text-[10px] text-rose-700 font-semibold mt-0.5">{update.nama_kelompok || 'Tanpa Kelompok'}</div>
+                        </td>
+                        <td className="px-3 py-2 border border-slate-300 text-center">{update.tahun}</td>
+                        <td className="px-3 py-2 border border-slate-300 text-center font-medium">{getBulanName(update.bulan)}</td>
+                        <td className="px-3 py-2 border border-slate-300 text-center">
+                          {update.checked ? (
+                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 font-bold text-[10px]">Selesai</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="bg-amber-100 text-amber-700 font-bold text-[10px]">Draft</Badge>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 border border-slate-300">{update.nama_relawan || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 text-center">{update.is_kader ? 'Ya' : '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300">{update.program_kesehatan || '-'}</td>
+                        {/* Anak */}
+                        <td className="px-3 py-2 border border-slate-300 bg-emerald-50/10">{update.tgl_pemeriksaan_anak ? new Date(update.tgl_pemeriksaan_anak).toLocaleDateString('id-ID') : '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-emerald-50/10">{update.anak_nama_ibu || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-emerald-50/10 text-center">{update.anak_ke || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-emerald-50/10">{update.anak_tgl_lahir ? new Date(update.anak_tgl_lahir).toLocaleDateString('id-ID') : '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-emerald-50/10 text-right">{update.anak_bb_lahir || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-emerald-50/10 text-right">{update.anak_berat_badan || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-emerald-50/10 text-right">{update.anak_tinggi_badan || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-emerald-50/10 text-right">{update.anak_lingkar_kepala || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-emerald-50/10 text-center">{update.anak_asi_eksklusif || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-emerald-50/10">{update.anak_pendampingan_khusus || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-emerald-50/10 text-center">{update.anak_imd ? 'Ya' : '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-emerald-50/10 text-center">{update.anak_menderita_diare ? 'Ya' : '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-emerald-50/10">{update.anak_imunisasi ? (typeof update.anak_imunisasi === 'string' ? JSON.parse(update.anak_imunisasi).join(', ') : update.anak_imunisasi.join(', ')) : '-'}</td>
+                        {/* Ibu */}
+                        <td className="px-3 py-2 border border-slate-300 bg-rose-50/10">{update.tgl_pemeriksaan_ibu ? new Date(update.tgl_pemeriksaan_ibu).toLocaleDateString('id-ID') : '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-rose-50/10">{update.ibu_nik || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-rose-50/10">{update.ibu_tgl_lahir ? new Date(update.ibu_tgl_lahir).toLocaleDateString('id-ID') : '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-rose-50/10 text-right">{update.ibu_bb_sebelum_hamil || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-rose-50/10 text-right">{update.ibu_berat_badan || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-rose-50/10 text-right">{update.ibu_tinggi_badan || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-rose-50/10 text-right">{update.ibu_lila || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-rose-50/10 text-right">{update.ibu_umur_kehamilan || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-rose-50/10 text-center">{update.ibu_hb ? 'Ya' : '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-rose-50/10">{update.ibu_imunisasi ? (typeof update.ibu_imunisasi === 'string' ? JSON.parse(update.ibu_imunisasi).join(', ') : update.ibu_imunisasi.join(', ')) : '-'}</td>
+                        {/* Lansia */}
+                        <td className="px-3 py-2 border border-slate-300 bg-blue-50/10">{update.tgl_pemeriksaan_lansia ? new Date(update.tgl_pemeriksaan_lansia).toLocaleDateString('id-ID') : '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-blue-50/10">{update.lansia_tgl_lahir ? new Date(update.lansia_tgl_lahir).toLocaleDateString('id-ID') : '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-blue-50/10 text-right">{update.lansia_berat_badan || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-blue-50/10 text-right">{update.lansia_tinggi_badan || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-blue-50/10">{update.lansia_tekanan_darah || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-blue-50/10 text-right">{update.lansia_kolesterol || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-blue-50/10 text-right">{update.lansia_gula || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-blue-50/10 text-right">{update.lansia_asam_urat || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-blue-50/10">{update.lansia_aktivitas_harian || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-blue-50/10">{update.lansia_penanggung_biaya || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-blue-50/10">{update.lansia_kepemilikan_bpjs || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-blue-50/10">{update.lansia_riwayat_penyakit || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-blue-50/10">{update.lansia_riwayat_pengobatan || '-'}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
+              <div className="flex items-center justify-between text-sm text-slate-500 py-4">
+                <div>
+                  Menampilkan {displayTableUpdates.length} dari {filteredUpdates.length} data
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 shadow-sm"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Sebelumnya
+                    </Button>
+                    <span className="font-medium px-2">Page {currentPage} of {totalPages}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 shadow-sm"
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Selanjutnya
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
             ) : (
               <div className="space-y-6">
                 {groupsArray.map((group: any) => {

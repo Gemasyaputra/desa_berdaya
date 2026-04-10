@@ -14,10 +14,10 @@ import { Building2, Users, TrendingUp, Wallet, RefreshCw, MapPin, ChevronDown, C
 import {
   getDashboardStats, getAnggaranPerDesa, getTrendLaporanBulanan,
   getSebaranStatusDesa, getRankingRelawan, getTeamForMonev, getTeamForKorwil,
-  getVillageMapPoints, getVillageDistributionStats,
+  getVillageMapPoints, getVillageDistributionStats, getRangkumanDana,
   type DashboardStats, type AnggaranPerDesa, type TrendBulanan,
   type SebaranStatus, type RankingRelawan, type TeamForMonev, type TeamForKorwil,
-  type VillageMapPoint, type DistributionStats,
+  type VillageMapPoint, type DistributionStats, type RangkumanDana,
 } from './actions'
 import dynamic from 'next/dynamic'
 
@@ -129,6 +129,7 @@ export default function DashboardPage() {
   const [teamKorwil, setTeamKorwil] = useState<TeamForKorwil | null>(null)
   const [mapPoints, setMapPoints] = useState<VillageMapPoint[]>([])
   const [distStats, setDistStats] = useState<DistributionStats | null>(null)
+  const [rangkumanDana, setRangkumanDana] = useState<RangkumanDana | null>(null)
   const [expandedKorwils, setExpandedKorwils] = useState<Set<number>>(new Set())
   const [mounted, setMounted] = useState(false)
 
@@ -140,7 +141,7 @@ export default function DashboardPage() {
     setLoading(true)
     try {
       const y = parseInt(tahun)
-      const [s, a, t, se, r, tm, tk, mp, ds] = await Promise.all([
+      const [s, a, t, se, r, tm, tk, mp, ds, rd] = await Promise.all([
         getDashboardStats(y),
         getAnggaranPerDesa(y),
         getTrendLaporanBulanan(y),
@@ -150,6 +151,7 @@ export default function DashboardPage() {
         getTeamForKorwil(),
         getVillageMapPoints(),
         getVillageDistributionStats(),
+        getRangkumanDana(y),
       ])
       setStats(s)
       setAnggaran(a)
@@ -160,6 +162,7 @@ export default function DashboardPage() {
       setTeamKorwil(tk)
       setMapPoints(mp)
       setDistStats(ds)
+      setRangkumanDana(rd)
     } finally {
       setLoading(false)
     }
@@ -255,6 +258,50 @@ export default function DashboardPage() {
               />
             </>
           )}
+        </section>
+
+        {/* ── Section 2.5: Rangkuman Dana Intervensi ── */}
+        <section className="bg-white border text-left border-emerald-100/50 shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-3xl p-8 ring-1 ring-slate-50 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#008784]/5 rounded-full -mr-32 -mt-32 blur-3xl opacity-50" />
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center border border-emerald-100 shadow-sm relative z-10">
+              <Wallet className="w-6 h-6 text-[#008784]" />
+            </div>
+            <div className="relative z-10">
+              <h2 className="text-xl font-black text-slate-800 tracking-tight">Rangkuman Keuangan Intervensi</h2>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Laporan Cash Advance & Saldo — Tahun {tahun}</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
+            {loading && !rangkumanDana ? (
+              Array(4).fill(0).map((_, i) => <SkeletonCard key={i} />)
+            ) : (
+              <>
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Total Ajuan RI</p>
+                  <p className="text-xl sm:text-2xl font-black text-slate-700 tracking-tight">{formatRupiahFull(rangkumanDana?.totalAjuan ?? 0)}</p>
+                </div>
+                <div className="bg-[#008784]/5 border border-[#008784]/10 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <p className="text-[10px] font-black text-[#008784]/60 uppercase tracking-widest mb-2">Anggaran Dicairkan</p>
+                  <p className="text-xl sm:text-2xl font-black text-[#008784] tracking-tight">{formatRupiahFull(rangkumanDana?.totalCair ?? 0)}</p>
+                </div>
+                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <p className="text-[10px] font-black text-amber-600/70 uppercase tracking-widest mb-2">Verified Realisasi</p>
+                  <p className="text-xl sm:text-2xl font-black text-amber-600 tracking-tight">{formatRupiahFull(rangkumanDana?.totalRealisasi ?? 0)}</p>
+                </div>
+                <div className={`${(rangkumanDana?.sisaSaldo ?? 0) < 0 ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100'} border rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow`}>
+                  <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${(rangkumanDana?.sisaSaldo ?? 0) < 0 ? 'text-rose-400' : 'text-slate-400'}`}>Sisa Saldo Binaan</p>
+                  <p className={`text-xl sm:text-2xl font-black tracking-tight ${(rangkumanDana?.sisaSaldo ?? 0) < 0 ? 'text-rose-600' : 'text-slate-800'}`}>{formatRupiahFull(rangkumanDana?.sisaSaldo ?? 0)}</p>
+                  {(rangkumanDana?.totalPengembalian ?? 0) > 0 && (
+                    <p className="text-[10px] font-bold text-indigo-500 mt-2 bg-indigo-50 px-2 py-1 rounded inline-block">
+                      Telah Dikembalikan: {formatRupiahFull(rangkumanDana?.totalPengembalian ?? 0)}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </section>
 
         {/* ── Section 3: Charts Bento Grid ── */}

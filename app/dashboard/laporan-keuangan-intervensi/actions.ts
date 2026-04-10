@@ -87,7 +87,7 @@ export async function getDetailLaporanKeuangan(id: number) {
   }
 }
 
-export async function uploadBuktiCA(anggaranId: number, formData: FormData) {
+export async function uploadBuktiCA(anggaranId: number, deskripsi: string, nominal: number, formData: FormData) {
   await checkAuth()
   const files = formData.getAll('files') as File[]
   if (!files || files.length === 0) throw new Error('File tidak ditemukan')
@@ -100,37 +100,87 @@ export async function uploadBuktiCA(anggaranId: number, formData: FormData) {
 
   const current = await sql`SELECT bukti_ca_url FROM intervensi_anggaran WHERE id = ${anggaranId}`
   const currentStr = (current as any[])[0]?.bukti_ca_url
-  let existing: string[] = []
+  
+  let existingJson: any[] = []
   if (currentStr) {
-    existing = currentStr.split(',').filter(Boolean)
+    try {
+      if (currentStr.trim().startsWith('[')) {
+        existingJson = JSON.parse(currentStr)
+      } else {
+        existingJson = [{ id: 'legacy', deskripsi: 'Upload Sebelumnya', urls: currentStr.split(',').filter(Boolean) }]
+      }
+    } catch {
+      existingJson = [{ id: 'legacy', deskripsi: 'Upload Sebelumnya', urls: currentStr.split(',').filter(Boolean) }]
+    }
   }
-  const finalUrls = [...existing, ...urls].join(',')
+
+  const newEntry = {
+    id: Date.now().toString(),
+    deskripsi,
+    nominal,
+    urls
+  }
+
+  existingJson.push(newEntry)
+  const finalStr = JSON.stringify(existingJson)
 
   await sql`
     UPDATE intervensi_anggaran 
     SET 
-      bukti_ca_url = ${finalUrls},
+      bukti_ca_url = ${finalStr},
       status_ca = 'UPLOADED',
       tgl_upload_ca = NOW()
     WHERE id = ${anggaranId}
   `
 
   revalidatePath('/dashboard/laporan-keuangan-intervensi')
-  return { success: true, url: finalUrls }
+  return { success: true, url: finalStr }
 }
 
-export async function deleteBuktiCA(anggaranId: number, urlToDelete: string) {
+export async function deleteBuktiCA(anggaranId: number, entryId: string, urlToDelete?: string) {
   await checkAuth()
   
   const current = await sql`SELECT bukti_ca_url FROM intervensi_anggaran WHERE id = ${anggaranId}`
   const currentStr = (current as any[])[0]?.bukti_ca_url
   if (!currentStr) return { success: true }
   
-  const existing = currentStr.split(',').filter(Boolean)
-  const remaining = existing.filter((u: string) => u !== urlToDelete)
-  const finalUrls = remaining.length > 0 ? remaining.join(',') : null
+  let existingJson: any[] = []
+  try {
+    if (currentStr.trim().startsWith('[')) {
+      existingJson = JSON.parse(currentStr)
+    } else {
+      existingJson = [{ id: 'legacy', deskripsi: 'Upload Sebelumnya', urls: currentStr.split(',').filter(Boolean) }]
+    }
+  } catch {
+    existingJson = [{ id: 'legacy', deskripsi: 'Upload Sebelumnya', urls: currentStr.split(',').filter(Boolean) }]
+  }
 
-  if (remaining.length === 0) {
+  if (urlToDelete) {
+    const entry = existingJson.find(e => e.id === entryId)
+    if (entry) {
+      entry.urls = entry.urls.filter((u: string) => u !== urlToDelete)
+      if (entry.urls.length === 0) {
+        existingJson = existingJson.filter(e => e.id !== entryId)
+      }
+    }
+    try {
+      await del(urlToDelete)
+    } catch (e) {
+      console.error('Failed to delete from Vercel Blob', e)
+    }
+  } else {
+    const entry = existingJson.find(e => e.id === entryId)
+    if (entry) {
+      for (const u of entry.urls) {
+        try { await del(u) } catch (e) {}
+      }
+    }
+    existingJson = existingJson.filter(e => e.id !== entryId)
+  }
+
+  const finalStr = existingJson.length > 0 ? JSON.stringify(existingJson) : null
+
+  if (!finalStr) {
     await sql`
       UPDATE intervensi_anggaran 
       SET bukti_ca_url = NULL, status_ca = 'BELUM', tgl_upload_ca = NULL 
@@ -139,17 +189,11 @@ export async function deleteBuktiCA(anggaranId: number, urlToDelete: string) {
   } else {
     await sql`
       UPDATE intervensi_anggaran 
-      SET bukti_ca_url = ${finalUrls} 
+      SET bukti_ca_url = ${finalStr} 
       WHERE id = ${anggaranId}
     `
   }
   
-  try {
-    await del(urlToDelete)
-  } catch (e) {
-    console.error('Failed to delete from Vercel Blob', e)
-  }
-
   revalidatePath('/dashboard/laporan-keuangan-intervensi')
   return { success: true }
 }
@@ -181,5 +225,204 @@ export async function updateCatatanRelawan(anggaranId: number, catatan: string) 
     SET catatan_ca = ${catatan}
     WHERE id = ${anggaranId}
   `
+  return { success: true }
+}
+
+export async function tolakBuktiCA(anggaranId: number, entryId: string, alasan: string) {
+  const user = await checkAuth()
+  const role = (user as any).role
+  if (role !== 'ADMIN' && role !== 'FINANCE' && role !== 'MONEV') {
+    throw new Error('Tidak memiliki akses')
+  }
+
+  const current = await sql`SELECT bukti_ca_url FROM intervensi_anggaran WHERE id = ${anggaranId}`
+  const currentStr = (current as any[])[0]?.bukti_ca_url
+  if (!currentStr) throw new Error('Data tidak ditemukan')
+  
+  let existingJson: any[] = []
+  try {
+    existingJson = JSON.parse(currentStr)
+  } catch {
+    existingJson = [{ id: 'legacy', deskripsi: 'Upload Sebelumnya', urls: currentStr.split(',').filter(Boolean) }]
+  }
+
+  const entry = existingJson.find((e: any) => e.id === entryId)
+  if (entry) {
+    entry.ditolak = true
+    entry.alasan_tolak = alasan
+  } else {
+    throw new Error('Entry tidak ditemukan')
+  }
+
+  const finalStr = JSON.stringify(existingJson)
+
+  await sql`
+    UPDATE intervensi_anggaran 
+    SET bukti_ca_url = ${finalStr} 
+    WHERE id = ${anggaranId}
+  `
+  
+  revalidatePath('/dashboard/laporan-keuangan-intervensi')
+  return { success: true }
+}
+
+export async function uploadBuktiPengembalian(anggaranId: number, deskripsi: string, nominal: number, formData: FormData) {
+  await checkAuth()
+  const files = formData.getAll('files') as File[]
+  if (!files || files.length === 0) throw new Error('File tidak ditemukan')
+
+  const urls = []
+  for (const file of files) {
+    const blob = await put(`pengembalian/${Date.now()}-${file.name}`, file, { access: 'public' })
+    urls.push(blob.url)
+  }
+
+  const current = await sql`SELECT bukti_pengembalian_url FROM intervensi_anggaran WHERE id = ${anggaranId}`
+  const currentStr = (current as any[])[0]?.bukti_pengembalian_url
+  
+  let existingJson: any[] = []
+  if (currentStr) {
+    try {
+      existingJson = JSON.parse(currentStr)
+    } catch {
+      existingJson = []
+    }
+  }
+
+  const newEntry = {
+    id: Date.now().toString(),
+    deskripsi,
+    nominal,
+    urls
+  }
+
+  existingJson.push(newEntry)
+  const finalStr = JSON.stringify(existingJson)
+
+  await sql`
+    UPDATE intervensi_anggaran 
+    SET 
+      bukti_pengembalian_url = ${finalStr},
+      status_pengembalian = 'UPLOADED',
+      tgl_upload_pengembalian = NOW()
+    WHERE id = ${anggaranId}
+  `
+
+  revalidatePath('/dashboard/laporan-keuangan-intervensi')
+  return { success: true, url: finalStr }
+}
+
+export async function deleteBuktiPengembalian(anggaranId: number, entryId: string, urlToDelete?: string) {
+  await checkAuth()
+  
+  const current = await sql`SELECT bukti_pengembalian_url FROM intervensi_anggaran WHERE id = ${anggaranId}`
+  const currentStr = (current as any[])[0]?.bukti_pengembalian_url
+  if (!currentStr) return { success: true }
+  
+  let existingJson: any[] = []
+  try {
+    existingJson = JSON.parse(currentStr)
+  } catch {
+    existingJson = []
+  }
+
+  if (urlToDelete) {
+    const entry = existingJson.find((e: any) => e.id === entryId)
+    if (entry) {
+      entry.urls = entry.urls.filter((u: string) => u !== urlToDelete)
+      if (entry.urls.length === 0) {
+        existingJson = existingJson.filter((e: any) => e.id !== entryId)
+      }
+    }
+    try {
+      await del(urlToDelete)
+    } catch (e) {
+      console.error('Failed to delete from Vercel Blob', e)
+    }
+  } else {
+    const entry = existingJson.find((e: any) => e.id === entryId)
+    if (entry) {
+      for (const u of entry.urls) {
+        try { await del(u) } catch (e) {}
+      }
+    }
+    existingJson = existingJson.filter((e: any) => e.id !== entryId)
+  }
+
+  const finalStr = existingJson.length > 0 ? JSON.stringify(existingJson) : null
+
+  if (!finalStr) {
+    await sql`
+      UPDATE intervensi_anggaran 
+      SET bukti_pengembalian_url = NULL, status_pengembalian = 'BELUM', tgl_upload_pengembalian = NULL 
+      WHERE id = ${anggaranId}
+    `
+  } else {
+    await sql`
+      UPDATE intervensi_anggaran 
+      SET bukti_pengembalian_url = ${finalStr} 
+      WHERE id = ${anggaranId}
+    `
+  }
+  
+  revalidatePath('/dashboard/laporan-keuangan-intervensi')
+  return { success: true }
+}
+
+export async function verifyPengembalian(anggaranId: number, status: 'DIVERIFIKASI' | 'UPLOADED' | 'BELUM', catatan: string) {
+  const user = await checkAuth()
+  const role = (user as any).role
+  
+  if (role !== 'ADMIN' && role !== 'FINANCE' && role !== 'MONEV') {
+    throw new Error('Hanya Admin atau Finance yang bisa memverifikasi')
+  }
+
+  await sql`
+    UPDATE intervensi_anggaran 
+    SET 
+      status_pengembalian = ${status},
+      catatan_pengembalian = ${catatan}
+    WHERE id = ${anggaranId}
+  `
+
+  revalidatePath('/dashboard/laporan-keuangan-intervensi')
+  return { success: true }
+}
+
+export async function tolakBuktiPengembalian(anggaranId: number, entryId: string, alasan: string) {
+  const user = await checkAuth()
+  const role = (user as any).role
+  if (role !== 'ADMIN' && role !== 'FINANCE' && role !== 'MONEV') {
+    throw new Error('Tidak memiliki akses')
+  }
+
+  const current = await sql`SELECT bukti_pengembalian_url FROM intervensi_anggaran WHERE id = ${anggaranId}`
+  const currentStr = (current as any[])[0]?.bukti_pengembalian_url
+  if (!currentStr) throw new Error('Data tidak ditemukan')
+  
+  let existingJson: any[] = []
+  try {
+    existingJson = JSON.parse(currentStr)
+  } catch {
+    existingJson = []
+  }
+
+  const entry = existingJson.find((e: any) => e.id === entryId)
+  if (entry) {
+    entry.ditolak = true
+    entry.alasan_tolak = alasan
+  } else {
+    throw new Error('Entry tidak ditemukan')
+  }
+
+  const finalStr = JSON.stringify(existingJson)
+
+  await sql`
+    UPDATE intervensi_anggaran 
+    SET bukti_pengembalian_url = ${finalStr} 
+    WHERE id = ${anggaranId}
+  `
+  
+  revalidatePath('/dashboard/laporan-keuangan-intervensi')
   return { success: true }
 }

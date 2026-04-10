@@ -35,6 +35,14 @@ export default function EkonomiPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'selesai'>('all')
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+  const [kelompokFilter, setKelompokFilter] = useState<string>('all')
+  const [bulanFilter, setBulanFilter] = useState<string>('all')
+  const [itemsPerPage, setItemsPerPage] = useState<number>(50)
+  const [currentPage, setCurrentPage] = useState<number>(1)
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, statusFilter, kelompokFilter, bulanFilter, itemsPerPage])
 
   useEffect(() => {
     loadData()
@@ -66,8 +74,14 @@ export default function EkonomiPage() {
   const filteredUpdates = updates.filter(u => {
     const matchSearch = u.nama_pm.toLowerCase().includes(searchQuery.toLowerCase()) || u.nik_pm.includes(searchQuery)
     const matchStatus = statusFilter === 'all' ? true : (statusFilter === 'pending' ? !u.checked : u.checked)
-    return matchSearch && matchStatus
+    const matchKelompok = kelompokFilter === 'all' ? true : (u.nama_kelompok || 'Tanpa Kelompok') === kelompokFilter
+    const matchBulan = bulanFilter === 'all' ? true : u.bulan === parseInt(bulanFilter)
+    return matchSearch && matchStatus && matchKelompok && matchBulan
   })
+
+  // Pagination for table mode
+  const totalPages = Math.max(1, Math.ceil(filteredUpdates.length / itemsPerPage))
+  const displayTableUpdates = filteredUpdates.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const groupedByKelompok = filteredUpdates.reduce((acc, curr) => {
     const kId = curr.kelompok_id || 'tanpa_kelompok'
@@ -165,15 +179,48 @@ export default function EkonomiPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="md:col-span-3">
           <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 overflow-hidden border-none p-6">
-            <div className="relative flex items-center mb-6">
-              <Search className="absolute left-4 w-5 h-5 text-slate-400 pointer-events-none" />
-              <input 
-                type="text" 
-                placeholder="Cari nama atau NIK..."
-                className="w-full bg-slate-50 rounded-2xl pl-12 pr-4 h-12 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all text-sm font-medium text-slate-800 placeholder:text-slate-400"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-4 w-5 h-5 text-slate-400 pointer-events-none top-1/2 -translate-y-1/2" />
+                <input 
+                  type="text" 
+                  placeholder="Cari nama atau NIK..."
+                  className="w-full bg-slate-50 rounded-2xl pl-12 pr-4 h-12 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all text-sm font-medium text-slate-800 placeholder:text-slate-400"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <select 
+                className="bg-slate-50 rounded-2xl px-4 h-12 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium text-slate-800 capitalize"
+                value={kelompokFilter}
+                onChange={(e) => setKelompokFilter(e.target.value)}
+              >
+                <option value="all">Semua Kelompok</option>
+                {Array.from(new Set(updates.map(u => u.nama_kelompok || 'Tanpa Kelompok'))).sort().map(k => (
+                  <option key={k as string} value={k as string}>{k as string}</option>
+                ))}
+              </select>
+              <select 
+                className="bg-slate-50 rounded-2xl px-4 h-12 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium text-slate-800"
+                value={bulanFilter}
+                onChange={(e) => setBulanFilter(e.target.value)}
+              >
+                <option value="all">Semua Bulan</option>
+                {Array.from({length: 12}).map((_, i) => (
+                  <option key={i+1} value={(i+1).toString()}>{getBulanName(i+1)}</option>
+                ))}
+              </select>
+              <select 
+                className="bg-slate-50 rounded-2xl px-4 h-12 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium text-slate-800"
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              >
+                <option value={10}>10 Baris</option>
+                <option value={20}>20 Baris</option>
+                <option value={50}>50 Baris</option>
+                <option value={100}>100 Baris</option>
+                <option value={999999}>Semua Data</option>
+              </select>
             </div>
             <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
               <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-xl">
@@ -235,57 +282,103 @@ export default function EkonomiPage() {
             ) : filteredUpdates.length === 0 ? (
               <div className="py-12 text-center text-slate-400 font-medium italic">Tidak ada data ditemukan</div>
             ) : viewMode === 'table' ? (
-              <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">
+              <div className="space-y-4">
+                <div className="overflow-x-auto border border-slate-300 bg-white">
+                <table className="w-full text-sm text-left border-collapse whitespace-nowrap">
+                  <thead className="bg-[#f8f9fa] text-[11px] font-bold text-slate-700 border-b-2 border-slate-300">
                     <tr>
-                      <th className="px-4 py-3 min-w-[200px] sticky left-0 bg-slate-50 z-10 border-r border-slate-100">Kelompok & PM</th>
-                      <th className="px-4 py-3 min-w-[120px]">Kategori</th>
-                      {Array.from({length: 12}).map((_, i) => (
-                        <th key={i} className="px-2 py-3 text-center">{getBulanName(i+1).substring(0,3)}</th>
-                      ))}
+                      <th className="px-3 py-2 min-w-[80px] sticky left-0 bg-[#f8f9fa] z-20 border border-slate-300 text-center">Aksi</th>
+                      <th className="px-3 py-2 min-w-[200px] sticky left-[80px] bg-[#f8f9fa] z-20 border border-slate-300 shadow-[2px_0_0_0_#cbd5e1]">Kelompok & PM</th>
+                      <th className="px-3 py-2 min-w-[80px] border border-slate-300 text-center">Tahun</th>
+                      <th className="px-3 py-2 min-w-[100px] border border-slate-300 text-center">Bulan</th>
+                      <th className="px-3 py-2 min-w-[100px] border border-slate-300 text-center">Status</th>
+                      <th className="px-3 py-2 min-w-[120px] border border-slate-300">Kategori</th>
+                      <th className="px-3 py-2 min-w-[120px] border border-slate-300">Tipe Usaha</th>
+                      <th className="px-3 py-2 min-w-[150px] border border-slate-300">Komoditas/Produk</th>
+                      <th className="px-3 py-2 min-w-[150px] border border-slate-300">Program</th>
+                      <th className="px-3 py-2 min-w-[100px] border border-slate-300 text-right">Jml Tanggungan</th>
+                      <th className="px-3 py-2 min-w-[120px] border border-slate-300 text-right">Modal (Rp)</th>
+                      <th className="px-3 py-2 min-w-[150px] border border-slate-300 text-right">Pengeluaran (Rp)</th>
+                      <th className="px-3 py-2 min-w-[120px] border border-slate-300 text-right">Omzet (Rp)</th>
+                      <th className="px-3 py-2 min-w-[150px] border border-slate-300 text-right">Pend. Utama (Rp)</th>
+                      <th className="px-3 py-2 min-w-[150px] border border-slate-300 text-right">Pend. Lainnya (Rp)</th>
+                      <th className="px-3 py-2 min-w-[120px] border border-slate-300">Status GK</th>
+                      <th className="px-3 py-2 min-w-[100px] border border-slate-300 text-right">Nilai NTP</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100/80">
-                    {groupsArray.flatMap((group: any) => 
-                       group.membersArray.map((person: any) => (
-                         <tr key={person.penerima_manfaat_id} className="hover:bg-slate-50/50 transition-colors group/row">
-                           <td className="px-4 py-3 sticky left-0 bg-white group-hover/row:bg-slate-50 z-10 border-r border-slate-100/50">
-                             <div className="font-bold text-slate-800">{person.nama_pm}</div>
-                             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{person.nik_pm}</div>
-                             <div className="text-[10px] text-emerald-600 font-black tracking-widest mt-0.5">{group.nama_kelompok}</div>
-                           </td>
-                           <td className="px-4 py-3">
-                             <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 font-bold text-[10px] px-2 py-0 border-none">
-                               {person.kategori || 'Ekonomi'}
-                             </Badge>
-                           </td>
-                           {person.updates.map((update: any, idx: number) => (
-                             <td 
-                               key={idx} 
-                               className={`px-2 py-3 text-center align-middle ${update ? 'cursor-pointer hover:bg-slate-100 transition-colors group' : ''}`}
-                               onClick={() => update && router.push(`/dashboard/ekonomi/${update.id}/edit`)}
-                               title={update ? "Klik untuk edit" : undefined}
-                             >
-                               {update ? (
-                                  update.checked ? (
-                                    <Check className="w-5 h-5 text-emerald-600 mx-auto shrink-0 group-hover:scale-110 transition-transform" strokeWidth={3} />
-                                  ) : (
-                                    <div title="Draft" className="flex items-center justify-center">
-                                      <Clock className="w-5 h-5 text-amber-600 shrink-0 group-hover:scale-110 transition-all" strokeWidth={3} />
-                                    </div>
-                                  )
-                               ) : (
-                                  <span className="text-slate-300">-</span>
-                               )}
-                             </td>
-                           ))}
-                         </tr>
-                       ))
-                    )}
+                  <tbody className="divide-y divide-slate-200">
+                    {displayTableUpdates.map((update: any) => (
+                      <tr key={update.id} className="hover:bg-emerald-50/50 transition-colors group/row">
+                        <td className="px-3 py-2 sticky left-0 bg-white group-hover/row:bg-emerald-50/50 z-10 border border-slate-300 text-center">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100"
+                            onClick={() => router.push(`/dashboard/ekonomi/${update.id}/edit`)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </td>
+                        <td className="px-3 py-2 sticky left-[80px] bg-white group-hover/row:bg-emerald-50/50 z-10 border border-slate-300 shadow-[2px_0_0_0_#cbd5e1]">
+                          <div className="font-semibold text-slate-800">{update.nama_pm}</div>
+                          <div className="text-[10px] text-slate-500 font-medium">{update.nik_pm}</div>
+                          <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">{update.nama_kelompok || 'Tanpa Kelompok'}</div>
+                        </td>
+                        <td className="px-3 py-2 border border-slate-300 text-center">{update.tahun}</td>
+                        <td className="px-3 py-2 border border-slate-300 text-center font-medium">{getBulanName(update.bulan)}</td>
+                        <td className="px-3 py-2 border border-slate-300 text-center">
+                          {update.checked ? (
+                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 font-bold text-[10px]">Selesai</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="bg-amber-100 text-amber-700 font-bold text-[10px]">Draft</Badge>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 border border-slate-300">{update.kategori || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300">{update.tipe || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300">{update.komoditas_produk || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300">{update.program || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 text-right">{update.jumlah_tanggungan || 0}</td>
+                        <td className="px-3 py-2 border border-slate-300 text-right">{update.modal?.toLocaleString('id-ID') || 0}</td>
+                        <td className="px-3 py-2 border border-slate-300 text-right">{update.pengeluaran_operasional?.toLocaleString('id-ID') || 0}</td>
+                        <td className="px-3 py-2 border border-slate-300 text-right">{update.omzet?.toLocaleString('id-ID') || 0}</td>
+                        <td className="px-3 py-2 border border-slate-300 text-right">{update.pendapatan?.toLocaleString('id-ID') || 0}</td>
+                        <td className="px-3 py-2 border border-slate-300 text-right">{update.pendapatan_lainnya?.toLocaleString('id-ID') || 0}</td>
+                        <td className="px-3 py-2 border border-slate-300">{update.status_gk || '-'}</td>
+                        <td className="px-3 py-2 border border-slate-300 text-right">{update.nilai_ntp || 0}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
+              <div className="flex items-center justify-between text-sm text-slate-500 py-4">
+                <div>
+                  Menampilkan {displayTableUpdates.length} dari {filteredUpdates.length} data
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 shadow-sm"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Sebelumnya
+                    </Button>
+                    <span className="font-medium px-2">Page {currentPage} of {totalPages}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 shadow-sm"
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Selanjutnya
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
             ) : (
               <div className="space-y-6">
                 {groupsArray.map((group: any) => {

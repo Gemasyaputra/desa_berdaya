@@ -19,6 +19,7 @@ import {
 import { toast } from 'sonner'
 import * as XLSX from 'xlsx'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default function RekapPenyaluranPage() {
   const [data, setData] = useState<any[]>([])
@@ -240,47 +241,56 @@ export default function RekapPenyaluranPage() {
             />
           </div>
           <div className="flex flex-wrap lg:flex-nowrap gap-3">
-            <select
-              value={filterDesa}
-              onChange={(e) => setFilterDesa(e.target.value)}
-              className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#008784] min-w-[140px]"
-            >
-              <option value="all">Semua Desa</option>
-              {filterOptions.desa.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-            <select
-              value={filterKategori}
-              onChange={(e) => setFilterKategori(e.target.value)}
-              className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#008784] min-w-[140px]"
-            >
-              <option value="all">Semua Kategori</option>
-              {filterOptions.kategori.map(k => <option key={k} value={k}>{k}</option>)}
-            </select>
-            <select
-              value={filterSumberDana}
-              onChange={(e) => setFilterSumberDana(e.target.value)}
-              className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#008784] min-w-[140px]"
-            >
-              <option value="all">Semua Sumber Dana</option>
-              {filterOptions.sumberDana.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <select
-              value={filterRelawan}
-              onChange={(e) => setFilterRelawan(e.target.value)}
-              className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#008784] min-w-[140px]"
-            >
-              <option value="all">Semua Relawan</option>
-              {filterOptions.relawan.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-            <select
-              value={itemsPerPage.toString()}
-              onChange={(e) => setItemsPerPage(Number(e.target.value))}
-              className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#008784]"
-            >
-              <option value="50">50 Baris</option>
-              <option value="100">100 Baris</option>
-              <option value="500">500 Baris</option>
-            </select>
+            <Select value={filterDesa} onValueChange={setFilterDesa}>
+              <SelectTrigger className="w-full lg:w-[160px] bg-slate-50 border-slate-200 rounded-xl h-[42px]">
+                <SelectValue placeholder="Semua Desa" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px]">
+                <SelectItem value="all">Semua Desa</SelectItem>
+                {filterOptions.desa.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterKategori} onValueChange={setFilterKategori}>
+              <SelectTrigger className="w-full lg:w-[160px] bg-slate-50 border-slate-200 rounded-xl h-[42px]">
+                <SelectValue placeholder="Semua Kategori" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px]">
+                <SelectItem value="all">Semua Kategori</SelectItem>
+                {filterOptions.kategori.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterSumberDana} onValueChange={setFilterSumberDana}>
+              <SelectTrigger className="w-full lg:w-[180px] bg-slate-50 border-slate-200 rounded-xl h-[42px]">
+                <SelectValue placeholder="Semua Sumber Dana" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px]">
+                <SelectItem value="all">Semua Sumber Dana</SelectItem>
+                {filterOptions.sumberDana.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterRelawan} onValueChange={setFilterRelawan}>
+              <SelectTrigger className="w-full lg:w-[160px] bg-slate-50 border-slate-200 rounded-xl h-[42px]">
+                <SelectValue placeholder="Semua Relawan" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px]">
+                <SelectItem value="all">Semua Relawan</SelectItem>
+                {filterOptions.relawan.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(Number(val))}>
+              <SelectTrigger className="w-full lg:w-[130px] bg-slate-50 border-slate-200 rounded-xl h-[42px]">
+                <SelectValue placeholder="Baris" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="50">50 Baris</SelectItem>
+                <SelectItem value="100">100 Baris</SelectItem>
+                <SelectItem value="500">500 Baris</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

@@ -4,6 +4,8 @@ import { useEffect, useState, use } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { 
   ArrowLeft, 
   Receipt, 
@@ -34,6 +36,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
   const [verifyingId, setVerifyingId] = useState<number | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [detailAnggaran, setDetailAnggaran] = useState<any>(null)
+  const [kegiatanList, setKegiatanList] = useState<any[]>([])
   const [caUploadDialog, setCaUploadDialog] = useState<{ open: boolean, anggaranId: number | null }>({ open: false, anggaranId: null })
   const [caDeskripsi, setCaDeskripsi] = useState('')
   const [caNominal, setCaNominal] = useState('')
@@ -63,11 +66,46 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
     try {
       const res = await getDetailLaporanKeuangan(parseInt(id))
       setData(res)
+      const kList = await import('../actions').then(m => m.getLaporanKegiatanForIntervensi(parseInt(id)))
+      setKegiatanList(kList)
     } catch (e) {
       console.error(e)
       toast.error('Gagal memuat data')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const [activeTerkaitIds, setActiveTerkaitIds] = useState<number[]>([])
+  
+  useEffect(() => {
+    if (detailAnggaran) {
+       let kt = detailAnggaran.kegiatan_terkait
+       try {
+         if (typeof kt === 'string' && kt.trim().startsWith('[')) {
+           setActiveTerkaitIds(JSON.parse(kt).map(Number))
+         } else if (Array.isArray(kt)) {
+           setActiveTerkaitIds(kt.map(Number))
+         } else {
+           setActiveTerkaitIds([])
+         }
+       } catch (e) {
+         setActiveTerkaitIds([])
+       }
+    }
+  }, [detailAnggaran])
+
+  const toggleActiveTerkait = async (kid: number) => {
+    if (!detailAnggaran) return;
+    const newIds = activeTerkaitIds.includes(kid) ? activeTerkaitIds.filter(i => i !== kid) : [...activeTerkaitIds, kid]
+    setActiveTerkaitIds(newIds)
+    try {
+      await import('../actions').then(m => m.saveKegiatanTerkait(detailAnggaran.id, newIds))
+      const freshData = await import('../actions').then(m => m.getDetailLaporanKeuangan(parseInt(id)))
+      setData(freshData)
+      toast.success('Tautan kegiatan diperbarui', { id: 'save-tg' })
+    } catch (e) {
+      toast.error('Gagal memperbarui tautan')
     }
   }
 
@@ -83,7 +121,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
     for (const f of caFiles) formData.append('files', f)
 
     try {
-      await uploadBuktiCA(caUploadDialog.anggaranId, caDeskripsi, nominalValue, formData)
+      await import('../actions').then(m => m.uploadBuktiCA(caUploadDialog.anggaranId!, caDeskripsi, nominalValue, formData, [], []))
       toast.success('Bukti CA berhasil di-upload')
       setCaUploadDialog({ open: false, anggaranId: null })
       setCaDeskripsi('')
@@ -175,7 +213,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
     for (const f of pengFiles) formData.append('files', f)
 
     try {
-      await uploadBuktiPengembalian(pengUploadDialog.anggaranId, pengDeskripsi, nominalValue, formData)
+      await import('../actions').then(m => m.uploadBuktiPengembalian(pengUploadDialog.anggaranId!, pengDeskripsi, nominalValue, formData, [], []))
       toast.success('Bukti Pengembalian berhasil di-upload')
       setPengUploadDialog({ open: false, anggaranId: null })
       setPengDeskripsi('')
@@ -255,7 +293,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
 
   const getRealisasiAndSisa = (a: any) => {
     let realisasi = 0;
-    if (a.bukti_ca_url && a.status_ca === 'DIVERIFIKASI') {
+    if (a.bukti_ca_url) {
       try {
         const entries = JSON.parse(a.bukti_ca_url);
         realisasi = entries.filter((e: any) => !e.ditolak).reduce((acc: number, val: any) => acc + (Number(val.nominal) || 0), 0);
@@ -263,7 +301,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
     }
     
     let pengembalian = 0;
-    if (a.bukti_pengembalian_url && a.status_pengembalian === 'DIVERIFIKASI') {
+    if (a.bukti_pengembalian_url) {
       try {
         const entries = JSON.parse(a.bukti_pengembalian_url);
         pengembalian = entries.filter((e: any) => !e.ditolak).reduce((acc: number, val: any) => acc + (Number(val.nominal) || 0), 0);
@@ -306,19 +344,17 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
     if (compact) {
       if (entries.length === 0) {
         return (
-          <div className="flex flex-col gap-2 w-full max-w-[140px] mx-auto">
+          <div className="flex items-center justify-center">
             {!isAdminOrFinance ? (
-              <div 
-                className="text-[10px] font-black text-rose-500 bg-rose-50 py-2.5 px-3 rounded-xl cursor-pointer hover:bg-rose-100 transition-all text-center flex items-center justify-center gap-2 uppercase tracking-wide border border-rose-200"
+              <button 
+                className="inline-flex items-center justify-center gap-1.5 text-[10px] font-bold text-slate-400 bg-slate-50 hover:bg-[#008784]/10 hover:text-[#008784] py-1.5 px-3 rounded-md transition-colors border border-dashed border-slate-200 whitespace-nowrap"
                 onClick={(e) => { e.stopPropagation(); setPengUploadDialog({ open: true, anggaranId: a.id }) }}
               >
-                <Upload className="w-3.5 h-3.5" />
-                Upload Refund
-              </div>
+                <Upload className="w-3 h-3" />
+                Upload
+              </button>
             ) : (
-              <div className="text-[10px] font-bold text-slate-400 py-2.5 px-3 rounded-xl text-center uppercase tracking-wide border border-dashed border-slate-200 bg-white">
-                Belum Refund
-              </div>
+              <span className="text-[10px] font-bold text-slate-300">-</span>
             )}
           </div>
         )
@@ -327,31 +363,35 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
       const hasRejected = entries.some((e: any) => e.ditolak)
       const isVerified = a.status_pengembalian === 'DIVERIFIKASI'
       
-      let colorClass = 'text-amber-600 bg-amber-50 hover:bg-amber-100 border-amber-200'
+      let colorClass = 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200'
       if (isVerified) {
-        colorClass = 'text-[#008784] bg-[#008784]/10 hover:bg-[#008784]/20 border-[#008784]/20'
+        colorClass = 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200'
       }
 
       return (
-        <div className="flex flex-col gap-2 w-full max-w-[140px] mx-auto">
+        <div className="flex items-center justify-center gap-1.5">
           <div className="relative">
-            <div 
-              className={`text-[10px] font-black py-2.5 px-3 rounded-xl cursor-pointer transition-all text-center flex items-center justify-center gap-2 uppercase tracking-wide border ${colorClass}`}
+            <button 
+              className={`inline-flex items-center justify-center gap-1.5 text-[10px] font-bold py-1.5 px-2.5 rounded-md transition-colors border whitespace-nowrap ${colorClass}`}
               onClick={(e) => { e.stopPropagation(); setDetailAnggaran(a); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
             >
-              <FileText className="w-3.5 h-3.5" />
-              {entries.length} Bukti Refund
-            </div>
+              <FileText className="w-3 h-3" />
+              {entries.length} File
+            </button>
             {hasRejected && (
-              <div className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white animate-pulse shadow-sm" title="Ada Laporan yang Ditolak!" />
+              <div className="absolute -top-1 -right-1 flex h-2.5 w-2.5" title="Ada Laporan yang Ditolak!">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+              </div>
             )}
           </div>
           {(!isAdminOrFinance && !isVerified) && (
             <button
               onClick={(e) => { e.stopPropagation(); setPengUploadDialog({ open: true, anggaranId: a.id }) }}
-              className="text-[9px] font-bold text-slate-500 hover:text-[#008784] py-1.5 text-center w-full rounded-lg border border-dashed border-slate-300 hover:bg-[#008784]/5 transition-colors uppercase tracking-widest mt-1"
+              className="text-slate-400 hover:text-[#008784] transition-colors p-1 rounded-md"
+              title="Tambah Refund"
             >
-              + Tambah Refund
+              <Upload className="w-4 h-4" />
             </button>
           )}
         </div>
@@ -371,7 +411,20 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                   </div>
                 )}
                 <div className="flex items-start justify-between gap-2 mb-1">
-                  <div className={`text-[10px] font-bold truncate min-w-0 ${entry.ditolak ? 'text-rose-700/70 line-through' : 'text-slate-700'}`} title={entry.deskripsi}>{entry.deskripsi}</div>
+                  <div className={`text-[10px] font-bold truncate min-w-0 flex flex-col gap-0.5 ${entry.ditolak ? 'text-rose-700/70 line-through' : 'text-slate-700'}`} title={entry.deskripsi}>
+                    <span>{entry.deskripsi}</span>
+                    {(() => {
+                      const kJuduls = entry.kegiatan_juduls || (entry.kegiatan_judul ? [entry.kegiatan_judul] : [])
+                      if (kJuduls.length === 0) return null
+                      return (
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {kJuduls.map((kj: string, i: number) => (
+                            <span key={i} className="text-[9px] text-[#008784] font-black uppercase tracking-widest bg-[#008784]/5 border border-[#008784]/20 rounded px-1.5 py-0.5 w-fit truncate max-w-full">Kegiatan: {kj}</span>
+                          ))}
+                        </div>
+                      )
+                    })()}
+                  </div>
                   <div className="flex items-center gap-0.5">
                     {isAdminOrFinance && !entry.ditolak && (
                       <button onClick={(e) => { e.stopPropagation(); setRejectPengDialog({ open: true, anggaranId: a.id, entryId: entry.id }) }} className="text-slate-400 hover:text-amber-500 transition-colors p-1 rounded-md flex-shrink-0" title="Tolak Laporan">
@@ -456,19 +509,17 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
     if (compact) {
       if (entries.length === 0) {
         return (
-          <div className="flex flex-col gap-2 w-full max-w-[140px] mx-auto">
+          <div className="flex items-center justify-center">
             {!isAdminOrFinance ? (
-              <div 
-                className="text-[10px] font-black text-rose-500 bg-rose-50 py-2.5 px-3 rounded-xl cursor-pointer hover:bg-rose-100 transition-all text-center flex items-center justify-center gap-2 uppercase tracking-wide border border-rose-200"
+              <button 
+                className="inline-flex items-center justify-center gap-1.5 text-[10px] font-bold text-slate-400 bg-slate-50 hover:bg-[#008784]/10 hover:text-[#008784] py-1.5 px-3 rounded-md transition-colors border border-dashed border-slate-200 whitespace-nowrap"
                 onClick={(e) => { e.stopPropagation(); setCaUploadDialog({ open: true, anggaranId: a.id }) }}
               >
-                <Upload className="w-3.5 h-3.5" />
-                Upload CA
-              </div>
+                <Upload className="w-3 h-3" />
+                Upload
+              </button>
             ) : (
-              <div className="text-[10px] font-bold text-slate-400 py-2.5 px-3 rounded-xl text-center uppercase tracking-wide border border-dashed border-slate-200 bg-white">
-                Belum Upload
-              </div>
+              <span className="text-[10px] font-bold text-slate-300">-</span>
             )}
           </div>
         )
@@ -477,31 +528,35 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
       const hasRejected = entries.some(e => e.ditolak)
       const isVerified = a.status_ca === 'DIVERIFIKASI'
       
-      let colorClass = 'text-amber-600 bg-amber-50 hover:bg-amber-100 border-amber-200'
+      let colorClass = 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200'
       if (isVerified) {
-        colorClass = 'text-[#008784] bg-[#008784]/10 hover:bg-[#008784]/20 border-[#008784]/20'
+        colorClass = 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200'
       }
 
       return (
-        <div className="flex flex-col gap-2 w-full max-w-[140px] mx-auto">
+        <div className="flex items-center justify-center gap-1.5">
           <div className="relative">
-            <div 
-              className={`text-[10px] font-black py-2.5 px-3 rounded-xl cursor-pointer transition-all text-center flex items-center justify-center gap-2 uppercase tracking-wide border ${colorClass}`}
+            <button 
+              className={`inline-flex items-center justify-center gap-1.5 text-[10px] font-bold py-1.5 px-2.5 rounded-md transition-colors border whitespace-nowrap ${colorClass}`}
               onClick={(e) => { e.stopPropagation(); setDetailAnggaran(a); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
             >
-              <FileText className="w-3.5 h-3.5" />
-              {entries.length} Laporan CA
-            </div>
+              <FileText className="w-3 h-3" />
+              {entries.length} File
+            </button>
             {hasRejected && (
-              <div className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white animate-pulse shadow-sm" title="Ada Laporan yang Ditolak!" />
+              <div className="absolute -top-1 -right-1 flex h-2.5 w-2.5" title="Ada Laporan yang Ditolak!">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+              </div>
             )}
           </div>
-          {(!isAdminOrFinance && a.status_ca !== 'DIVERIFIKASI') && (
+          {(!isAdminOrFinance && !isVerified) && (
             <button
               onClick={(e) => { e.stopPropagation(); setCaUploadDialog({ open: true, anggaranId: a.id }) }}
-              className="text-[9px] font-bold text-slate-500 hover:text-[#008784] py-1.5 text-center w-full rounded-lg border border-dashed border-slate-300 hover:bg-[#008784]/5 transition-colors uppercase tracking-widest mt-1"
+              className="text-slate-400 hover:text-[#008784] transition-colors p-1 rounded-md"
+              title="Tambah CA"
             >
-              + Tambah CA
+              <Upload className="w-4 h-4" />
             </button>
           )}
         </div>
@@ -521,7 +576,20 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                   </div>
                 )}
                 <div className="flex items-start justify-between gap-2 mb-1">
-                  <div className={`text-[10px] font-bold truncate min-w-0 ${entry.ditolak ? 'text-rose-700/70 line-through' : 'text-slate-700'}`} title={entry.deskripsi}>{entry.deskripsi}</div>
+                  <div className={`text-[10px] font-bold truncate min-w-0 flex flex-col gap-0.5 ${entry.ditolak ? 'text-rose-700/70 line-through' : 'text-slate-700'}`} title={entry.deskripsi}>
+                    <span>{entry.deskripsi}</span>
+                    {(() => {
+                      const kJuduls = entry.kegiatan_juduls || (entry.kegiatan_judul ? [entry.kegiatan_judul] : [])
+                      if (kJuduls.length === 0) return null
+                      return (
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {kJuduls.map((kj: string, i: number) => (
+                            <span key={i} className="text-[9px] text-[#008784] font-black uppercase tracking-widest bg-[#008784]/5 border border-[#008784]/20 rounded px-1.5 py-0.5 w-fit truncate max-w-full">Kegiatan: {kj}</span>
+                          ))}
+                        </div>
+                      )
+                    })()}
+                  </div>
                   <div className="flex items-center gap-0.5">
                     {isAdminOrFinance && !entry.ditolak && (
                       <button onClick={(e) => { e.stopPropagation(); setRejectDialog({ open: true, anggaranId: a.id, entryId: entry.id }) }} className="text-slate-400 hover:text-amber-500 transition-colors p-1 rounded-md flex-shrink-0" title="Tolak Laporan">
@@ -789,26 +857,36 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
           {/* DESKTOP VIEW */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50/80 text-[11px] font-black text-slate-500 uppercase tracking-widest">
+              <thead className="bg-slate-50 text-[11px] font-black text-slate-500 uppercase tracking-widest">
                 <tr>
-                  <th className="px-8 py-5">Bulan</th>
-                  <th className="px-8 py-5">Anggaran</th>
+                  <th className="px-8 py-5 sticky left-0 z-20 bg-slate-50 shadow-[1px_0_0_#f1f5f9]">Bulan</th>
+                  <th className="px-8 py-5">Ajuan</th>
+                  <th className="px-8 py-5">Cair</th>
+                  <th className="px-8 py-5">Realisasi</th>
+                  <th className="px-8 py-5">Sisa Saldo</th>
                   <th className="px-8 py-5 text-center">Bukti CA</th>
                   <th className="px-8 py-5 text-center">Pengembalian</th>
                   <th className="px-8 py-5 text-center">Status</th>
                   <th className="px-8 py-5">Catatan/Feedback</th>
-                  {isAdminOrFinance && <th className="px-8 py-5 text-center">Verifikasi</th>}
+                  {isAdminOrFinance && (
+                    <>
+                      <th className="px-8 py-5 text-center">Verif CA</th>
+                      <th className="px-8 py-5 text-center">Verif Refund</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {anggaran.map((a: any) => {
-                  const rowBgClass = a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50/30 hover:bg-emerald-50/70 border-b border-emerald-100/50' : a.status_ca === 'UPLOADED' ? 'bg-amber-50/30 hover:bg-amber-50/70 border-b border-amber-100/50' : 'bg-rose-50/20 hover:bg-rose-50/60 border-b border-rose-100/50';
+                  const { realisasi, sisa } = getRealisasiAndSisa(a);
+                  const statusBorder = a.status_ca === 'DIVERIFIKASI' ? 'border-l-emerald-500' : a.status_ca === 'UPLOADED' ? 'border-l-amber-400' : 'border-l-rose-400';
+                  
                   return (
-                    <tr key={a.id} className={`transition-colors cursor-pointer group/row ${rowBgClass}`} onClick={(e) => {
+                    <tr key={a.id} className="bg-white hover:bg-slate-50/80 border-b border-slate-100 transition-colors cursor-pointer group/row" onClick={(e) => {
                       if ((e.target as HTMLElement).closest('button, input, textarea, a')) return;
                     setDetailAnggaran(a);
                   }}>
-                    <td className="px-8 py-6">
+                    <td className={`px-8 py-6 sticky left-0 z-10 bg-white group-hover/row:bg-slate-50 shadow-[1px_0_0_#f1f5f9] border-l-[4px] ${statusBorder}`}>
                       <div className="text-left outline-none">
                         <div className="font-black text-slate-800 transition-colors flex items-center gap-2 group-hover/row:text-[#008784]">
                           {a.bulan}
@@ -817,40 +895,25 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                         <div className="text-[10px] font-bold text-slate-400 transition-colors group-hover/row:text-[#008784]/60">{a.tahun}</div>
                       </div>
                     </td>
-                    <td className="px-8 py-6">
-                      <div className="text-xs space-y-1.5 min-w-[150px]">
-                        <div className="flex justify-between gap-2">
-                          <span className="text-slate-400">Ajuan:</span>
-                          <span className="font-bold">Rp {parseInt(a.ajuan_ri).toLocaleString('id-ID')}</span>
-                        </div>
-                        <div className="flex justify-between gap-2">
-                          <span className="text-slate-400">Cair:</span>
-                          <span className="font-black text-[#008784]">Rp {parseInt(a.anggaran_dicairkan).toLocaleString('id-ID')}</span>
-                        </div>
-                        {(() => {
-                          const { realisasi, sisa } = getRealisasiAndSisa(a);
-                          return (
-                            <>
-                              <div className="flex justify-between gap-2 border-t border-slate-100 pt-1.5 mt-1">
-                                <span className="text-slate-400">Realisasi:</span>
-                                <span className="font-bold text-amber-600">Rp {realisasi.toLocaleString('id-ID')}</span>
-                              </div>
-                              <div className="flex justify-between gap-2">
-                                <span className="text-slate-400">Sisa Saldo:</span>
-                                <span className={`font-black tracking-tight ${sisa < 0 ? 'text-rose-600' : 'text-slate-700'}`}>Rp {sisa.toLocaleString('id-ID')}</span>
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </div>
+                    <td className="px-8 py-6 font-bold text-slate-700 whitespace-nowrap">
+                      Rp {parseInt(a.ajuan_ri).toLocaleString('id-ID')}
                     </td>
-                    <td className="px-8 py-6 text-center align-top">
+                    <td className="px-8 py-6 font-black text-[#008784] whitespace-nowrap">
+                      Rp {parseInt(a.anggaran_dicairkan).toLocaleString('id-ID')}
+                    </td>
+                    <td className="px-8 py-6 font-bold text-amber-600 whitespace-nowrap">
+                      Rp {realisasi.toLocaleString('id-ID')}
+                    </td>
+                    <td className="px-8 py-6 whitespace-nowrap">
+                      <span className={`font-black tracking-tight ${sisa < 0 ? 'text-rose-600' : 'text-slate-700'}`}>Rp {sisa.toLocaleString('id-ID')}</span>
+                    </td>
+                    <td className="px-8 py-6 text-center align-middle">
                       <BuktiCAUploader a={a} compact={true} />
                     </td>
-                    <td className="px-8 py-6 text-center align-top">
+                    <td className="px-8 py-6 text-center align-middle">
                       <BuktiPengembalianUploader a={a} compact={true} />
                     </td>
-                    <td className="px-8 py-6">
+                    <td className="px-8 py-6 align-middle">
                       <div className="flex flex-col items-center gap-1">
                         {a.status_ca === 'DIVERIFIKASI' ? (
                           <Badge className="bg-emerald-100 text-emerald-700 text-[9px]">DIVERIFIKASI</Badge>
@@ -861,7 +924,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                         )}
                       </div>
                     </td>
-                    <td className="px-8 py-6">
+                    <td className="px-8 py-6 align-middle">
                       <textarea 
                         className="w-full text-xs p-2 bg-slate-50 border border-slate-100 rounded-lg min-h-[50px] resize-none"
                         defaultValue={a.catatan_ca || ''}
@@ -871,48 +934,55 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                       />
                     </td>
                     {isAdminOrFinance && (
-                      <td className="px-8 py-6 text-center align-top">
-                        <div className="flex flex-col gap-2 min-w-[110px]">
-                          {/* Verif CA */}
-                          <Button 
-                            size="sm" 
-                            className={`h-8 rounded-lg text-[10px] font-bold transition-all ${a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50 text-emerald-700 pointer-events-none shadow-none border border-emerald-100' : 'bg-[#008784] hover:bg-[#007370] text-white'}`}
-                            onClick={() => {
-                              const note = (document.getElementById(`note-${a.id}`) as HTMLTextAreaElement).value
-                              handleVerify(a.id, 'DIVERIFIKASI', note)
-                            }}
-                            disabled={!a.bukti_ca_url || verifyingId === a.id}
-                          >
-                            {verifyingId === a.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle2 className={`w-3 h-3 mr-1 ${a.status_ca === 'DIVERIFIKASI' ? 'text-emerald-500' : ''}`} />}
-                            {a.status_ca === 'DIVERIFIKASI' ? 'Verified CA' : 'Verif CA'}
-                          </Button>
-                          {a.status_ca === 'DIVERIFIKASI' && (
-                            <Button variant="ghost" className="h-6 text-[9px] text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg" onClick={() => handleVerify(a.id, 'UPLOADED', '')}>Batalkan</Button>
-                          )}
-                          {/* Verif Refund — hanya tampil jika ada bukti pengembalian */}
-                          {a.bukti_pengembalian_url && (
-                            <>
-                              <div className="border-t border-slate-100 my-1" />
-                              <Button 
-                                size="sm" 
-                                className={`h-8 rounded-lg text-[10px] font-bold transition-all ${
-                                  a.status_pengembalian === 'DIVERIFIKASI'
-                                    ? 'bg-indigo-50 text-indigo-700 pointer-events-none shadow-none border border-indigo-100'
-                                    : 'bg-rose-500 hover:bg-rose-600 text-white'
-                                }`}
-                                onClick={() => handleVerifyPengembalian(a.id, 'DIVERIFIKASI', '')}
-                                disabled={verifyingId === a.id}
-                              >
-                                {verifyingId === a.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle2 className={`w-3 h-3 mr-1`} />}
-                                {a.status_pengembalian === 'DIVERIFIKASI' ? 'Approved Refund' : 'Approve Refund'}
-                              </Button>
-                              {a.status_pengembalian === 'DIVERIFIKASI' && (
-                                <Button variant="ghost" className="h-6 text-[9px] text-slate-400 hover:bg-slate-50 rounded-lg" onClick={() => handleVerifyPengembalian(a.id, 'UPLOADED', '')}>Batalkan</Button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </td>
+                      <>
+                        <td className="px-8 py-6 text-center align-middle">
+                          <div className="flex flex-col gap-2 min-w-[110px] justify-center items-center">
+                            {/* Verif CA */}
+                            <Button 
+                              size="sm" 
+                              className={`h-8 w-full rounded-lg text-[10px] font-bold transition-all ${a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50 text-emerald-700 pointer-events-none shadow-none border border-emerald-100' : 'bg-[#008784] hover:bg-[#007370] text-white'}`}
+                              onClick={() => {
+                                const note = (document.getElementById(`note-${a.id}`) as HTMLTextAreaElement).value
+                                handleVerify(a.id, 'DIVERIFIKASI', note)
+                              }}
+                              disabled={!a.bukti_ca_url || verifyingId === a.id}
+                            >
+                              {verifyingId === a.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle2 className={`w-3 h-3 mr-1 ${a.status_ca === 'DIVERIFIKASI' ? 'text-emerald-500' : ''}`} />}
+                              {a.status_ca === 'DIVERIFIKASI' ? 'Verified CA' : 'Verif CA'}
+                            </Button>
+                            {a.status_ca === 'DIVERIFIKASI' && (
+                              <Button variant="ghost" className="h-6 text-[9px] text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg w-full" onClick={() => handleVerify(a.id, 'UPLOADED', '')}>Batalkan</Button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-8 py-6 text-center align-middle">
+                          <div className="flex flex-col gap-2 min-w-[110px] justify-center items-center">
+                            {/* Verif Refund */}
+                            {a.bukti_pengembalian_url ? (
+                              <>
+                                <Button 
+                                  size="sm" 
+                                  className={`h-8 w-full rounded-lg text-[10px] font-bold transition-all ${
+                                    a.status_pengembalian === 'DIVERIFIKASI'
+                                      ? 'bg-indigo-50 text-indigo-700 pointer-events-none shadow-none border border-indigo-100'
+                                      : 'bg-rose-500 hover:bg-rose-600 text-white'
+                                  }`}
+                                  onClick={() => handleVerifyPengembalian(a.id, 'DIVERIFIKASI', '')}
+                                  disabled={verifyingId === a.id}
+                                >
+                                  {verifyingId === a.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle2 className={`w-3 h-3 mr-1`} />}
+                                  {a.status_pengembalian === 'DIVERIFIKASI' ? 'Approved' : 'Verif Refund'}
+                                </Button>
+                                {a.status_pengembalian === 'DIVERIFIKASI' && (
+                                  <Button variant="ghost" className="h-6 text-[9px] text-slate-400 hover:bg-slate-50 rounded-lg w-full" onClick={() => handleVerifyPengembalian(a.id, 'UPLOADED', '')}>Batalkan</Button>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-[10px] font-bold text-slate-300">-</span>
+                            )}
+                          </div>
+                        </td>
+                      </>
                     )}
                   </tr>
                 );
@@ -1054,6 +1124,37 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
               </div>
             </div>
             
+            
+            {/* Tautan Kegiatan Section */}
+            {kegiatanList.length > 0 && (
+              <div className="pt-2 rounded-2xl bg-indigo-50/50 border border-indigo-100 p-4 -mx-1">
+                <div className="flex items-center gap-2 mb-4 border-b border-indigo-200/60 pb-2">
+                  <div className="w-1.5 h-4 rounded-full bg-indigo-400" />
+                  <h4 className="text-[11px] font-black uppercase text-indigo-600 tracking-wider">Tautan Laporan Kegiatan {detailAnggaran?.bulan}</h4>
+                </div>
+                <div className="bg-white border border-indigo-100 rounded-xl p-3 min-h-[50px] max-h-[160px] overflow-y-auto">
+                  <div className="flex flex-col gap-2">
+                    {kegiatanList.map(k => (
+                      <div key={k.id} className="flex items-start space-x-2 bg-slate-50 p-2.5 rounded-lg border border-slate-100 shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-colors">
+                        <Checkbox 
+                          id={`terkait-keg-${k.id}`}
+                          checked={activeTerkaitIds.includes(k.id)}
+                          onCheckedChange={() => toggleActiveTerkait(k.id)}
+                          className="mt-0.5 data-[state=checked]:bg-indigo-600 data-[state=checked]:text-white"
+                        />
+                        <Label 
+                          htmlFor={`terkait-keg-${k.id}`}
+                          className="text-xs font-bold text-slate-700 cursor-pointer flex-1 leading-tight group-hover:text-indigo-800 transition-colors"
+                        >
+                          {k.judul_kegiatan} <span className="text-[10px] text-slate-400 font-normal block mt-0.5">({new Date(k.tanggal_kegiatan).toLocaleDateString('id-ID')})</span>
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Bukti CA Section */}
             <div className="pt-2 rounded-2xl bg-emerald-50 border border-emerald-100 p-4 -mx-1">
               <div className="flex items-center gap-2 mb-4 border-b border-emerald-200/60 pb-2">
@@ -1104,6 +1205,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                 onChange={(e) => setCaDeskripsi(e.target.value)}
               />
             </div>
+
             <div>
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Nominal Transaksi (Rp)</label>
               <input 
@@ -1190,6 +1292,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                 placeholder="Ex: Kembalian Sisa Kegiatan"
               />
             </div>
+
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Nominal Dikembalikan (Rp)</label>
               <input

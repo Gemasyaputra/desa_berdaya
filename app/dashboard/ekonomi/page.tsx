@@ -167,18 +167,29 @@ export default function EkonomiPage() {
             <p className="text-slate-500 text-sm font-medium">Monitoring Status Ekonomi Penerima Manfaat Secara Berkala.</p>
           </div>
         </div>
-        <Button 
-          onClick={() => router.push('/dashboard/ekonomi/tambah')}
-          className="bg-[#7a1200] hover:bg-[#5a0d00] rounded-2xl px-6 h-12 font-bold shadow-lg shadow-[#7a1200]/20 gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Tambah Update
-        </Button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <div className="flex items-center gap-4 px-5 py-2.5 bg-slate-50 border border-slate-100 rounded-2xl">
+             <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
+               <TrendingUp className="w-5 h-5" />
+             </div>
+             <div>
+               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Update Bulan Ini</p>
+               <p className="text-lg font-black text-slate-700 leading-none">
+                 {updates.filter(u => u.bulan === new Date().getMonth() + 1).length} <span className="text-xs font-bold text-slate-400">Total</span>
+               </p>
+             </div>
+          </div>
+          <Button 
+            onClick={() => router.push('/dashboard/ekonomi/tambah')}
+            className="bg-[#7a1200] hover:bg-[#5a0d00] rounded-2xl px-6 h-full min-h-[3rem] font-bold shadow-lg shadow-[#7a1200]/20 gap-2 shrink-0"
+          >
+            <Plus className="w-5 h-5" />
+            Tambah Update
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="md:col-span-3">
-          <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 overflow-hidden border-none p-6">
+      <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 overflow-hidden border-none p-6">
             <div className="flex flex-col md:flex-row gap-4 mb-6">
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-4 w-5 h-5 text-slate-400 pointer-events-none top-1/2 -translate-y-1/2" />
@@ -473,23 +484,6 @@ export default function EkonomiPage() {
                 })}
               </div>
             )}
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <Card className="bg-emerald-600 border-none shadow-xl shadow-emerald-600/20 overflow-hidden rounded-[2rem] text-white">
-            <CardContent className="p-8 space-y-4">
-              <div className="p-3 bg-white/20 rounded-2xl w-fit">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold tracking-tight">Estatistik</h3>
-                <p className="text-emerald-100/70 text-sm font-medium">Total update bulan ini</p>
-              </div>
-              <p className="text-4xl font-black">{updates.filter(u => u.bulan === new Date().getMonth() + 1).length}</p>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   )

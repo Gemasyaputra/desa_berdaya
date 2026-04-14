@@ -87,7 +87,40 @@ export async function getDetailLaporanKeuangan(id: number) {
   }
 }
 
-export async function uploadBuktiCA(anggaranId: number, deskripsi: string, nominal: number, formData: FormData) {
+export async function migrateDB() {
+  await sql`ALTER TABLE intervensi_anggaran ADD COLUMN IF NOT EXISTS kegiatan_terkait JSONB DEFAULT '[]'::jsonb;`
+  return { success: true }
+}
+
+export async function saveKegiatanTerkait(anggaranId: number, kegiatanIds: number[]) {
+  await checkAuth()
+  try {
+    await sql`ALTER TABLE intervensi_anggaran ADD COLUMN IF NOT EXISTS kegiatan_terkait JSONB DEFAULT '[]'::jsonb;`
+  } catch (e) {}
+  
+  await sql`
+    UPDATE intervensi_anggaran
+    SET kegiatan_terkait = ${JSON.stringify(kegiatanIds)}
+    WHERE id = ${anggaranId}
+  `
+  const { revalidatePath } = await import('next/cache')
+  revalidatePath('/dashboard/laporan-keuangan-intervensi')
+  return { success: true }
+}
+
+export async function getLaporanKegiatanForIntervensi(intervensiId: number) {
+  await checkAuth()
+  const res = await sql`
+    SELECT lk.id, lk.judul_kegiatan, lk.tanggal_kegiatan
+    FROM laporan_kegiatan lk
+    JOIN intervensi_program ip ON lk.desa_berdaya_id = ip.desa_berdaya_id
+    WHERE ip.id = ${intervensiId}
+    ORDER BY lk.tanggal_kegiatan DESC
+  `
+  return Array.isArray(res) ? res : []
+}
+
+export async function uploadBuktiCA(anggaranId: number, deskripsi: string, nominal: number, formData: FormData, kegiatanIds?: number[], kegiatanJuduls?: string[]) {
   await checkAuth()
   const files = formData.getAll('files') as File[]
   if (!files || files.length === 0) throw new Error('File tidak ditemukan')
@@ -118,7 +151,9 @@ export async function uploadBuktiCA(anggaranId: number, deskripsi: string, nomin
     id: Date.now().toString(),
     deskripsi,
     nominal,
-    urls
+    urls,
+    kegiatan_ids: kegiatanIds || [],
+    kegiatan_juduls: kegiatanJuduls || []
   }
 
   existingJson.push(newEntry)
@@ -266,7 +301,7 @@ export async function tolakBuktiCA(anggaranId: number, entryId: string, alasan: 
   return { success: true }
 }
 
-export async function uploadBuktiPengembalian(anggaranId: number, deskripsi: string, nominal: number, formData: FormData) {
+export async function uploadBuktiPengembalian(anggaranId: number, deskripsi: string, nominal: number, formData: FormData, kegiatanIds?: number[], kegiatanJuduls?: string[]) {
   await checkAuth()
   const files = formData.getAll('files') as File[]
   if (!files || files.length === 0) throw new Error('File tidak ditemukan')
@@ -293,7 +328,9 @@ export async function uploadBuktiPengembalian(anggaranId: number, deskripsi: str
     id: Date.now().toString(),
     deskripsi,
     nominal,
-    urls
+    urls,
+    kegiatan_ids: kegiatanIds || [],
+    kegiatan_juduls: kegiatanJuduls || []
   }
 
   existingJson.push(newEntry)

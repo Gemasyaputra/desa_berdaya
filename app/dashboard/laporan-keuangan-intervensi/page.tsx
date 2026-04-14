@@ -16,7 +16,8 @@ import {
   Wallet,
   CheckCircle2,
   Clock,
-  LayoutGrid
+  LayoutGrid,
+  List
 } from 'lucide-react'
 import { getLaporanKeuanganIntervensi } from './actions'
 import { Input } from '@/components/ui/input'
@@ -26,6 +27,7 @@ export default function LaporanKeuanganIntervensiPage() {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
   const router = useRouter()
   const { data: session } = useSession()
   const role = (session?.user as any)?.role
@@ -75,8 +77,8 @@ export default function LaporanKeuanganIntervensiPage() {
       </div>
 
       {/* Control Bar */}
-      <div className="flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative flex-1 group">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full md:w-96 group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#008784] transition-colors" />
           <Input
             placeholder="Cari desa, program, atau relawan..."
@@ -85,9 +87,31 @@ export default function LaporanKeuanganIntervensiPage() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-slate-100 shadow-sm whitespace-nowrap">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total:</span>
-          <span className="text-sm font-black text-[#008784]">{filtered.length}</span>
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+          <div className="flex items-center flex-1 sm:flex-none bg-white border border-slate-200 p-1 rounded-2xl shadow-sm">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`flex-1 sm:flex-none rounded-xl h-10 px-4 ${viewMode === 'grid' ? 'bg-slate-100 font-bold text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+              onClick={() => setViewMode('grid')}
+            >
+              <LayoutGrid className="w-4 h-4 mr-2" />
+              Grid
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`flex-1 sm:flex-none rounded-xl h-10 px-4 ${viewMode === 'table' ? 'bg-slate-100 font-bold text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+              onClick={() => setViewMode('table')}
+            >
+              <List className="w-4 h-4 mr-2" />
+              Table
+            </Button>
+          </div>
+          <div className="flex items-center justify-center gap-2 px-5 h-12 min-w-full sm:min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm whitespace-nowrap">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total:</span>
+            <span className="text-sm font-black text-[#008784]">{filtered.length}</span>
+          </div>
         </div>
       </div>
 
@@ -110,6 +134,72 @@ export default function LaporanKeuanganIntervensiPage() {
             </div>
           </CardContent>
         </Card>
+      ) : viewMode === 'table' ? (
+        <div className="bg-white border text-black border-slate-200 rounded-[2rem] overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left border-collapse whitespace-nowrap">
+              <thead className="bg-[#f8f9fa] text-[11px] font-bold text-slate-700 border-b-2 border-slate-200">
+                <tr>
+                  <th className="px-6 py-4">Desa</th>
+                  <th className="px-6 py-4">Program</th>
+                  <th className="px-6 py-4">Relawan</th>
+                  <th className="px-6 py-4">Sumber Dana</th>
+                  <th className="px-6 py-4 text-center">Status</th>
+                  <th className="px-6 py-4 text-center">Progress CA</th>
+                  <th className="px-6 py-4 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map(item => {
+                  const uploaded = parseInt(item.uploaded_ca)
+                  const total = parseInt(item.total_bulan)
+                  const progress = total > 0 ? (uploaded / total) * 100 : 0
+                  
+                  return (
+                    <tr key={item.id} className="hover:bg-slate-50/50 transition-colors cursor-pointer group/row" onClick={() => router.push(`/dashboard/laporan-keuangan-intervensi/${item.id}`)}>
+                      <td className="px-6 py-5 font-bold text-slate-800 uppercase tracking-tight">{item.nama_desa}</td>
+                      <td className="px-6 py-5 font-medium text-slate-600">{item.nama_program}</td>
+                      <td className="px-6 py-5 font-medium text-slate-600">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-[#008784]/10 border border-[#008784]/20 rounded-full flex items-center justify-center">
+                            <User className="w-4 h-4 text-[#008784]" />
+                          </div>
+                          <span className="font-bold">{item.nama_relawan}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <span className="text-[10px] font-black text-[#008784] px-3 py-1.5 bg-[#008784]/5 border border-[#008784]/20 rounded-xl uppercase tracking-widest">
+                          {item.sumber_dana || '-'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5 text-center">{getStatusBadge(item.status)}</td>
+                      <td className="px-6 py-5">
+                        <div className="flex items-center justify-center gap-3 w-48 mx-auto">
+                          <Progress value={progress} className="h-2.5 bg-slate-100 flex-1">
+                            <div className="h-full bg-[#008784] rounded-full transition-all" style={{ width: `${progress}%` }} />
+                          </Progress>
+                          <span className="text-xs font-black text-[#008784] text-right w-12">{uploaded}/{total} Bln</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-center">
+                        <Button 
+                          size="sm"
+                          className="bg-white hover:bg-[#008784] text-[#008784] hover:text-white border-2 border-[#008784]/20 hover:border-[#008784] rounded-xl font-bold transition-all shadow-sm group-hover/row:bg-[#008784] group-hover/row:text-white"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            router.push(`/dashboard/laporan-keuangan-intervensi/${item.id}`)
+                          }}
+                        >
+                          Lihat Detail
+                        </Button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map((item) => {

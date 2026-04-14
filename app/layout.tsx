@@ -15,11 +15,11 @@ const sourceSansPro = Source_Sans_3({
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const s = await getAllAppSettings()
-    const title = (s.app_title ?? '').trim() || 'Cita Sehat - Dashboard'
+    const title = (s.app_title ?? '').trim() || 'SIDB - Dashboard'
     const faviconUrl = (s.app_favicon_url ?? '').trim() || '/favicon.png'
     return {
       title,
-      description: 'Executive Dashboard untuk Yayasan Cita Sehat - Sistem Monitoring Klinik',
+      description: 'Sistem Monitoring Desa Berdaya',
       generator: 'v0.app',
       icons: {
         icon: [{ url: faviconUrl, sizes: 'any' }],
@@ -29,8 +29,8 @@ export async function generateMetadata(): Promise<Metadata> {
     }
   } catch {
     return {
-      title: 'Cita Sehat - Dashboard',
-      description: 'Executive Dashboard untuk Yayasan Cita Sehat - Sistem Monitoring Klinik',
+      title: 'SIDB - Dashboard',
+      description: 'Sistem Monitoring Desa Berdaya',
       icons: {
         icon: [{ url: '/favicon.png', sizes: 'any' }],
         shortcut: '/favicon.png',

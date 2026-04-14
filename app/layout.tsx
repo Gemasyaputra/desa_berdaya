@@ -21,6 +21,22 @@ export async function generateMetadata(): Promise<Metadata> {
       title,
       description: 'Sistem Monitoring Desa Berdaya',
       generator: 'v0.app',
+      openGraph: {
+        title,
+        description: 'Sistem Monitoring Desa Berdaya',
+        url: 'https://desa-berdaya.vercel.app',
+        siteName: 'SIDB',
+        images: [
+          {
+            url: faviconUrl,
+            width: 800,
+            height: 600,
+            alt: 'SIDB Logo',
+          },
+        ],
+        locale: 'id_ID',
+        type: 'website',
+      },
       icons: {
         icon: [{ url: faviconUrl, sizes: 'any' }],
         shortcut: faviconUrl,
@@ -31,6 +47,22 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
       title: 'SIDB - Dashboard',
       description: 'Sistem Monitoring Desa Berdaya',
+      openGraph: {
+        title: 'SIDB - Dashboard',
+        description: 'Sistem Monitoring Desa Berdaya',
+        url: 'https://desa-berdaya.vercel.app',
+        siteName: 'SIDB',
+        images: [
+          {
+            url: '/favicon.png',
+            width: 800,
+            height: 600,
+            alt: 'SIDB Logo',
+          },
+        ],
+        locale: 'id_ID',
+        type: 'website',
+      },
       icons: {
         icon: [{ url: '/favicon.png', sizes: 'any' }],
         shortcut: '/favicon.png',

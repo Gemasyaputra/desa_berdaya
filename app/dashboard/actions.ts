@@ -228,42 +228,50 @@ export async function getAnggaranPerDesa(tahun: number): Promise<AnggaranPerDesa
 
   const rows = isAdmin
     ? await sql`
-        SELECT dc.nama_desa,
-               COALESCE(SUM(lk.total_realisasi),0) as realisasi
-        FROM desa_berdaya db
+        SELECT dc.nama_desa, ia.status_ca, ia.bukti_ca_url
+        FROM intervensi_anggaran ia
+        JOIN intervensi_program ip ON ia.intervensi_program_id = ip.id
+        JOIN desa_berdaya db ON ip.desa_berdaya_id = db.id
         JOIN desa_config dc ON db.desa_id = dc.id
-        LEFT JOIN laporan_kegiatan lk ON lk.desa_berdaya_id = db.id AND EXTRACT(YEAR FROM lk.created_at) = ${tahun}
-        WHERE db.status_aktif = true
-        GROUP BY dc.nama_desa
-        ORDER BY realisasi DESC
-        LIMIT 10`
+        WHERE db.status_aktif = true AND ia.tahun = ${tahun}`
     : auth.role === 'OFFICE' && auth.officeId
     ? await sql`
-        SELECT dc.nama_desa,
-               COALESCE(SUM(lk.total_realisasi),0) as realisasi
-        FROM desa_berdaya db
+        SELECT dc.nama_desa, ia.status_ca, ia.bukti_ca_url
+        FROM intervensi_anggaran ia
+        JOIN intervensi_program ip ON ia.intervensi_program_id = ip.id
+        JOIN desa_berdaya db ON ip.desa_berdaya_id = db.id
         JOIN desa_config dc ON db.desa_id = dc.id
-        LEFT JOIN laporan_kegiatan lk ON lk.desa_berdaya_id = db.id AND EXTRACT(YEAR FROM lk.created_at) = ${tahun}
-        WHERE dc.office_id = ${auth.officeId} AND db.status_aktif = true
-        GROUP BY dc.nama_desa
-        ORDER BY realisasi DESC`
+        WHERE dc.office_id = ${auth.officeId} AND db.status_aktif = true AND ia.tahun = ${tahun}`
     : auth.operatorId
     ? await sql`
-        SELECT dc.nama_desa,
-               COALESCE(SUM(lk.total_realisasi),0) as realisasi
-        FROM desa_berdaya db
+        SELECT dc.nama_desa, ia.status_ca, ia.bukti_ca_url
+        FROM intervensi_anggaran ia
+        JOIN intervensi_program ip ON ia.intervensi_program_id = ip.id
+        JOIN desa_berdaya db ON ip.desa_berdaya_id = db.id
         JOIN desa_config dc ON db.desa_id = dc.id
-        LEFT JOIN laporan_kegiatan lk ON lk.desa_berdaya_id = db.id AND EXTRACT(YEAR FROM lk.created_at) = ${tahun}
-        WHERE db.relawan_id = ${auth.operatorId} AND db.status_aktif = true
-        GROUP BY dc.nama_desa
-        ORDER BY realisasi DESC`
+        WHERE db.relawan_id = ${auth.operatorId} AND db.status_aktif = true AND ia.tahun = ${tahun}`
     : []
 
-  return (rows as any[]).map((r) => ({
-    nama_desa: r.nama_desa,
+  const agg = new Map<string, number>()
+  for (const r of rows as any[]) {
+    let total = 0
+    if (r.status_ca === 'DIVERIFIKASI' && r.bukti_ca_url && r.bukti_ca_url.trim().startsWith('[')) {
+      try {
+        const entries = JSON.parse(r.bukti_ca_url)
+        total = entries.filter((e: any) => !e.ditolak).reduce((acc: number, e: any) => acc + (Number(e.nominal) || 0), 0)
+      } catch (e) {}
+    }
+    const current = agg.get(r.nama_desa) || 0
+    agg.set(r.nama_desa, current + total)
+  }
+
+  // Juga ambil nama_desa yang punya laporan tp ga punya CA? Tidak perlu, cukup top 10 berdasar CA
+  const result: AnggaranPerDesa[] = Array.from(agg.entries()).map(([k, v]) => ({
+    nama_desa: k,
     alokasi: 0,
-    realisasi: Number(r.realisasi),
+    realisasi: v,
   }))
+  return result.sort((a, b) => b.realisasi - a.realisasi).slice(0, 10)
 }
 
 // =============================================================
@@ -275,48 +283,101 @@ export async function getTrendLaporanBulanan(tahun: number): Promise<TrendBulana
 
   const isAdmin = auth.role === 'ADMIN' || auth.role === 'MONEV' || auth.role === 'FINANCE'
 
-  const rows = isAdmin
+  // Ambil laporan narrative stats
+  const lkRows = isAdmin
     ? await sql`
         SELECT TO_CHAR(created_at, 'Mon') as bulan,
                EXTRACT(MONTH FROM created_at) as bulan_num,
-               COUNT(*) as jumlah_laporan,
-               COALESCE(SUM(total_realisasi),0) as total_realisasi
+               COUNT(*) as jumlah_laporan
         FROM laporan_kegiatan
         WHERE EXTRACT(YEAR FROM created_at) = ${tahun}
-        GROUP BY TO_CHAR(created_at, 'Mon'), EXTRACT(MONTH FROM created_at)
-        ORDER BY bulan_num`
+        GROUP BY TO_CHAR(created_at, 'Mon'), EXTRACT(MONTH FROM created_at)`
     : auth.role === 'OFFICE' && auth.officeId
     ? await sql`
         SELECT TO_CHAR(lk.created_at, 'Mon') as bulan,
                EXTRACT(MONTH FROM lk.created_at) as bulan_num,
-               COUNT(*) as jumlah_laporan,
-               COALESCE(SUM(lk.total_realisasi),0) as total_realisasi
+               COUNT(*) as jumlah_laporan
         FROM laporan_kegiatan lk
         JOIN desa_berdaya db ON lk.desa_berdaya_id = db.id
         JOIN desa_config dc ON db.desa_id = dc.id
         WHERE EXTRACT(YEAR FROM lk.created_at) = ${tahun} AND dc.office_id = ${auth.officeId}
-        GROUP BY TO_CHAR(lk.created_at, 'Mon'), EXTRACT(MONTH FROM lk.created_at)
-        ORDER BY bulan_num`
+        GROUP BY TO_CHAR(lk.created_at, 'Mon'), EXTRACT(MONTH FROM lk.created_at)`
     : auth.operatorId
     ? await sql`
         SELECT TO_CHAR(lk.created_at, 'Mon') as bulan,
                EXTRACT(MONTH FROM lk.created_at) as bulan_num,
-               COUNT(*) as jumlah_laporan,
-               COALESCE(SUM(lk.total_realisasi),0) as total_realisasi
+               COUNT(*) as jumlah_laporan
         FROM laporan_kegiatan lk
         JOIN desa_berdaya db ON lk.desa_berdaya_id = db.id
         WHERE EXTRACT(YEAR FROM lk.created_at) = ${tahun} AND db.relawan_id = ${auth.operatorId}
-        GROUP BY TO_CHAR(lk.created_at, 'Mon'), EXTRACT(MONTH FROM lk.created_at)
-        ORDER BY bulan_num`
+        GROUP BY TO_CHAR(lk.created_at, 'Mon'), EXTRACT(MONTH FROM lk.created_at)`
     : []
 
-  const monthMap: Record<string, string> = { Jan:'Jan', Feb:'Feb', Mar:'Mar', Apr:'Apr', May:'Mei', Jun:'Jun', Jul:'Jul', Aug:'Agt', Sep:'Sep', Oct:'Okt', Nov:'Nov', Dec:'Des' }
+  // Ambil data CA Verified Realisasi
+  const iaRows = isAdmin
+    ? await sql`SELECT bulan, status_ca, bukti_ca_url FROM intervensi_anggaran WHERE tahun = ${tahun}`
+    : auth.role === 'OFFICE' && auth.officeId
+    ? await sql`
+        SELECT ia.bulan, ia.status_ca, ia.bukti_ca_url
+        FROM intervensi_anggaran ia
+        JOIN intervensi_program ip ON ia.intervensi_program_id = ip.id
+        JOIN desa_berdaya db ON ip.desa_berdaya_id = db.id
+        JOIN desa_config dc ON db.desa_id = dc.id
+        WHERE ia.tahun = ${tahun} AND dc.office_id = ${auth.officeId}`
+    : auth.operatorId
+    ? await sql`
+        SELECT ia.bulan, ia.status_ca, ia.bukti_ca_url
+        FROM intervensi_anggaran ia
+        JOIN intervensi_program ip ON ia.intervensi_program_id = ip.id
+        WHERE ia.tahun = ${tahun} AND ip.relawan_id = ${auth.operatorId}`
+    : []
 
-  return (rows as any[]).map((r) => ({
-    bulan: monthMap[r.bulan] ?? r.bulan,
-    jumlah_laporan: Number(r.jumlah_laporan),
-    total_realisasi: Number(r.total_realisasi),
-  }))
+  const indoMonthToNum: Record<string, number> = {
+    'Januari': 1, 'Februari': 2, 'Maret': 3, 'April': 4,
+    'Mei': 5, 'Juni': 6, 'Juli': 7, 'Agustus': 8,
+    'September': 9, 'Oktober': 10, 'November': 11, 'Desember': 12
+  }
+  
+  const monthNamesToShort: Record<number, string> = {
+    1:'Jan', 2:'Feb', 3:'Mar', 4:'Apr', 5:'Mei', 6:'Jun',
+    7:'Jul', 8:'Agt', 9:'Sep', 10:'Okt', 11:'Nov', 12:'Des'
+  }
+
+  // Agregasi Laporan
+  const monthMap = new Map<number, { bln: string, lp: number, rl: number }>()
+  
+  for (const r of lkRows as any[]) {
+    const num = Number(r.bulan_num)
+    if (!monthMap.has(num)) monthMap.set(num, { bln: monthNamesToShort[num] || String(num), lp: 0, rl: 0 })
+    monthMap.get(num)!.lp += Number(r.jumlah_laporan)
+  }
+
+  // Agregasi CA Realisasi
+  for (const r of iaRows as any[]) {
+    let total = 0
+    if (r.status_ca === 'DIVERIFIKASI' && r.bukti_ca_url && r.bukti_ca_url.trim().startsWith('[')) {
+      try {
+        const entries = JSON.parse(r.bukti_ca_url)
+        total = entries.filter((e: any) => !e.ditolak).reduce((acc: number, e: any) => acc + (Number(e.nominal) || 0), 0)
+      } catch (e) {}
+    }
+    const num = indoMonthToNum[r.bulan]
+    if (num && total > 0) {
+      if (!monthMap.has(num)) monthMap.set(num, { bln: monthNamesToShort[num], lp: 0, rl: 0 })
+      monthMap.get(num)!.rl += total
+    }
+  }
+
+  // Convert map ke List dan sort berdasarkan urutan bulan
+  const result: TrendBulanan[] = Array.from(monthMap.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([_, v]) => ({
+      bulan: v.bln,
+      jumlah_laporan: v.lp,
+      total_realisasi: v.rl
+    }))
+
+  return result
 }
 
 // =============================================================

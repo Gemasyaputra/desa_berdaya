@@ -102,7 +102,9 @@ function KPICard({
           <div className="mt-6">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Realisasi</span>
-              <span className="text-[10px] font-black text-[#7a1200] bg-red-50 px-1.5 py-0.5 rounded-md">{progress.toFixed(0)}%</span>
+              <span className="text-[10px] font-black text-[#7a1200] bg-red-50 px-1.5 py-0.5 rounded-md">
+                {(progress > 0 && progress < 1) ? '< 1' : progress.toFixed(0)}%
+              </span>
             </div>
             <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
               <div 
@@ -170,7 +172,9 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  const pctRealisasi = stats?.peresenRealisasi ?? 0
+  const pctRealisasi = (rangkumanDana?.totalCair && rangkumanDana.totalCair > 0) 
+    ? ((rangkumanDana.totalRealisasi / rangkumanDana.totalCair) * 100) 
+    : 0
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
@@ -246,7 +250,7 @@ export default function DashboardPage() {
               />
               <KPICard 
                 title={`Realisasi ${tahun}`} 
-                value={formatRupiah(stats?.totalRealisasi ?? 0)}
+                value={formatRupiah(rangkumanDana?.totalRealisasi ?? 0)}
                 icon={Wallet}
                 progress={pctRealisasi}
               />
@@ -455,7 +459,7 @@ export default function DashboardPage() {
             <CardContent className="px-6 pb-8">
               {anggaran.length > 0 ? (
                 <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={anggaran} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
+                  <BarChart data={anggaran} layout="vertical" margin={{ top: 0, right: 80, left: 10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                     <XAxis type="number" hide />
                     <YAxis 

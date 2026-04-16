@@ -33,13 +33,23 @@ export function SuperAdminMap({
 }) {
   const [isMounted, setIsMounted] = useState(false)
   const [geoJsonData, setGeoJsonData] = useState<any>(null)
+  const [mapId, setMapId] = useState(1)
 
   useEffect(() => {
     setIsMounted(true)
+    let isSubscribed = true 
+
     fetch('/indonesia-provinces.json')
       .then(res => res.json())
-      .then(data => setGeoJsonData(data))
+      .then(data => {
+         if (isSubscribed) setGeoJsonData(data)
+      })
       .catch(err => console.error("Failed to fetch geojson: ", err))
+
+    return () => {
+      isSubscribed = false
+      setMapId(prev => prev + 1)
+    }
   }, [])
 
   // Calculate province density
@@ -146,6 +156,7 @@ export function SuperAdminMap({
       {/* Map Display */}
       <Card className="lg:col-span-8 border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden rounded-2xl h-[500px] bg-white ring-1 ring-slate-100">
         <MapContainer 
+          key={mapId}
           center={defaultCenter} 
           zoom={defaultZoom} 
           scrollWheelZoom={true} 

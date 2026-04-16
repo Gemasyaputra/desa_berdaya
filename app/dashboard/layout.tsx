@@ -157,10 +157,10 @@ export default function DashboardLayout({
           { href: '/dashboard/rekap-penyaluran', label: 'Rekap Penyaluran', icon: Wallet },
           { href: '/dashboard/manajemen-tim', label: 'Manajemen Tim', icon: UsersRound },
           { href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch },
-          { href: '/dashboard/master-program', label: 'Master Program', icon: BookOpen },
           { href: '/dashboard/konfigurasi', label: 'Konfigurasi', icon: Settings },
           ...(isAdminRole
             ? [
+                { href: '/dashboard/master-program', label: 'Master Program', icon: BookOpen },
                 {
                   href: '/dashboard/intervensi',
                   label: 'Intervensi Program',
@@ -183,7 +183,6 @@ export default function DashboardLayout({
           { href: '/dashboard/kelompok', label: 'Daftar Kelompok', icon: UsersRound },
           { href: '/dashboard/laporan-kegiatan', label: 'Laporan Kegiatan', icon: FileText },
           { href: '/dashboard/laporan-keuangan-intervensi', label: 'Laporan Keuangan', icon: Receipt },
-          ...(isOffice ? [] : [{ href: '/dashboard/master-program', label: 'Master Program', icon: BookOpen }]),
           ...(isKorwil ? [{ href: '/dashboard/manajemen-tim', label: 'Manajemen Tim', icon: UsersRound }] : []),
           ...(isKorwil ? [{ href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch }] : []),
           ...(isRelawan ? [{ href: '/dashboard/profil', label: 'Profil Saya', icon: UserCircle }] : []),

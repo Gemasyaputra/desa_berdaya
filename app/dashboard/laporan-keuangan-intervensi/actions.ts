@@ -26,7 +26,8 @@ export async function getLaporanKeuanganIntervensi() {
       p.nama_program,
       r.nama as nama_relawan,
       (SELECT COUNT(*) FROM intervensi_anggaran WHERE intervensi_program_id = ip.id) as total_bulan,
-      (SELECT COUNT(*) FROM intervensi_anggaran WHERE intervensi_program_id = ip.id AND status_ca != 'BELUM') as uploaded_ca
+      (SELECT COUNT(*) FROM intervensi_anggaran WHERE intervensi_program_id = ip.id AND status_ca != 'BELUM') as uploaded_ca,
+      (SELECT tahun FROM intervensi_anggaran WHERE intervensi_program_id = ip.id ORDER BY tahun DESC LIMIT 1) as tahun
     FROM intervensi_program ip
     JOIN desa_berdaya db ON ip.desa_berdaya_id = db.id
     JOIN desa_config dc ON db.desa_id = dc.id

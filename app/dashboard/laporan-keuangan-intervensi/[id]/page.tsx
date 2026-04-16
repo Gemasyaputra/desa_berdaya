@@ -20,7 +20,8 @@ import {
   Loader2,
   FileText,
   X,
-  Trash2
+  Trash2,
+  Save
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getDetailLaporanKeuangan, uploadBuktiCA, verifyCA, updateCatatanRelawan, deleteBuktiCA, uploadBuktiPengembalian, deleteBuktiPengembalian, tolakBuktiPengembalian, verifyPengembalian } from '../actions'
@@ -37,6 +38,8 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [detailAnggaran, setDetailAnggaran] = useState<any>(null)
   const [kegiatanList, setKegiatanList] = useState<any[]>([])
+  const [filterTahun, setFilterTahun] = useState<string>('Semua')
+  const [sortBulan, setSortBulan] = useState<'asc' | 'desc'>('asc')
   const [caUploadDialog, setCaUploadDialog] = useState<{ open: boolean, anggaranId: number | null }>({ open: false, anggaranId: null })
   const [caDeskripsi, setCaDeskripsi] = useState('')
   const [caNominal, setCaNominal] = useState('')
@@ -77,6 +80,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
   }
 
   const [activeTerkaitIds, setActiveTerkaitIds] = useState<number[]>([])
+  const [isSavingTerkait, setIsSavingTerkait] = useState(false)
   
   useEffect(() => {
     if (detailAnggaran) {
@@ -95,17 +99,24 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
     }
   }, [detailAnggaran])
 
-  const toggleActiveTerkait = async (kid: number) => {
+  const toggleActiveTerkait = (kid: number) => {
     if (!detailAnggaran) return;
     const newIds = activeTerkaitIds.includes(kid) ? activeTerkaitIds.filter(i => i !== kid) : [...activeTerkaitIds, kid]
     setActiveTerkaitIds(newIds)
+  }
+
+  const handleSaveTerkait = async () => {
+    if (!detailAnggaran) return;
+    setIsSavingTerkait(true);
     try {
-      await import('../actions').then(m => m.saveKegiatanTerkait(detailAnggaran.id, newIds))
+      await import('../actions').then(m => m.saveKegiatanTerkait(detailAnggaran.id, activeTerkaitIds))
       const freshData = await import('../actions').then(m => m.getDetailLaporanKeuangan(parseInt(id)))
       setData(freshData)
-      toast.success('Tautan kegiatan diperbarui', { id: 'save-tg' })
+      toast.success('Pilihan kegiatan berhasil disimpan', { id: 'save-tg' })
     } catch (e) {
-      toast.error('Gagal memperbarui tautan')
+      toast.error('Gagal menyimpan pilihan')
+    } finally {
+      setIsSavingTerkait(false);
     }
   }
 
@@ -655,6 +666,21 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
     )
   }
 
+  const uniqueTahun = Array.from(new Set(anggaran.map((a: any) => a.tahun))).sort()
+  let filteredAnggaran = filterTahun === 'Semua' ? anggaran : anggaran.filter((a: any) => a.tahun === filterTahun)
+  
+  const monthOrder: Record<string, number> = {
+    'Januari': 1, 'Februari': 2, 'Maret': 3, 'April': 4, 'Mei': 5, 'Juni': 6,
+    'Juli': 7, 'Agustus': 8, 'September': 9, 'Oktober': 10, 'November': 11, 'Desember': 12
+  };
+  
+  filteredAnggaran = [...filteredAnggaran].sort((a, b) => {
+    const monthA = monthOrder[a.bulan] || 0;
+    const monthB = monthOrder[b.bulan] || 0;
+    if (sortBulan === 'asc') return monthA - monthB;
+    return monthB - monthA;
+  });
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 bg-slate-50/50 min-h-screen">
       <div className="flex flex-col gap-6">
@@ -677,7 +703,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
               </div>
               <div>
                 <h1 className="text-2xl font-black text-slate-800 tracking-tight">{header.nama_desa}</h1>
-                <p className="text-[#008784] font-black uppercase text-xs tracking-widest mt-0.5">{header.nama_program}</p>
+                <p className="text-[#008784] font-black uppercase text-xs tracking-widest mt-0.5">{header.nama_program} {anggaran?.[0]?.tahun ? `(${anggaran[0]?.tahun})` : ''}</p>
               </div>
             </div>
 
@@ -718,7 +744,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
             <div className="space-y-1.5">
               <div className="flex justify-between items-end px-1">
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Progress CA</span>
-                <span className="text-sm font-black text-[#008784]">{uploadedCount}/{totalCount}</span>
+                <span className="text-sm font-black text-[#008784]">{uploadedCount}/{totalCount} {anggaran?.[0]?.tahun ? `(${anggaran[0]?.tahun})` : ''}</span>
               </div>
               <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden">
                 <div 
@@ -732,16 +758,38 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
       </div>
 
       <Card className="border-none shadow-2xl shadow-slate-200/40 rounded-[2.5rem] overflow-hidden bg-white">
-        <CardHeader className="border-b border-slate-100 px-8 py-6">
+        <CardHeader className="border-b border-slate-100 px-8 py-6 flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-lg font-bold flex items-center gap-2">
             <Receipt className="w-5 h-5 text-[#008784]" />
             Daftar Anggaran & Bukti CA
           </CardTitle>
+          <div className="flex items-center gap-2">
+            {uniqueTahun.length > 0 && (
+              <select
+                value={filterTahun}
+                onChange={(e) => setFilterTahun(e.target.value)}
+                className="px-3 py-1.5 text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#008784] cursor-pointer"
+              >
+                <option value="Semua">Semua Tahun</option>
+                {uniqueTahun.map(t => (
+                  <option key={t as string} value={t as string}>{t as string}</option>
+                ))}
+              </select>
+            )}
+            <select
+              value={sortBulan}
+              onChange={(e) => setSortBulan(e.target.value as 'asc' | 'desc')}
+              className="px-3 py-1.5 text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#008784] cursor-pointer"
+            >
+              <option value="asc">Awal Tahun (Jan)</option>
+              <option value="desc">Akhir Tahun (Des)</option>
+            </select>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {/* MOBILE VIEW */}
           <div className="md:hidden divide-y divide-slate-100">
-             {anggaran.map((a: any) => {
+             {filteredAnggaran.map((a: any) => {
                 const rowBgClass = a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50/20 hover:bg-emerald-50/50' : a.status_ca === 'UPLOADED' ? 'bg-amber-50/20 hover:bg-amber-50/50' : 'bg-rose-50/20 hover:bg-rose-50/50';
                 return (
                   <div key={a.id} className={`p-6 space-y-4 cursor-pointer transition-colors group/card ${rowBgClass}`} onClick={(e) => {
@@ -855,11 +903,11 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
           </div>
 
           {/* DESKTOP VIEW */}
-          <div className="hidden md:block overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[70vh] rounded-b-[2rem] custom-scrollbar relative">
             <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 text-[11px] font-black text-slate-500 uppercase tracking-widest">
+              <thead className="bg-slate-50 text-[11px] font-black text-slate-500 uppercase tracking-widest sticky top-0 z-30 shadow-sm">
                 <tr>
-                  <th className="px-8 py-5 sticky left-0 z-20 bg-slate-50 shadow-[1px_0_0_#f1f5f9]">Bulan</th>
+                  <th className="px-8 py-5 sticky left-0 z-40 bg-slate-50 shadow-[1px_0_0_#f1f5f9]">Bulan</th>
                   <th className="px-8 py-5">Ajuan</th>
                   <th className="px-8 py-5">Cair</th>
                   <th className="px-8 py-5">Realisasi</th>
@@ -877,16 +925,16 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {anggaran.map((a: any) => {
+                {filteredAnggaran.map((a: any) => {
                   const { realisasi, sisa } = getRealisasiAndSisa(a);
-                  const statusBorder = a.status_ca === 'DIVERIFIKASI' ? 'border-l-emerald-500' : a.status_ca === 'UPLOADED' ? 'border-l-amber-400' : 'border-l-rose-400';
+                  const statusShadow = a.status_ca === 'DIVERIFIKASI' ? 'shadow-[inset_4px_0_0_0_#10b981,1px_0_0_0_#f1f5f9]' : a.status_ca === 'UPLOADED' ? 'shadow-[inset_4px_0_0_0_#fbbf24,1px_0_0_0_#f1f5f9]' : 'shadow-[inset_4px_0_0_0_#fb7185,1px_0_0_0_#f1f5f9]';
                   
                   return (
                     <tr key={a.id} className="bg-white hover:bg-slate-50/80 border-b border-slate-100 transition-colors cursor-pointer group/row" onClick={(e) => {
                       if ((e.target as HTMLElement).closest('button, input, textarea, a')) return;
                     setDetailAnggaran(a);
                   }}>
-                    <td className={`px-8 py-6 sticky left-0 z-10 bg-white group-hover/row:bg-slate-50 shadow-[1px_0_0_#f1f5f9] border-l-[4px] ${statusBorder}`}>
+                    <td className={`px-8 py-6 sticky left-0 z-10 bg-white group-hover/row:bg-slate-50 ${statusShadow}`}>
                       <div className="text-left outline-none">
                         <div className="font-black text-slate-800 transition-colors flex items-center gap-2 group-hover/row:text-[#008784]">
                           {a.bulan}
@@ -1125,35 +1173,86 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
             </div>
             
             
+
             {/* Tautan Kegiatan Section */}
-            {kegiatanList.length > 0 && (
-              <div className="pt-2 rounded-2xl bg-indigo-50/50 border border-indigo-100 p-4 -mx-1">
-                <div className="flex items-center gap-2 mb-4 border-b border-indigo-200/60 pb-2">
-                  <div className="w-1.5 h-4 rounded-full bg-indigo-400" />
-                  <h4 className="text-[11px] font-black uppercase text-indigo-600 tracking-wider">Tautan Laporan Kegiatan {detailAnggaran?.bulan}</h4>
-                </div>
-                <div className="bg-white border border-indigo-100 rounded-xl p-3 min-h-[50px] max-h-[160px] overflow-y-auto">
-                  <div className="flex flex-col gap-2">
-                    {kegiatanList.map(k => (
-                      <div key={k.id} className="flex items-start space-x-2 bg-slate-50 p-2.5 rounded-lg border border-slate-100 shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-colors">
-                        <Checkbox 
-                          id={`terkait-keg-${k.id}`}
-                          checked={activeTerkaitIds.includes(k.id)}
-                          onCheckedChange={() => toggleActiveTerkait(k.id)}
-                          className="mt-0.5 data-[state=checked]:bg-indigo-600 data-[state=checked]:text-white"
-                        />
-                        <Label 
-                          htmlFor={`terkait-keg-${k.id}`}
-                          className="text-xs font-bold text-slate-700 cursor-pointer flex-1 leading-tight group-hover:text-indigo-800 transition-colors"
-                        >
-                          {k.judul_kegiatan} <span className="text-[10px] text-slate-400 font-normal block mt-0.5">({new Date(k.tanggal_kegiatan).toLocaleDateString('id-ID')})</span>
-                        </Label>
-                      </div>
-                    ))}
+            {(() => {
+              const displayedKegiatan = isAdminOrFinance ? kegiatanList.filter(k => activeTerkaitIds.includes(Number(k.id))) : kegiatanList;
+              if (displayedKegiatan.length === 0) {
+                 if (isAdminOrFinance && kegiatanList.length > 0) {
+                   return (
+                     <div className="pt-2 rounded-2xl bg-indigo-50/50 border border-indigo-100 p-4 -mx-1 text-center font-bold text-[11px] uppercase tracking-widest text-indigo-400">
+                       Belum ada laporan kegiatan yang ditautkan
+                     </div>
+                   );
+                 }
+                 return null;
+              }
+              return (
+                <div className="pt-2 rounded-2xl bg-indigo-50/50 border border-indigo-100 p-4 -mx-1">
+                  <div className="flex items-center gap-2 mb-4 border-b border-indigo-200/60 pb-2">
+                    <div className="w-1.5 h-4 rounded-full bg-indigo-400" />
+                    <h4 className="text-[11px] font-black uppercase text-indigo-600 tracking-wider">Tautan Laporan Kegiatan {detailAnggaran?.bulan}</h4>
                   </div>
+                  <div className="bg-white border border-indigo-100 rounded-xl p-3 min-h-[50px] max-h-[160px] overflow-y-auto custom-scrollbar">
+                    <div className="flex flex-col gap-2">
+                      {displayedKegiatan.map(k => (
+                        <div key={k.id} className="flex items-start justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-100 shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-colors">
+                          <div className="flex items-start space-x-2 flex-1">
+                            <Checkbox 
+                              id={`terkait-keg-${k.id}`}
+                              checked={activeTerkaitIds.includes(Number(k.id))}
+                              onCheckedChange={() => toggleActiveTerkait(Number(k.id))}
+                              disabled={isAdminOrFinance}
+                              className="mt-0.5 data-[state=checked]:bg-indigo-600 data-[state=checked]:text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                            />
+                            {isAdminOrFinance ? (
+                              <div 
+                                onClick={() => window.open(`/dashboard/laporan-kegiatan/${k.id}`, '_blank')}
+                                className="text-xs font-bold text-slate-700 flex-1 leading-tight cursor-pointer hover:text-indigo-600 transition-colors opacity-80"
+                                title="Buka Detail Laporan Kegiatan"
+                              >
+                                {k.judul_kegiatan} <span className="text-[10px] text-slate-400 font-normal block mt-0.5">({new Date(k.tanggal_kegiatan).toLocaleDateString('id-ID')})</span>
+                              </div>
+                            ) : (
+                              <Label 
+                                htmlFor={`terkait-keg-${k.id}`}
+                                className="text-xs font-bold text-slate-700 flex-1 leading-tight cursor-pointer group-hover:text-indigo-800 transition-colors"
+                              >
+                                {k.judul_kegiatan} <span className="text-[10px] text-slate-400 font-normal block mt-0.5">({new Date(k.tanggal_kegiatan).toLocaleDateString('id-ID')})</span>
+                              </Label>
+                            )}
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              window.open(`/dashboard/laporan-kegiatan/${k.id}`, '_blank');
+                            }}
+                            className="p-1 flex-shrink-0 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors ml-2"
+                            title="Buka Detail Laporan Kegiatan"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {!isAdminOrFinance && (
+                    <div className="mt-4 flex justify-end">
+                      <Button 
+                        size="sm" 
+                        onClick={handleSaveTerkait} 
+                        disabled={isSavingTerkait}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold w-full sm:w-auto"
+                      >
+                        {isSavingTerkait ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : <Save className="w-3 h-3 mr-2" />}
+                        Simpan Pilihan Tautan
+                      </Button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Bukti CA Section */}
             <div className="pt-2 rounded-2xl bg-emerald-50 border border-emerald-100 p-4 -mx-1">

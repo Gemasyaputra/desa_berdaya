@@ -178,7 +178,7 @@ export default function LaporanKeuanganIntervensiPage() {
                           <Progress value={progress} className="h-2.5 bg-slate-100 flex-1">
                             <div className="h-full bg-[#008784] rounded-full transition-all" style={{ width: `${progress}%` }} />
                           </Progress>
-                          <span className="text-xs font-black text-[#008784] text-right w-12">{uploaded}/{total} Bln</span>
+                          <span className="text-xs font-black text-[#008784] text-right w-20 whitespace-nowrap">{uploaded}/{total} Bln {item.tahun ? `(${item.tahun})` : ''}</span>
                         </div>
                       </td>
                       <td className="px-6 py-5 text-center">
@@ -233,7 +233,7 @@ export default function LaporanKeuanganIntervensiPage() {
                     <div className="space-y-2">
                       <div className="flex justify-between items-end px-1">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress Bukti CA</span>
-                        <span className="text-xs font-black text-[#008784]">{uploaded}/{total} Bulan</span>
+                        <span className="text-xs font-black text-[#008784]">{uploaded}/{total} Bulan {item.tahun ? `(${item.tahun})` : ''}</span>
                       </div>
                       <Progress value={progress} className="h-2.5 bg-slate-200">
                         <div className="h-full bg-[#008784] rounded-full transition-all" style={{ width: `${progress}%` }} />

@@ -36,9 +36,11 @@ function MapEvents({ position, setPosition }: { position: [number, number] | nul
 
 function ChangeView({ center }: { center: [number, number] | null }) {
   const map = useMap()
-  if (center) {
-    map.flyTo(center, 14, { duration: 1.5 })
-  }
+  useEffect(() => {
+    if (center) {
+      map.flyTo(center, 14, { duration: 1.5 })
+    }
+  }, [center, map])
   return null
 }
 

@@ -177,11 +177,11 @@ export function CRUDKlinik({
       coa_qris: formData.coa_qris || undefined,
       id_rekening: formData.id_rekening || undefined,
       is_active: formData.is_active,
-      summary_alias: formData.summary_alias || null,
-      summary_order: formData.summary_order ? Number(formData.summary_order) : null,
+      summary_alias: formData.summary_alias || undefined,
+      summary_order: formData.summary_order ? Number(formData.summary_order) : undefined,
       include_in_se_summary: formData.include_in_se_summary,
-      se_receipt_coa_debet: normalizeCoaList(formData.se_receipt_coa_debet),
-      se_receipt_coa_kredit: normalizeCoaList(formData.se_receipt_coa_kredit),
+      se_receipt_coa_debet: normalizeCoaList(formData.se_receipt_coa_debet) ?? undefined,
+      se_receipt_coa_kredit: normalizeCoaList(formData.se_receipt_coa_kredit) ?? undefined,
     }
     const result = editingId
       ? await updateClinic(editingId, payload)
@@ -279,6 +279,11 @@ export function CRUDKlinik({
                   coa_qris: '',
                   id_rekening: '',
                   is_active: true,
+                  summary_alias: '',
+                  summary_order: '',
+                  include_in_se_summary: true,
+                  se_receipt_coa_debet: '',
+                  se_receipt_coa_kredit: '',
                 })
               }}>
                 <X className="w-4 h-4" />

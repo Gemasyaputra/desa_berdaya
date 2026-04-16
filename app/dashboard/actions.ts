@@ -61,6 +61,7 @@ export type RangkumanDana = {
   totalAjuan: number
   totalCair: number
   totalRealisasi: number
+  totalPengembalian: number
   sisaSaldo: number
 }
 

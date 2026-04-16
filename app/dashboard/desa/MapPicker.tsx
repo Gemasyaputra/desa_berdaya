@@ -73,6 +73,15 @@ export default function MapPicker({
     setIsMounted(true)
   }, [])
 
+  // Ketika defaultLat/defaultLng berubah (mis. dari GPS), pindahkan peta ke sana
+  useEffect(() => {
+    if (defaultLat && defaultLng && isMounted) {
+      const newPos: [number, number] = [defaultLat, defaultLng]
+      setPosition(newPos)
+      setFlyToCenter(newPos)
+    }
+  }, [defaultLat, defaultLng, isMounted])
+
   useEffect(() => {
     if (autoSearchQuery && isMounted) {
       setSearchQuery(autoSearchQuery)

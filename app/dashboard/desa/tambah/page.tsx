@@ -117,30 +117,41 @@ export default function TambahDesaBinaanPage() {
   }, [formData.desa_id, formData.kecamatan_id, formData.kota_id, formData.provinsi_id, desaConfigOptions, kecamatanOptions, kotaOptions, provinsiOptions])
 
   const [locating, setLocating] = useState(false)
+  const [gpsSuccess, setGpsSuccess] = useState(false)
+  const [gpsError, setGpsError] = useState<string | null>(null)
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
-      alert("Browser Anda tidak mendukung fitur Geolocation.");
-      return;
+      setGpsError('Browser Anda tidak mendukung fitur Geolocation.')
+      return
     }
     
-    setLocating(true);
+    setLocating(true)
+    setGpsSuccess(false)
+    setGpsError(null)
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setFormData(prev => ({
           ...prev,
           latitude: position.coords.latitude.toString(),
           longitude: position.coords.longitude.toString()
-        }));
-        setLocating(false);
+        }))
+        setLocating(false)
+        setGpsSuccess(true)
       },
       (error) => {
-        console.error("Error getting location: ", error);
-        alert("Gagal mendapatkan lokasi. Pastikan Anda memberikan izin akses lokasi untuk browser ini.");
-        setLocating(false);
+        console.error('GPS error:', error)
+        setLocating(false)
+        const messages: Record<number, string> = {
+          1: 'Izin lokasi ditolak. Klik ikon 🔒 di address bar lalu ubah Location ke Allow, kemudian refresh halaman.',
+          2: 'Posisi tidak tersedia. Pastikan GPS perangkat Anda aktif.',
+          3: 'Waktu pencarian habis. Coba lagi.',
+        }
+        setGpsError(messages[error.code] ?? 'Gagal mendapatkan lokasi.')
       },
-      { enableHighAccuracy: true }
-    );
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -259,9 +270,22 @@ export default function TambahDesaBinaanPage() {
                     className="text-[#7a1200] border-red-200 hover:bg-red-50 text-xs py-1 h-8"
                   >
                     {locating ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <MapPin className="w-3.5 h-3.5 mr-1.5" />}
-                    {locating ? 'Mencari...' : 'Gunakan GPS Perangkat'}
+                    {locating ? 'Mencari lokasi...' : 'Gunakan GPS Perangkat'}
                   </Button>
                 </div>
+
+                {gpsSuccess && formData.latitude && formData.longitude && (
+                  <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-700 font-medium">
+                    <MapPin className="w-3.5 h-3.5 shrink-0" />
+                    <span>✓ Lokasi berhasil didapat: {Number(formData.latitude).toFixed(6)}, {Number(formData.longitude).toFixed(6)}</span>
+                  </div>
+                )}
+
+                {gpsError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
+                    ⚠️ {gpsError}
+                  </div>
+                )}
                 
                 <MapPicker 
                   defaultLat={formData.latitude ? Number(formData.latitude) : null} 

@@ -68,7 +68,7 @@ export default function SummarySEChartPage() {
   useEffect(() => {
     getAllClinics()
       .then((list) => {
-        const arr = Array.isArray(list) ? list : []
+        const arr = (Array.isArray(list) ? list : []) as { id: number; name: string }[]
         setClinics(arr)
         if (!clinicId && arr.length > 0) {
           const defaultClinic =

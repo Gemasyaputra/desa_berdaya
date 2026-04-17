@@ -182,8 +182,8 @@ export async function GET(req: NextRequest) {
       ORDER BY COALESCE(summary_order, 9999), name
     `
 
-    const clinicRows = Array.isArray(clinics) ? clinics : []
-    const sourceRows = Array.isArray(sources) ? sources : []
+    const clinicRows = Array.isArray(clinics) ? (clinics as any[]) : []
+    const sourceRows = Array.isArray(sources) ? (sources as any[]) : []
 
     const seClinicSource = sourceRows.find((s: any) => s.slug === 'se_klinik' || s.name === 'SE Klinik')
     const seAmbulanceSource = sourceRows.find((s: any) => s.slug === 'se_ambulance' || s.name === 'SE Ambulance')

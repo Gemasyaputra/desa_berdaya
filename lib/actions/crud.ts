@@ -352,7 +352,7 @@ export async function updateDailyTarget(id: number, data: {
 }) {
   try {
     // Validasi: jika target_month atau target_year diupdate, pastikan valid
-    if (data.target_month !== undefined && (data.target_month < 1 || data.target_month > 12)) {
+    if (data.target_month !== undefined && data.target_month !== null && (data.target_month < 1 || data.target_month > 12)) {
       return { success: false, error: 'target_month harus antara 1-12' }
     }
 
@@ -370,7 +370,7 @@ export async function updateDailyTarget(id: number, data: {
       WHERE id = ${id}
       LIMIT 1
     `
-    const existing = Array.isArray(existingRaw) ? existingRaw[0] : existingRaw
+    const existing = (Array.isArray(existingRaw) ? existingRaw[0] : (existingRaw as any)) as any
 
     if (!existing) {
       return { success: false, error: 'Data target harian tidak ditemukan' }
@@ -1146,7 +1146,7 @@ export async function createInsuranceType(data: {
       RETURNING *
     `
     revalidatePath('/dashboard/konfigurasi')
-    return { success: true, data: result[0] }
+    return { success: true, data: (result as any[])[0] }
   } catch (error: any) {
     console.error('Error creating insurance type:', error)
     return { success: false, error: error.message }

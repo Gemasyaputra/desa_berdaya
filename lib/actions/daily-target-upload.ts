@@ -45,12 +45,12 @@ export async function downloadDailyTargetTemplate() {
         'nama_source',    // Helper column, akan di-skip saat upload
       ],
       // Sample data - untuk setiap kombinasi klinik-poli, buat 1 baris per source
-      ...configs.flatMap((config: any) => {
+      ...(configs as any[]).flatMap((config: any) => {
         const todayDate = new Date(today)
         const currentMonth = todayDate.getMonth() + 1
         const currentYear = todayDate.getFullYear()
         
-        return sources.map((source: any, index: number) => {
+        return (sources as any[]).map((source: any, index: number) => {
           // Alternatif antara daily dan cumulative untuk contoh
           const isDaily = index % 2 === 0
           
@@ -186,9 +186,9 @@ export async function uploadDailyTargets(file: File) {
     const allClinics = await sql`SELECT id FROM clinics`
     const allPolies = await sql`SELECT id FROM master_polies`
     const allSources = await sql`SELECT id FROM sources`
-    const clinicIds = new Set(allClinics.map((c: any) => c.id.toString()))
-    const polyIds = new Set(allPolies.map((p: any) => p.id.toString()))
-    const sourceIds = new Set(allSources.map((s: any) => s.id.toString()))
+    const clinicIds = new Set((allClinics as any[]).map((c: any) => c.id.toString()))
+    const polyIds = new Set((allPolies as any[]).map((p: any) => p.id.toString()))
+    const sourceIds = new Set((allSources as any[]).map((s: any) => s.id.toString()))
 
     // Process rows (skip header)
     const results = {

@@ -43,8 +43,8 @@ export async function PATCH(request: NextRequest) {
     }
 
     for (const [key, value] of Object.entries(body)) {
-      if (!ALLOWED_KEYS.has(key)) continue
-      await setAppSetting(key, value == null ? '' : String(value))
+      if (!ALLOWED_KEYS.has(key as any)) continue
+      await setAppSetting(key as any, value == null ? '' : String(value))
     }
 
     const updated = await getAllAppSettings()

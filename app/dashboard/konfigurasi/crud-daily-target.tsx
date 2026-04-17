@@ -571,6 +571,7 @@ export function CRUDDailyTarget({
                   clinic_id: '',
                   master_poly_id: '',
                   source_id: '',
+                  insurance_type_id: '',
                   target_type: 'daily',
                   target_date: new Date().toISOString().split('T')[0],
                   target_month: new Date().getMonth() + 1,

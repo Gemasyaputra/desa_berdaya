@@ -150,7 +150,7 @@ export async function getDashboardStats(tahun: number): Promise<DashboardStats> 
 // =============================================================
 export async function getRangkumanDana(tahun: number): Promise<RangkumanDana> {
   const auth = await getRoleFilter()
-  if (!auth) return { totalAjuan: 0, totalCair: 0, totalRealisasi: 0, sisaSaldo: 0 }
+  if (!auth) return { totalAjuan: 0, totalCair: 0, totalRealisasi: 0, totalPengembalian: 0, sisaSaldo: 0 }
 
   let rows;
   const isAdmin = auth.role === 'ADMIN' || auth.role === 'MONEV' || auth.role === 'FINANCE'

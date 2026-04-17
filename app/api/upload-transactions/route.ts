@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
       FROM master_target_categories
     `
     const categoryMap: Record<string, string> = {}
-    categories.forEach((cat: any) => {
+    ;(categories as any[]).forEach((cat: any) => {
       categoryMap[cat.name] = cat.id_program_zains
     })
 
@@ -194,9 +194,9 @@ export async function POST(request: NextRequest) {
         }
 
         // Validasi klinik exists dan ambil data yang diperlukan
-        const [clinic] = await sql`
+        const [clinic] = (await sql`
           SELECT id, name, id_kantor_zains, id_rekening, kode_coa FROM clinics WHERE id = ${clinicId}
-        `
+        `) as any[]
         if (!clinic) {
           const msg = `Klinik dengan ID ${clinicId} tidak ditemukan`
           errors.push(`Baris ${rowIndex}: ${msg}`)
@@ -286,7 +286,7 @@ export async function POST(request: NextRequest) {
         const ermNoForZains = `${clinicId}${ermNo}`
 
         // Cek apakah transaksi sudah ada
-        const [existingTransaction] = await sql`
+        const [existingTransaction] = (await sql`
           SELECT id FROM transactions
           WHERE clinic_id = ${clinicId} 
             AND erm_no = ${ermNo}
@@ -294,7 +294,7 @@ export async function POST(request: NextRequest) {
             AND polyclinic = ${polyclinic}
             AND bill_total = ${billTotal}
           LIMIT 1
-        `
+        `) as any[]
 
         const isNewTransaction = !existingTransaction
 
@@ -337,7 +337,7 @@ export async function POST(request: NextRequest) {
 
         // Insert atau update transaction dengan input_type = 'upload'
         // patient_id sementara NULL; akan di-update setelah patient ter-insert (jika perlu dikirim ke Zains)
-        const [insertedTransaction] = await sql`
+        const [insertedTransaction] = (await sql`
           INSERT INTO transactions (
             clinic_id, patient_id, poly_id, insurance_type_id, trx_date, trx_no, erm_no, nik, patient_name,
             insurance_type, polyclinic, payment_method, voucher_code,
@@ -382,7 +382,7 @@ export async function POST(request: NextRequest) {
             bill_radio_discount = EXCLUDED.bill_radio_discount,
             updated_at = NOW()
           RETURNING id
-        `
+        `) as any[]
 
         const transactionId = (insertedTransaction as any).id
 
@@ -429,11 +429,11 @@ export async function POST(request: NextRequest) {
             ]
 
         // Cari id_donatur dari patient jika ada (hanya dari patient yang SUDAH ada)
-        const [patientData] = await sql`
+        const [patientData] = (await sql`
           SELECT id_donatur_zains FROM patients 
           WHERE clinic_id = ${clinicId} AND erm_no = ${ermNo}
           LIMIT 1
-        `
+        `) as any[]
         const idDonatur = patientData ? (patientData as any).id_donatur_zains : null
 
         // Counter untuk transaction to zains per transaction (untuk workflow integration)
@@ -449,14 +449,14 @@ export async function POST(request: NextRequest) {
               
               // Cek apakah sudah ada untuk menghindari duplikasi
               // Gunakan kombinasi transaction_id, id_program, dan nominal untuk uniqueness
-              const [existing] = await sql`
+              const [existing] = (await sql`
                 SELECT id FROM transactions_to_zains
                 WHERE transaction_id = ${transactionId}
                   AND id_program = ${idProgram}
                   AND nominal_transaksi = ${nominalValue}
                   AND tgl_transaksi = ${trxDateFormatted}
                 LIMIT 1
-              `
+              `) as any[]
 
               if (!existing) {
                 // id_rekening:
@@ -501,7 +501,7 @@ export async function POST(request: NextRequest) {
         const hasZainsTransaction = transactionZainsInsertedCount > 0
         const defaultIdDonaturZains = hasZainsTransaction ? null : `-${clinicId}-${ermNoForZains}`
 
-        const [insertedPatient] = await sql`
+        const [insertedPatient] = (await sql`
           INSERT INTO patients (
             clinic_id, 
             erm_no, 
@@ -533,7 +533,7 @@ export async function POST(request: NextRequest) {
             erm_no_for_zains = EXCLUDED.erm_no_for_zains,
             updated_at = NOW()
           RETURNING id, visit_count
-        `
+        `) as any[]
 
         patientId = insertedPatient ? (insertedPatient as any).id : null
         patientVisitCount = insertedPatient ? (insertedPatient as any).visit_count : 0

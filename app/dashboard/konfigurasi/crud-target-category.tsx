@@ -123,6 +123,7 @@ export function CRUDTargetCategory({
                 setFormData({
                   name: '',
                   kode_coa: '',
+                  id_program_zains: '',
                   description: '',
                 })
               }}>

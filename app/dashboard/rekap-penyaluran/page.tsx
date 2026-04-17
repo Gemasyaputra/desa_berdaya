@@ -28,6 +28,7 @@ export default function RekapPenyaluranPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterDesa, setFilterDesa] = useState<string[]>([])
   const [filterTahun, setFilterTahun] = useState<string[]>([])
+  const [filterBulan, setFilterBulan] = useState<string[]>([])
   const [filterKategori, setFilterKategori] = useState<string[]>([])
   const [filterSumberDana, setFilterSumberDana] = useState<string[]>([])
   const [filterRelawan, setFilterRelawan] = useState<string[]>([])
@@ -55,6 +56,7 @@ export default function RekapPenyaluranPage() {
       // Dropdown filters
       if (filterDesa.length > 0 && !filterDesa.includes(item.nama_desa)) return false
       if (filterTahun.length > 0 && !filterTahun.includes(item.tahun)) return false
+      if (filterBulan.length > 0 && !filterBulan.includes(item.bulan)) return false
       if (filterKategori.length > 0 && !filterKategori.includes(item.kategori_program)) return false
       if (filterSumberDana.length > 0 && !filterSumberDana.includes(item.sumber_dana)) return false
       if (filterRelawan.length > 0 && !filterRelawan.includes(item.relawan_nama)) return false
@@ -70,12 +72,13 @@ export default function RekapPenyaluranPage() {
         item.relawan_nama?.toLowerCase().includes(q)
       )
     })
-  }, [data, searchQuery, filterDesa, filterTahun, filterKategori, filterSumberDana, filterRelawan])
+  }, [data, searchQuery, filterDesa, filterTahun, filterBulan, filterKategori, filterSumberDana, filterRelawan])
 
   // Extract unique options for filters
   const filterOptions = useMemo(() => {
     const desaSet = new Set<string>()
     const tahunSet = new Set<string>()
+    const bulanSet = new Set<string>()
     const kategoriSet = new Set<string>()
     const sumberDanaSet = new Set<string>()
     const relawanSet = new Set<string>()
@@ -83,6 +86,7 @@ export default function RekapPenyaluranPage() {
     data.forEach(item => {
       if (item.nama_desa && item.nama_desa !== '-') desaSet.add(item.nama_desa)
       if (item.tahun && item.tahun !== '-') tahunSet.add(item.tahun)
+      if (item.bulan && item.bulan !== '-') bulanSet.add(item.bulan)
       if (item.kategori_program && item.kategori_program !== '-') kategoriSet.add(item.kategori_program)
       if (item.sumber_dana && item.sumber_dana !== '-') sumberDanaSet.add(item.sumber_dana)
       if (item.relawan_nama && item.relawan_nama !== '-') relawanSet.add(item.relawan_nama)
@@ -91,6 +95,7 @@ export default function RekapPenyaluranPage() {
     return {
       desa: Array.from(desaSet).sort(),
       tahun: Array.from(tahunSet).sort((a,b) => b.localeCompare(a)),
+      bulan: Array.from(bulanSet).sort(),
       kategori: Array.from(kategoriSet).sort(),
       sumberDana: Array.from(sumberDanaSet).sort(),
       relawan: Array.from(relawanSet).sort()
@@ -204,7 +209,7 @@ export default function RekapPenyaluranPage() {
     })
     
     // Final Grand Totals row
-    const totalsRow = ['GRAND TOTAL', '']
+    const totalsRow: (string | number)[] = ['GRAND TOTAL', '']
     uniquePrograms.forEach(pName => {
       // Calculate total for this specific column
       let sAjuan = 0, sCair = 0, sReali = 0, sPeng = 0, sSisa = 0
@@ -345,6 +350,12 @@ export default function RekapPenyaluranPage() {
               options={filterOptions.tahun} 
               selected={filterTahun} 
               onChange={setFilterTahun} 
+            />
+            <MultiSelect 
+              title="Bulan" 
+              options={filterOptions.bulan} 
+              selected={filterBulan} 
+              onChange={setFilterBulan} 
             />
             <MultiSelect 
               title="Desa" 

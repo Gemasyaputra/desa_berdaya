@@ -13,7 +13,7 @@ export async function POST() {
       `✅ [Upstash Workflow] Sync transaksi batch selesai: ${result.success} berhasil, ${result.failed} gagal dari ${result.total} records`,
     )
     return NextResponse.json({
-      success: result.failed === 0,
+      isSuccess: result.failed === 0,
       message: `Sync transaksi ke Zains: ${result.success} berhasil, ${result.failed} gagal dari ${result.total} records`,
       total: result.total,
       success: result.success,

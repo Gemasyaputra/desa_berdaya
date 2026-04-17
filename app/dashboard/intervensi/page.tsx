@@ -34,13 +34,13 @@ function MultiSelectFilter({ label, options, selected, onSelect, onClear, icon }
           size="sm" 
           className={cn(
             "h-10 rounded-xl border-slate-200 font-medium text-slate-600 hover:bg-slate-50 gap-2 px-3 transition-all",
-            selected.length > 0 && "border-[#008784]/30 bg-[#008784]/5 text-[#008784] hover:bg-[#008784]/10"
+            selected.length > 0 && "border-[#7a1200]/30 bg-[#7a1200]/5 text-[#7a1200] hover:bg-[#7a1200]/10"
           )}
         >
           {icon || <Filter className="w-4 h-4 text-slate-400" />}
           {label}
           {selected.length > 0 && (
-            <Badge variant="secondary" className="ml-1 px-1.5 py-0 h-5 bg-[#008784]/10 text-[#008784] border-none font-bold text-[10px]">
+            <Badge variant="secondary" className="ml-1 px-1.5 py-0 h-5 bg-[#7a1200]/10 text-[#7a1200] border-none font-bold text-[10px]">
               {selected.length}
             </Badge>
           )}
@@ -59,14 +59,14 @@ function MultiSelectFilter({ label, options, selected, onSelect, onClear, icon }
                   className="rounded-lg cursor-pointer py-2 px-3 data-[selected=true]:bg-slate-50 group"
                 >
                   <div className={cn(
-                    "mr-3 flex h-4 w-4 items-center justify-center rounded border border-slate-300 transition-colors group-hover:border-[#008784]/50",
-                    selected.includes(option) ? "bg-[#008784] border-[#008784]" : "bg-white"
+                    "mr-3 flex h-4 w-4 items-center justify-center rounded border border-slate-300 transition-colors group-hover:border-[#7a1200]/50",
+                    selected.includes(option) ? "bg-[#7a1200] border-[#7a1200]" : "bg-white"
                   )}>
                     {selected.includes(option) && <Check className="h-3 w-3 text-white stroke-[3px]" />}
                   </div>
                   <span className={cn(
                     "text-sm font-medium transition-colors",
-                    selected.includes(option) ? "text-[#008784] font-bold" : "text-slate-600"
+                    selected.includes(option) ? "text-[#7a1200] font-bold" : "text-slate-600"
                   )}>
                     {option}
                   </span>
@@ -584,8 +584,8 @@ export default function IntervensiListPage() {
     <div className="p-8 max-w-[1400px] mx-auto space-y-8 bg-slate-50/50 min-h-screen">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-[#008784]/10 border border-[#008784]/20 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform hover:scale-105">
-            <Target className="w-7 h-7 text-[#008784]" />
+          <div className="w-14 h-14 bg-[#7a1200]/10 border border-[#7a1200]/20 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform hover:scale-105">
+            <Target className="w-7 h-7 text-[#7a1200]" />
           </div>
           <div>
             <h1 className="text-2xl font-black tracking-tight text-slate-800">Intervensi Program</h1>
@@ -596,13 +596,13 @@ export default function IntervensiListPage() {
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
           <Button
             variant="outline"
-            className="border-[#008784]/40 text-[#008784] hover:bg-[#008784]/5 shadow-sm px-5 h-auto py-2 rounded-xl transition-all w-full sm:w-auto gap-2 items-start"
+            className="border-[#7a1200]/40 text-[#7a1200] hover:bg-[#7a1200]/5 shadow-sm px-5 h-auto py-2 rounded-xl transition-all w-full sm:w-auto gap-2 items-start"
             onClick={() => setIsImportOpen(true)}
           >
             <FileSpreadsheet className="w-4 h-4 mt-0.5 flex-shrink-0" />
             <div className="flex flex-col text-left">
               <span className="font-bold text-sm leading-tight">Import Excel</span>
-              <span className="text-[10px] font-medium text-[#008784]/60 leading-tight mt-0.5">Template tersedia di dalam</span>
+              <span className="text-[10px] font-medium text-[#7a1200]/60 leading-tight mt-0.5">Template tersedia di dalam</span>
             </div>
           </Button>
           <Button
@@ -647,7 +647,7 @@ export default function IntervensiListPage() {
             </Button>
           )}
           <Button 
-            className="bg-[#008784] hover:bg-[#006e6b] text-white shadow-lg shadow-[#008784]/20 px-6 h-12 rounded-xl font-bold transition-all w-full md:w-auto active:scale-95"
+            className="bg-[#7a1200] hover:bg-[#006e6b] text-white shadow-lg shadow-[#7a1200]/20 px-6 h-12 rounded-xl font-bold transition-all w-full md:w-auto active:scale-95"
             onClick={() => router.push('/dashboard/intervensi/tambah')}
           >
             <Plus className="w-5 h-5 mr-2" />
@@ -660,7 +660,7 @@ export default function IntervensiListPage() {
         <CardHeader className="bg-white border-b border-slate-100 px-8 py-6">
           <div className="flex flex-col xl:flex-row gap-6 items-start xl:items-center justify-between">
             <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <LayoutGrid className="w-5 h-5 text-[#008784]" /> 
+              <LayoutGrid className="w-5 h-5 text-[#7a1200]" /> 
               Daftar Intervensi Program
               {!loading && (
                 <span className="text-sm font-semibold text-slate-400 ml-1">
@@ -671,14 +671,14 @@ export default function IntervensiListPage() {
 
             {/* Selection action bar */}
             {selectedIds.size > 0 && (
-              <div className="flex items-center gap-3 bg-[#008784]/5 border border-[#008784]/20 rounded-2xl px-4 py-2.5">
+              <div className="flex items-center gap-3 bg-[#7a1200]/5 border border-[#7a1200]/20 rounded-2xl px-4 py-2.5">
                 <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 bg-[#008784] rounded-md flex items-center justify-center">
+                  <div className="w-5 h-5 bg-[#7a1200] rounded-md flex items-center justify-center">
                     <Check className="w-3 h-3 text-white stroke-[3px]" />
                   </div>
-                  <span className="text-sm font-bold text-[#008784]">{selectedIds.size} dipilih</span>
+                  <span className="text-sm font-bold text-[#7a1200]">{selectedIds.size} dipilih</span>
                 </div>
-                <div className="w-px h-4 bg-[#008784]/20" />
+                <div className="w-px h-4 bg-[#7a1200]/20" />
                 <button
                   className="text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors"
                   onClick={clearSelection}
@@ -687,7 +687,7 @@ export default function IntervensiListPage() {
                 </button>
                 <Button
                   size="sm"
-                  className="bg-[#008784] hover:bg-[#006e6b] text-white rounded-xl font-bold px-4 h-8 gap-1.5 shadow-sm shadow-[#008784]/20"
+                  className="bg-[#7a1200] hover:bg-[#006e6b] text-white rounded-xl font-bold px-4 h-8 gap-1.5 shadow-sm shadow-[#7a1200]/20"
                   disabled={isExporting}
                   onClick={handleExport}
                 >
@@ -703,7 +703,7 @@ export default function IntervensiListPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 <Input
                   placeholder="Cari desa, program, relawan..."
-                  className="pl-9 h-10 w-full sm:w-64 rounded-xl border-slate-200 text-sm shadow-sm focus:border-[#008784]/40 focus:ring-4 focus:ring-[#008784]/10 transition-all"
+                  className="pl-9 h-10 w-full sm:w-64 rounded-xl border-slate-200 text-sm shadow-sm focus:border-[#7a1200]/40 focus:ring-4 focus:ring-[#7a1200]/10 transition-all"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                 />
@@ -769,10 +769,10 @@ export default function IntervensiListPage() {
                     <div
                       className={`w-4 h-4 rounded border-2 cursor-pointer flex items-center justify-center transition-colors ${
                         allFilteredSelected
-                          ? 'bg-[#008784] border-[#008784]'
+                          ? 'bg-[#7a1200] border-[#7a1200]'
                           : someFilteredSelected
-                          ? 'bg-[#008784]/30 border-[#008784]'
-                          : 'border-slate-300 hover:border-[#008784]/60'
+                          ? 'bg-[#7a1200]/30 border-[#7a1200]'
+                          : 'border-slate-300 hover:border-[#7a1200]/60'
                       }`}
                       onClick={toggleAllFiltered}
                       title={allFilteredSelected ? 'Batal pilih semua' : 'Pilih semua'}
@@ -824,7 +824,7 @@ export default function IntervensiListPage() {
                     <tr
                       key={row.id}
                       className={`hover:bg-slate-50/80 transition-colors group ${
-                        selectedIds.has(row.id) ? 'bg-[#008784]/5' : ''
+                        selectedIds.has(row.id) ? 'bg-[#7a1200]/5' : ''
                       }`}
                     >
                       {/* Per-row checkbox */}
@@ -832,8 +832,8 @@ export default function IntervensiListPage() {
                         <div
                           className={`w-4 h-4 rounded border-2 cursor-pointer flex items-center justify-center transition-colors ${
                             selectedIds.has(row.id)
-                              ? 'bg-[#008784] border-[#008784]'
-                              : 'border-slate-300 hover:border-[#008784]/60'
+                              ? 'bg-[#7a1200] border-[#7a1200]'
+                              : 'border-slate-300 hover:border-[#7a1200]/60'
                           }`}
                           onClick={() => toggleRow(row.id)}
                         >
@@ -843,9 +843,9 @@ export default function IntervensiListPage() {
                         </div>
                       </td>
                       <td className="px-8 py-5">
-                        <div className="font-bold text-slate-800 mb-1 group-hover:text-[#008784] transition-colors">{row.nama_desa || '-'}</div>
+                        <div className="font-bold text-slate-800 mb-1 group-hover:text-[#7a1200] transition-colors">{row.nama_desa || '-'}</div>
                         <div className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#008784]"></span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#7a1200]"></span>
                           {row.nama_program || '-'}
                         </div>
                       </td>
@@ -867,7 +867,7 @@ export default function IntervensiListPage() {
                           <Button 
                             variant="outline"
                             size="sm"
-                            className="rounded-xl border-slate-200 text-slate-600 hover:text-[#008784] hover:border-[#008784]/30 hover:bg-[#008784]/5 font-bold px-4 transition-all active:scale-95"
+                            className="rounded-xl border-slate-200 text-slate-600 hover:text-[#7a1200] hover:border-[#7a1200]/30 hover:bg-[#7a1200]/5 font-bold px-4 transition-all active:scale-95"
                             onClick={() => router.push(`/dashboard/intervensi/${row.id}`)}
                           >
                             Detail
@@ -972,7 +972,7 @@ export default function IntervensiListPage() {
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-700">Pilih Desa Binaan Baru <span className="text-rose-500">*</span></label>
                 <select 
-                  className="flex h-10 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#008784]/20 focus:border-[#008784] hover:bg-slate-50/50 cursor-pointer transition-colors"
+                  className="flex h-10 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7a1200]/20 focus:border-[#7a1200] hover:bg-slate-50/50 cursor-pointer transition-colors"
                   value={duplicateForm.desa_id}
                   onChange={(e) => setDuplicateForm(prev => ({...prev, desa_id: e.target.value}))}
                 >
@@ -985,7 +985,7 @@ export default function IntervensiListPage() {
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-700">Pilih Program Baru <span className="text-rose-500">*</span></label>
                 <select 
-                  className="flex h-10 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#008784]/20 focus:border-[#008784] hover:bg-slate-50/50 cursor-pointer transition-colors"
+                  className="flex h-10 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7a1200]/20 focus:border-[#7a1200] hover:bg-slate-50/50 cursor-pointer transition-colors"
                   value={duplicateForm.program_id}
                   onChange={(e) => setDuplicateForm(prev => ({...prev, program_id: e.target.value}))}
                 >

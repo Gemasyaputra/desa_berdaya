@@ -266,10 +266,10 @@ export default function DashboardPage() {
 
         {/* ── Section 2.5: Rangkuman Dana Intervensi ── */}
         <section className="bg-white border text-left border-emerald-100/50 shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-3xl p-8 ring-1 ring-slate-50 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-[#008784]/5 rounded-full -mr-32 -mt-32 blur-3xl opacity-50" />
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#7a1200]/5 rounded-full -mr-32 -mt-32 blur-3xl opacity-50" />
           <div className="flex items-center gap-4 mb-8">
             <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center border border-emerald-100 shadow-sm relative z-10">
-              <Wallet className="w-6 h-6 text-[#008784]" />
+              <Wallet className="w-6 h-6 text-[#7a1200]" />
             </div>
             <div className="relative z-10">
               <h2 className="text-xl font-black text-slate-800 tracking-tight">Rangkuman Keuangan Intervensi</h2>
@@ -286,9 +286,9 @@ export default function DashboardPage() {
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Total Ajuan RI</p>
                   <p className="text-xl sm:text-2xl font-black text-slate-700 tracking-tight">{formatRupiahFull(rangkumanDana?.totalAjuan ?? 0)}</p>
                 </div>
-                <div className="bg-[#008784]/5 border border-[#008784]/10 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                  <p className="text-[10px] font-black text-[#008784]/60 uppercase tracking-widest mb-2">Anggaran Dicairkan</p>
-                  <p className="text-xl sm:text-2xl font-black text-[#008784] tracking-tight">{formatRupiahFull(rangkumanDana?.totalCair ?? 0)}</p>
+                <div className="bg-[#7a1200]/5 border border-[#7a1200]/10 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <p className="text-[10px] font-black text-[#7a1200]/60 uppercase tracking-widest mb-2">Anggaran Dicairkan</p>
+                  <p className="text-xl sm:text-2xl font-black text-[#7a1200] tracking-tight">{formatRupiahFull(rangkumanDana?.totalCair ?? 0)}</p>
                 </div>
                 <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
                   <p className="text-[10px] font-black text-amber-600/70 uppercase tracking-widest mb-2">Verified Realisasi</p>

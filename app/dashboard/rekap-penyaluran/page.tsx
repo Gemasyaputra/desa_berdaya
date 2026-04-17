@@ -20,15 +20,17 @@ import { toast } from 'sonner'
 import * as XLSX from 'xlsx'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { MultiSelect } from '@/components/ui/multi-select'
 
 export default function RekapPenyaluranPage() {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterDesa, setFilterDesa] = useState('all')
-  const [filterKategori, setFilterKategori] = useState('all')
-  const [filterSumberDana, setFilterSumberDana] = useState('all')
-  const [filterRelawan, setFilterRelawan] = useState('all')
+  const [filterDesa, setFilterDesa] = useState<string[]>([])
+  const [filterTahun, setFilterTahun] = useState<string[]>([])
+  const [filterKategori, setFilterKategori] = useState<string[]>([])
+  const [filterSumberDana, setFilterSumberDana] = useState<string[]>([])
+  const [filterRelawan, setFilterRelawan] = useState<string[]>([])
   const [itemsPerPage, setItemsPerPage] = useState<number>(50)
   const [currentPage, setCurrentPage] = useState<number>(1)
 
@@ -51,10 +53,11 @@ export default function RekapPenyaluranPage() {
   const filteredData = useMemo(() => {
     return data.filter(item => {
       // Dropdown filters
-      if (filterDesa !== 'all' && item.nama_desa !== filterDesa) return false
-      if (filterKategori !== 'all' && item.kategori_program !== filterKategori) return false
-      if (filterSumberDana !== 'all' && item.sumber_dana !== filterSumberDana) return false
-      if (filterRelawan !== 'all' && item.relawan_nama !== filterRelawan) return false
+      if (filterDesa.length > 0 && !filterDesa.includes(item.nama_desa)) return false
+      if (filterTahun.length > 0 && !filterTahun.includes(item.tahun)) return false
+      if (filterKategori.length > 0 && !filterKategori.includes(item.kategori_program)) return false
+      if (filterSumberDana.length > 0 && !filterSumberDana.includes(item.sumber_dana)) return false
+      if (filterRelawan.length > 0 && !filterRelawan.includes(item.relawan_nama)) return false
 
       // Text search
       if (!searchQuery) return true
@@ -67,17 +70,19 @@ export default function RekapPenyaluranPage() {
         item.relawan_nama?.toLowerCase().includes(q)
       )
     })
-  }, [data, searchQuery, filterDesa, filterKategori, filterSumberDana, filterRelawan])
+  }, [data, searchQuery, filterDesa, filterTahun, filterKategori, filterSumberDana, filterRelawan])
 
   // Extract unique options for filters
   const filterOptions = useMemo(() => {
     const desaSet = new Set<string>()
+    const tahunSet = new Set<string>()
     const kategoriSet = new Set<string>()
     const sumberDanaSet = new Set<string>()
     const relawanSet = new Set<string>()
 
     data.forEach(item => {
       if (item.nama_desa && item.nama_desa !== '-') desaSet.add(item.nama_desa)
+      if (item.tahun && item.tahun !== '-') tahunSet.add(item.tahun)
       if (item.kategori_program && item.kategori_program !== '-') kategoriSet.add(item.kategori_program)
       if (item.sumber_dana && item.sumber_dana !== '-') sumberDanaSet.add(item.sumber_dana)
       if (item.relawan_nama && item.relawan_nama !== '-') relawanSet.add(item.relawan_nama)
@@ -85,6 +90,7 @@ export default function RekapPenyaluranPage() {
 
     return {
       desa: Array.from(desaSet).sort(),
+      tahun: Array.from(tahunSet).sort((a,b) => b.localeCompare(a)),
       kategori: Array.from(kategoriSet).sort(),
       sumberDana: Array.from(sumberDanaSet).sort(),
       relawan: Array.from(relawanSet).sort()
@@ -243,7 +249,7 @@ export default function RekapPenyaluranPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[80vh] min-h-[400px]">
-        <div className="animate-spin w-10 h-10 border-4 border-[#008784] border-t-transparent rounded-full"></div>
+        <div className="animate-spin w-10 h-10 border-4 border-[#7a1200] border-t-transparent rounded-full"></div>
       </div>
     )
   }
@@ -278,15 +284,15 @@ export default function RekapPenyaluranPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white border-l-4 border-l-[#008784]">
+        <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white border-l-4 border-l-[#7a1200]">
           <CardContent className="p-6">
             <div className="flex gap-4 items-center">
-              <div className="w-12 h-12 rounded-xl bg-[#008784]/10 text-[#008784] flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-[#7a1200]/10 text-[#7a1200] flex items-center justify-center">
                 <Wallet className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-xs font-bold font-mono text-[#008784]/70 uppercase tracking-widest mb-1">Total Anggaran Cair</p>
-                <p className="text-2xl font-black text-[#008784]">Rp {totals.totalCair.toLocaleString('id-ID')}</p>
+                <p className="text-xs font-bold font-mono text-[#7a1200]/70 uppercase tracking-widest mb-1">Total Anggaran Cair</p>
+                <p className="text-2xl font-black text-[#7a1200]">Rp {totals.totalCair.toLocaleString('id-ID')}</p>
               </div>
             </div>
           </CardContent>
@@ -330,49 +336,40 @@ export default function RekapPenyaluranPage() {
               placeholder="Cari kata kunci..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#008784] focus:ring-4 focus:ring-[#008784]/10 transition-all outline-none text-sm text-slate-700"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#7a1200] focus:ring-4 focus:ring-[#7a1200]/10 transition-all outline-none text-sm text-slate-700"
             />
           </div>
           <div className="flex flex-wrap lg:flex-nowrap gap-3">
-            <Select value={filterDesa} onValueChange={setFilterDesa}>
-              <SelectTrigger className="w-full lg:w-[160px] bg-slate-50 border-slate-200 rounded-xl h-[42px]">
-                <SelectValue placeholder="Semua Desa" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[300px]">
-                <SelectItem value="all">Semua Desa</SelectItem>
-                {filterOptions.desa.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-              </SelectContent>
-            </Select>
-
-            <Select value={filterKategori} onValueChange={setFilterKategori}>
-              <SelectTrigger className="w-full lg:w-[160px] bg-slate-50 border-slate-200 rounded-xl h-[42px]">
-                <SelectValue placeholder="Semua Kategori" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[300px]">
-                <SelectItem value="all">Semua Kategori</SelectItem>
-                {filterOptions.kategori.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
-              </SelectContent>
-            </Select>
-
-            <Select value={filterSumberDana} onValueChange={setFilterSumberDana}>
-              <SelectTrigger className="w-full lg:w-[180px] bg-slate-50 border-slate-200 rounded-xl h-[42px]">
-                <SelectValue placeholder="Semua Sumber Dana" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[300px]">
-                <SelectItem value="all">Semua Sumber Dana</SelectItem>
-                {filterOptions.sumberDana.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
-
-            <Select value={filterRelawan} onValueChange={setFilterRelawan}>
-              <SelectTrigger className="w-full lg:w-[160px] bg-slate-50 border-slate-200 rounded-xl h-[42px]">
-                <SelectValue placeholder="Semua Relawan" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[300px]">
-                <SelectItem value="all">Semua Relawan</SelectItem>
-                {filterOptions.relawan.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <MultiSelect 
+              title="Tahun" 
+              options={filterOptions.tahun} 
+              selected={filterTahun} 
+              onChange={setFilterTahun} 
+            />
+            <MultiSelect 
+              title="Desa" 
+              options={filterOptions.desa} 
+              selected={filterDesa} 
+              onChange={setFilterDesa} 
+            />
+            <MultiSelect 
+              title="Kategori" 
+              options={filterOptions.kategori} 
+              selected={filterKategori} 
+              onChange={setFilterKategori} 
+            />
+            <MultiSelect 
+              title="Sumber Dana" 
+              options={filterOptions.sumberDana} 
+              selected={filterSumberDana} 
+              onChange={setFilterSumberDana} 
+            />
+            <MultiSelect 
+              title="Relawan" 
+              options={filterOptions.relawan} 
+              selected={filterRelawan} 
+              onChange={setFilterRelawan} 
+            />
 
             <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(Number(val))}>
               <SelectTrigger className="w-full lg:w-[130px] bg-slate-50 border-slate-200 rounded-xl h-[42px]">
@@ -401,14 +398,14 @@ export default function RekapPenyaluranPage() {
                 {uniquePrograms.map(p => (
                   <React.Fragment key={p + '_sub'}>
                     <th className="px-3 py-2 text-right font-bold tracking-widest min-w-[100px] border-l border-slate-200">Ajuan RI</th>
-                    <th className="px-3 py-2 text-right font-bold tracking-widest min-w-[100px] text-[#008784]">Cair</th>
+                    <th className="px-3 py-2 text-right font-bold tracking-widest min-w-[100px] text-[#7a1200]">Cair</th>
                     <th className="px-3 py-2 text-right font-bold tracking-widest min-w-[100px] text-amber-600">Realisasi</th>
                     <th className="px-3 py-2 text-right font-bold tracking-widest min-w-[100px] text-rose-500">Refund</th>
                     <th className="px-3 py-2 text-right font-bold tracking-widest min-w-[120px] border-r border-slate-200">Saldo</th>
                   </React.Fragment>
                 ))}
                 <th className="px-3 py-2 text-right font-black tracking-widest min-w-[110px] border-l border-slate-300">Total Ajuan</th>
-                <th className="px-3 py-2 text-right font-black tracking-widest min-w-[110px] text-[#008784]">Total Cair</th>
+                <th className="px-3 py-2 text-right font-black tracking-widest min-w-[110px] text-[#7a1200]">Total Cair</th>
                 <th className="px-3 py-2 text-right font-black tracking-widest min-w-[110px] text-amber-600">Total Realisasi</th>
                 <th className="px-3 py-2 text-right font-black tracking-widest min-w-[110px] text-rose-500">Total Refund</th>
                 <th className="px-3 py-2 text-right font-black tracking-widest min-w-[130px] text-indigo-700 bg-indigo-50/20">Total Saldo</th>
@@ -442,7 +439,7 @@ export default function RekapPenyaluranPage() {
                       return (
                         <React.Fragment key={`${row.nama_desa}_${p}`}>
                           <td className="px-3 py-3 text-right tabular-nums border-l border-slate-100/50">{pData.ajuan === 0 ? '-' : pData.ajuan.toLocaleString('id-ID')}</td>
-                          <td className="px-3 py-3 text-right tabular-nums font-bold text-[#008784]/80">{pData.cair === 0 ? '-' : pData.cair.toLocaleString('id-ID')}</td>
+                          <td className="px-3 py-3 text-right tabular-nums font-bold text-[#7a1200]/80">{pData.cair === 0 ? '-' : pData.cair.toLocaleString('id-ID')}</td>
                           <td className="px-3 py-3 text-right tabular-nums font-bold text-amber-600/80">{pData.realisasi === 0 ? '-' : pData.realisasi.toLocaleString('id-ID')}</td>
                           <td className="px-3 py-3 text-right tabular-nums text-rose-500/80">{pData.pengembalian === 0 ? '-' : pData.pengembalian.toLocaleString('id-ID')}</td>
                           <td className="px-3 py-3 text-right tabular-nums border-r border-slate-100/50">
@@ -454,7 +451,7 @@ export default function RekapPenyaluranPage() {
                       )
                     })}
                     <td className="px-3 py-3 text-right tabular-nums font-black border-l border-slate-300 bg-slate-50/50">{row.rowTotal.ajuan.toLocaleString('id-ID')}</td>
-                    <td className="px-3 py-3 text-right tabular-nums font-black text-[#008784] bg-emerald-50/30">{row.rowTotal.cair.toLocaleString('id-ID')}</td>
+                    <td className="px-3 py-3 text-right tabular-nums font-black text-[#7a1200] bg-emerald-50/30">{row.rowTotal.cair.toLocaleString('id-ID')}</td>
                     <td className="px-3 py-3 text-right tabular-nums font-black text-amber-600 bg-amber-50/30">{row.rowTotal.realisasi.toLocaleString('id-ID')}</td>
                     <td className="px-3 py-3 text-right tabular-nums font-black text-rose-500 bg-rose-50/30">{row.rowTotal.pengembalian.toLocaleString('id-ID')}</td>
                     <td className="px-3 py-3 text-right tabular-nums font-black text-indigo-700 bg-indigo-50/50">{row.rowTotal.sisa.toLocaleString('id-ID')}</td>

@@ -328,7 +328,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-      <Loader2 className="w-12 h-12 text-[#008784] animate-spin" />
+      <Loader2 className="w-12 h-12 text-[#7a1200] animate-spin" />
       <p className="font-bold text-slate-500">Memuat detail keuangan...</p>
     </div>
   )
@@ -369,7 +369,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
           <div className="flex items-center justify-center">
             {!isAdminOrFinance ? (
               <button 
-                className="inline-flex items-center justify-center gap-1.5 text-[10px] font-bold text-slate-400 bg-slate-50 hover:bg-[#008784]/10 hover:text-[#008784] py-1.5 px-3 rounded-md transition-colors border border-dashed border-slate-200 whitespace-nowrap"
+                className="inline-flex items-center justify-center gap-1.5 text-[10px] font-bold text-slate-400 bg-slate-50 hover:bg-[#7a1200]/10 hover:text-[#7a1200] py-1.5 px-3 rounded-md transition-colors border border-dashed border-slate-200 whitespace-nowrap"
                 onClick={(e) => { e.stopPropagation(); setPengUploadDialog({ open: true, anggaranId: a.id }) }}
               >
                 <Upload className="w-3 h-3" />
@@ -410,7 +410,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
           {(!isAdminOrFinance && !isVerified) && (
             <button
               onClick={(e) => { e.stopPropagation(); setPengUploadDialog({ open: true, anggaranId: a.id }) }}
-              className="text-slate-400 hover:text-[#008784] transition-colors p-1 rounded-md"
+              className="text-slate-400 hover:text-[#7a1200] transition-colors p-1 rounded-md"
               title="Tambah Refund"
             >
               <Upload className="w-4 h-4" />
@@ -429,14 +429,14 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
               <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
                 <button 
                   onClick={() => setViewMode('grid')}
-                  className={`p-1 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-[#008784] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  className={`p-1 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-[#7a1200] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                   title="Grid View"
                 >
                   <LayoutGrid className="w-3.5 h-3.5" />
                 </button>
                 <button 
                   onClick={() => setViewMode('table')}
-                  className={`p-1 rounded-md transition-all ${viewMode === 'table' ? 'bg-white text-[#008784] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  className={`p-1 rounded-md transition-all ${viewMode === 'table' ? 'bg-white text-[#7a1200] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                   title="Table View"
                 >
                   <Table className="w-3.5 h-3.5" />
@@ -463,7 +463,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                           return (
                             <div className="flex flex-wrap gap-1 mt-0.5">
                               {kJuduls.map((kj: string, i: number) => (
-                                <span key={i} className="text-[9px] text-[#008784] font-black uppercase tracking-widest bg-[#008784]/5 border border-[#008784]/20 rounded px-1.5 py-0.5 w-fit truncate max-w-full">Kegiatan: {kj}</span>
+                                <span key={i} className="text-[9px] text-[#7a1200] font-black uppercase tracking-widest bg-[#7a1200]/5 border border-[#7a1200]/20 rounded px-1.5 py-0.5 w-fit truncate max-w-full">Kegiatan: {kj}</span>
                               ))}
                             </div>
                           )
@@ -483,7 +483,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                       </div>
                     </div>
                     {entry.nominal !== undefined && (
-                      <div className={`text-[11px] font-black mb-2 border-b pb-1.5 ${entry.ditolak ? 'text-rose-700/70 border-rose-100/50 line-through' : 'text-[#008784] border-emerald-100/50'}`}>
+                      <div className={`text-[11px] font-black mb-2 border-b pb-1.5 ${entry.ditolak ? 'text-rose-700/70 border-rose-100/50 line-through' : 'text-[#7a1200] border-emerald-100/50'}`}>
                         Rp {Number(entry.nominal).toLocaleString('id-ID')}
                       </div>
                     )}
@@ -493,7 +493,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                           {isImage(u) ? (
                             <img src={u} onClick={(e) => { e.stopPropagation(); setPreviewImage(u) }} className="w-full h-full object-cover rounded-md cursor-pointer border border-slate-200" alt="Bukti Refund" />
                           ) : (
-                            <a href={u} target="_blank" onClick={(e) => e.stopPropagation()} className="w-full h-full bg-[#008784]/10 text-[#008784] rounded flex items-center justify-center">
+                            <a href={u} target="_blank" onClick={(e) => e.stopPropagation()} className="w-full h-full bg-[#7a1200]/10 text-[#7a1200] rounded flex items-center justify-center">
                               <FileText className="w-4 h-4" />
                             </a>
                           )}
@@ -539,7 +539,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                               })()}
                             </div>
                           </td>
-                          <td className={`px-3 py-3 text-right font-black border-r border-slate-100 ${entry.ditolak ? 'text-rose-700 line-through' : 'text-[#008784]'}`}>
+                          <td className={`px-3 py-3 text-right font-black border-r border-slate-100 ${entry.ditolak ? 'text-rose-700 line-through' : 'text-[#7a1200]'}`}>
                             Rp {Number(entry.nominal).toLocaleString('id-ID')}
                           </td>
                           <td className="px-3 py-3 border-r border-slate-100">
@@ -582,7 +582,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
             {(!isAdminOrFinance && a.status_pengembalian !== 'DIVERIFIKASI') && (
               <button
                 onClick={(e) => { e.stopPropagation(); setPengUploadDialog({ open: true, anggaranId: a.id }) }}
-                className="text-[10px] font-bold text-slate-500 hover:text-[#008784] py-2.5 text-center w-full rounded-xl border border-dashed border-slate-300 hover:bg-[#008784]/5 transition-colors uppercase tracking-widest mt-1"
+                className="text-[10px] font-bold text-slate-500 hover:text-[#7a1200] py-2.5 text-center w-full rounded-xl border border-dashed border-slate-300 hover:bg-[#7a1200]/5 transition-colors uppercase tracking-widest mt-1"
               >
                 + Tambah Refund
               </button>
@@ -593,9 +593,9 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
             {!isAdminOrFinance ? (
               <div
                 onClick={(e) => { e.stopPropagation(); setPengUploadDialog({ open: true, anggaranId: a.id }) }}
-                className="p-4 border-2 border-dashed border-slate-200 rounded-xl hover:border-[#008784] hover:bg-[#008784]/5 transition-all text-center flex justify-center cursor-pointer items-center min-h-[80px]"
+                className="p-4 border-2 border-dashed border-slate-200 rounded-xl hover:border-[#7a1200] hover:bg-[#7a1200]/5 transition-all text-center flex justify-center cursor-pointer items-center min-h-[80px]"
               >
-                {uploadingId === a.id ? <Loader2 className="w-6 h-6 animate-spin text-[#008784]" /> : <Upload className="w-6 h-6 text-slate-300" />}
+                {uploadingId === a.id ? <Loader2 className="w-6 h-6 animate-spin text-[#7a1200]" /> : <Upload className="w-6 h-6 text-slate-300" />}
               </div>
             ) : (
               <div className="p-4 border-2 border-dashed border-slate-100 rounded-xl bg-slate-50 text-slate-400 text-xs text-center flex justify-center items-center min-h-[80px] font-bold uppercase tracking-widest">
@@ -632,7 +632,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
           <div className="flex items-center justify-center">
             {!isAdminOrFinance ? (
               <button 
-                className="inline-flex items-center justify-center gap-1.5 text-[10px] font-bold text-slate-400 bg-slate-50 hover:bg-[#008784]/10 hover:text-[#008784] py-1.5 px-3 rounded-md transition-colors border border-dashed border-slate-200 whitespace-nowrap"
+                className="inline-flex items-center justify-center gap-1.5 text-[10px] font-bold text-slate-400 bg-slate-50 hover:bg-[#7a1200]/10 hover:text-[#7a1200] py-1.5 px-3 rounded-md transition-colors border border-dashed border-slate-200 whitespace-nowrap"
                 onClick={(e) => { e.stopPropagation(); setCaUploadDialog({ open: true, anggaranId: a.id }) }}
               >
                 <Upload className="w-3 h-3" />
@@ -673,7 +673,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
           {(!isAdminOrFinance && !isVerified) && (
             <button
               onClick={(e) => { e.stopPropagation(); setCaUploadDialog({ open: true, anggaranId: a.id }) }}
-              className="text-slate-400 hover:text-[#008784] transition-colors p-1 rounded-md"
+              className="text-slate-400 hover:text-[#7a1200] transition-colors p-1 rounded-md"
               title="Tambah CA"
             >
               <Upload className="w-4 h-4" />
@@ -692,14 +692,14 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
               <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
                 <button 
                   onClick={() => setViewMode('grid')}
-                  className={`p-1 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-[#008784] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  className={`p-1 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-[#7a1200] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                   title="Grid View"
                 >
                   <LayoutGrid className="w-3.5 h-3.5" />
                 </button>
                 <button 
                   onClick={() => setViewMode('table')}
-                  className={`p-1 rounded-md transition-all ${viewMode === 'table' ? 'bg-white text-[#008784] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  className={`p-1 rounded-md transition-all ${viewMode === 'table' ? 'bg-white text-[#7a1200] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                   title="Table View"
                 >
                   <Table className="w-3.5 h-3.5" />
@@ -726,7 +726,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                           return (
                             <div className="flex flex-wrap gap-1 mt-0.5">
                               {kJuduls.map((kj: string, i: number) => (
-                                <span key={i} className="text-[9px] text-[#008784] font-black uppercase tracking-widest bg-[#008784]/5 border border-[#008784]/20 rounded px-1.5 py-0.5 w-fit truncate max-w-full">Kegiatan: {kj}</span>
+                                <span key={i} className="text-[9px] text-[#7a1200] font-black uppercase tracking-widest bg-[#7a1200]/5 border border-[#7a1200]/20 rounded px-1.5 py-0.5 w-fit truncate max-w-full">Kegiatan: {kj}</span>
                               ))}
                             </div>
                           )
@@ -746,7 +746,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                       </div>
                     </div>
                     {entry.nominal !== undefined && (
-                      <div className={`text-[11px] font-black mb-2 border-b pb-1.5 ${entry.ditolak ? 'text-rose-700/70 border-rose-100/50 line-through' : 'text-[#008784] border-emerald-100/50'}`}>
+                      <div className={`text-[11px] font-black mb-2 border-b pb-1.5 ${entry.ditolak ? 'text-rose-700/70 border-rose-100/50 line-through' : 'text-[#7a1200] border-emerald-100/50'}`}>
                         Rp {Number(entry.nominal).toLocaleString('id-ID')}
                       </div>
                     )}
@@ -756,7 +756,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                           {isImage(u) ? (
                             <img src={u} onClick={(e) => { e.stopPropagation(); setPreviewImage(u) }} className="w-full h-full object-cover rounded-md cursor-pointer border border-slate-200" alt="Bukti CA" />
                           ) : (
-                            <a href={u} target="_blank" onClick={(e) => e.stopPropagation()} className="w-full h-full bg-[#008784]/10 text-[#008784] rounded flex items-center justify-center">
+                            <a href={u} target="_blank" onClick={(e) => e.stopPropagation()} className="w-full h-full bg-[#7a1200]/10 text-[#7a1200] rounded flex items-center justify-center">
                               <FileText className="w-4 h-4" />
                             </a>
                           )}
@@ -802,7 +802,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                               })()}
                             </div>
                           </td>
-                          <td className={`px-3 py-3 text-right font-black border-r border-slate-100 ${entry.ditolak ? 'text-rose-700 line-through' : 'text-[#008784]'}`}>
+                          <td className={`px-3 py-3 text-right font-black border-r border-slate-100 ${entry.ditolak ? 'text-rose-700 line-through' : 'text-[#7a1200]'}`}>
                             Rp {Number(entry.nominal).toLocaleString('id-ID')}
                           </td>
                           <td className="px-3 py-3 border-r border-slate-100">
@@ -845,7 +845,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
             {(!isAdminOrFinance && a.status_ca !== 'DIVERIFIKASI') && (
               <button
                 onClick={(e) => { e.stopPropagation(); setCaUploadDialog({ open: true, anggaranId: a.id }) }}
-                className="text-[10px] font-bold text-slate-500 hover:text-[#008784] py-2.5 text-center w-full rounded-xl border border-dashed border-slate-300 hover:bg-[#008784]/5 transition-colors uppercase tracking-widest mt-1"
+                className="text-[10px] font-bold text-slate-500 hover:text-[#7a1200] py-2.5 text-center w-full rounded-xl border border-dashed border-slate-300 hover:bg-[#7a1200]/5 transition-colors uppercase tracking-widest mt-1"
               >
                 + Tambah CA
               </button>
@@ -856,9 +856,9 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
             {!isAdminOrFinance ? (
               <div
                 onClick={(e) => { e.stopPropagation(); setCaUploadDialog({ open: true, anggaranId: a.id }) }}
-                className="p-4 border-2 border-dashed border-slate-200 rounded-xl hover:border-[#008784] hover:bg-[#008784]/5 transition-all text-center flex justify-center cursor-pointer items-center min-h-[80px]"
+                className="p-4 border-2 border-dashed border-slate-200 rounded-xl hover:border-[#7a1200] hover:bg-[#7a1200]/5 transition-all text-center flex justify-center cursor-pointer items-center min-h-[80px]"
               >
-                {uploadingId === a.id ? <Loader2 className="w-6 h-6 animate-spin text-[#008784]" /> : <Upload className="w-6 h-6 text-slate-300" />}
+                {uploadingId === a.id ? <Loader2 className="w-6 h-6 animate-spin text-[#7a1200]" /> : <Upload className="w-6 h-6 text-slate-300" />}
               </div>
             ) : (
               <div className="p-4 border-2 border-dashed border-slate-100 rounded-xl bg-slate-50 text-slate-400 text-xs text-center flex justify-center items-center min-h-[80px] font-bold uppercase tracking-widest">
@@ -899,16 +899,16 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
         </Button>
 
         <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/40 border border-slate-100 flex flex-col md:flex-row justify-between gap-8 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-[#008784]/5 rounded-full -mr-32 -mt-32 blur-3xl opacity-50" />
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#7a1200]/5 rounded-full -mr-32 -mt-32 blur-3xl opacity-50" />
           
           <div className="flex-1 space-y-6 relative">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-[#008784]/10 border border-[#008784]/20 rounded-2xl flex items-center justify-center transition-transform hover:scale-105">
-                <Receipt className="w-8 h-8 text-[#008784]" />
+              <div className="w-16 h-16 bg-[#7a1200]/10 border border-[#7a1200]/20 rounded-2xl flex items-center justify-center transition-transform hover:scale-105">
+                <Receipt className="w-8 h-8 text-[#7a1200]" />
               </div>
               <div>
                 <h1 className="text-2xl font-black text-slate-800 tracking-tight">{header.nama_desa}</h1>
-                <p className="text-[#008784] font-black uppercase text-xs tracking-widest mt-0.5">{header.nama_program} {anggaran?.[0]?.tahun ? `(${anggaran[0]?.tahun})` : ''}</p>
+                <p className="text-[#7a1200] font-black uppercase text-xs tracking-widest mt-0.5">{header.nama_program} {anggaran?.[0]?.tahun ? `(${anggaran[0]?.tahun})` : ''}</p>
               </div>
             </div>
 
@@ -933,7 +933,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
               </div>
               <div className="flex items-center gap-3 group">
                 <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100">
-                  <Calendar className="w-4 h-4 text-[#008784]" />
+                  <Calendar className="w-4 h-4 text-[#7a1200]" />
                 </div>
                 <div>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Tgl Dibuat</p>
@@ -949,11 +949,11 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
             <div className="space-y-1.5">
               <div className="flex justify-between items-end px-1">
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Progress CA</span>
-                <span className="text-sm font-black text-[#008784]">{uploadedCount}/{totalCount} {anggaran?.[0]?.tahun ? `(${anggaran[0]?.tahun})` : ''}</span>
+                <span className="text-sm font-black text-[#7a1200]">{uploadedCount}/{totalCount} {anggaran?.[0]?.tahun ? `(${anggaran[0]?.tahun})` : ''}</span>
               </div>
               <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-[#008784]"
+                  className="h-full bg-[#7a1200]"
                   style={{ width: `${(uploadedCount/totalCount)*100}%` }}
                 />
               </div>
@@ -965,7 +965,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
       <Card className="border-none shadow-2xl shadow-slate-200/40 rounded-[2.5rem] overflow-hidden bg-white">
         <CardHeader className="border-b border-slate-100 px-8 py-6 flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-[#008784]" />
+            <Receipt className="w-5 h-5 text-[#7a1200]" />
             Daftar Anggaran & Bukti CA
           </CardTitle>
           <div className="flex items-center gap-2">
@@ -973,7 +973,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
               <select
                 value={filterTahun}
                 onChange={(e) => setFilterTahun(e.target.value)}
-                className="px-3 py-1.5 text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#008784] cursor-pointer"
+                className="px-3 py-1.5 text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7a1200] cursor-pointer"
               >
                 <option value="Semua">Semua Tahun</option>
                 {uniqueTahun.map(t => (
@@ -984,7 +984,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
             <select
               value={sortBulan}
               onChange={(e) => setSortBulan(e.target.value as 'asc' | 'desc')}
-              className="px-3 py-1.5 text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#008784] cursor-pointer"
+              className="px-3 py-1.5 text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7a1200] cursor-pointer"
             >
               <option value="asc">Awal Tahun (Jan)</option>
               <option value="desc">Akhir Tahun (Des)</option>
@@ -1003,11 +1003,11 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                 }}>
                   <div className="flex justify-between items-start">
                     <div className="text-left outline-none">
-                      <div className="font-black text-slate-800 transition-colors flex items-center gap-2 group-hover/card:text-[#008784]">
+                      <div className="font-black text-slate-800 transition-colors flex items-center gap-2 group-hover/card:text-[#7a1200]">
                         {a.bulan}
                         <ExternalLink className="w-3 h-3 opacity-0 group-hover/card:opacity-100 transition-opacity" />
                       </div>
-                      <div className="text-[10px] font-bold text-slate-400 transition-colors group-hover/card:text-[#008784]/60">{a.tahun}</div>
+                      <div className="text-[10px] font-bold text-slate-400 transition-colors group-hover/card:text-[#7a1200]/60">{a.tahun}</div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       {a.status_ca === 'DIVERIFIKASI' ? (
@@ -1027,7 +1027,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                     </div>
                     <div className="flex justify-between gap-4">
                       <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Cair:</span>
-                      <span className="font-black text-[#008784]">Rp {parseInt(a.anggaran_dicairkan).toLocaleString('id-ID')}</span>
+                      <span className="font-black text-[#7a1200]">Rp {parseInt(a.anggaran_dicairkan).toLocaleString('id-ID')}</span>
                     </div>
                     {(() => {
                       const { realisasi, sisa } = getRealisasiAndSisa(a);
@@ -1063,7 +1063,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                         <div className="flex gap-1 flex-col">
                           <Button 
                             size="sm" 
-                            className={`h-8 rounded-lg text-[10px] font-bold transition-all ${a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50 text-emerald-700 pointer-events-none shadow-none border border-emerald-100' : 'bg-[#008784] hover:bg-[#007370] text-white'}`}
+                            className={`h-8 rounded-lg text-[10px] font-bold transition-all ${a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50 text-emerald-700 pointer-events-none shadow-none border border-emerald-100' : 'bg-[#7a1200] hover:bg-[#007370] text-white'}`}
                             onClick={() => {
                               const note = (document.getElementById(`note-mob-${a.id}`) as HTMLTextAreaElement).value
                               handleVerify(a.id, 'DIVERIFIKASI', note)
@@ -1141,17 +1141,17 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                   }}>
                     <td className={`px-8 py-6 sticky left-0 z-10 bg-white group-hover/row:bg-slate-50 ${statusShadow}`}>
                       <div className="text-left outline-none">
-                        <div className="font-black text-slate-800 transition-colors flex items-center gap-2 group-hover/row:text-[#008784]">
+                        <div className="font-black text-slate-800 transition-colors flex items-center gap-2 group-hover/row:text-[#7a1200]">
                           {a.bulan}
                           <ExternalLink className="w-3 h-3 opacity-0 group-hover/row:opacity-100 transition-opacity" />
                         </div>
-                        <div className="text-[10px] font-bold text-slate-400 transition-colors group-hover/row:text-[#008784]/60">{a.tahun}</div>
+                        <div className="text-[10px] font-bold text-slate-400 transition-colors group-hover/row:text-[#7a1200]/60">{a.tahun}</div>
                       </div>
                     </td>
                     <td className="px-8 py-6 font-bold text-slate-700 whitespace-nowrap">
                       Rp {parseInt(a.ajuan_ri).toLocaleString('id-ID')}
                     </td>
-                    <td className="px-8 py-6 font-black text-[#008784] whitespace-nowrap">
+                    <td className="px-8 py-6 font-black text-[#7a1200] whitespace-nowrap">
                       Rp {parseInt(a.anggaran_dicairkan).toLocaleString('id-ID')}
                     </td>
                     <td className="px-8 py-6 font-bold text-amber-600 whitespace-nowrap">
@@ -1193,7 +1193,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                             {/* Verif CA */}
                             <Button 
                               size="sm" 
-                              className={`h-8 w-full rounded-lg text-[10px] font-bold transition-all ${a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50 text-emerald-700 pointer-events-none shadow-none border border-emerald-100' : 'bg-[#008784] hover:bg-[#007370] text-white'}`}
+                              className={`h-8 w-full rounded-lg text-[10px] font-bold transition-all ${a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50 text-emerald-700 pointer-events-none shadow-none border border-emerald-100' : 'bg-[#7a1200] hover:bg-[#007370] text-white'}`}
                               onClick={() => {
                                 const note = (document.getElementById(`note-${a.id}`) as HTMLTextAreaElement).value
                                 handleVerify(a.id, 'DIVERIFIKASI', note)
@@ -1304,7 +1304,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                 </div>
                 <div className="bg-slate-50 p-2 rounded-lg -m-2">
                   <label className="text-[10px] uppercase font-black tracking-widest text-slate-400">Anggaran Dicairkan</label>
-                  <div className="font-bold text-[15px] text-[#008784]">Rp {Number(detailAnggaran?.anggaran_dicairkan).toLocaleString('id-ID')}</div>
+                  <div className="font-bold text-[15px] text-[#7a1200]">Rp {Number(detailAnggaran?.anggaran_dicairkan).toLocaleString('id-ID')}</div>
                 </div>
                 {(() => {
                   if (!detailAnggaran) return null;
@@ -1332,11 +1332,11 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                 </div>
                 <div className="col-span-1 sm:col-span-2 flex items-center gap-6 pt-2">
                    <div className="flex items-center gap-2">
-                     <CheckCircle2 className={`w-5 h-5 ${detailAnggaran?.is_dbf ? 'text-[#008784]' : 'text-slate-200'}`} />
+                     <CheckCircle2 className={`w-5 h-5 ${detailAnggaran?.is_dbf ? 'text-[#7a1200]' : 'text-slate-200'}`} />
                      <span className={`text-xs font-bold ${detailAnggaran?.is_dbf ? 'text-slate-700' : 'text-slate-400'}`}>Is DBF?</span>
                    </div>
                    <div className="flex items-center gap-2">
-                     <CheckCircle2 className={`w-5 h-5 ${detailAnggaran?.is_rz ? 'text-[#008784]' : 'text-slate-200'}`} />
+                     <CheckCircle2 className={`w-5 h-5 ${detailAnggaran?.is_rz ? 'text-[#7a1200]' : 'text-slate-200'}`} />
                      <span className={`text-xs font-bold ${detailAnggaran?.is_rz ? 'text-slate-700' : 'text-slate-400'}`}>Is RZ?</span>
                    </div>
                 </div>
@@ -1504,7 +1504,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Deskripsi Laporan</label>
               <textarea 
                 placeholder="Misal: Pembayaran kajian pagi..." 
-                className="w-full p-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008784] min-h-[80px] resize-none"
+                className="w-full p-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7a1200] min-h-[80px] resize-none"
                 value={caDeskripsi}
                 onChange={(e) => setCaDeskripsi(e.target.value)}
               />
@@ -1515,7 +1515,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
               <input 
                 type="number" 
                 placeholder="Misal: 150000" 
-                className="w-full p-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#008784]"
+                className="w-full p-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7a1200]"
                 value={caNominal}
                 onChange={(e) => setCaNominal(e.target.value)}
               />
@@ -1533,8 +1533,8 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                       }
                     }}
                   />
-                  <div className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-slate-200 rounded-xl group-hover:border-[#008784] group-hover:bg-[#008784]/5 transition-all text-center">
-                    <Upload className="w-6 h-6 text-slate-300 group-hover:text-[#008784] transition-colors" />
+                  <div className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-slate-200 rounded-xl group-hover:border-[#7a1200] group-hover:bg-[#7a1200]/5 transition-all text-center">
+                    <Upload className="w-6 h-6 text-slate-300 group-hover:text-[#7a1200] transition-colors" />
                     <span className="text-xs font-bold text-slate-500">
                       {caFiles.length > 0 ? `${caFiles.length} file dipilih` : 'Klik atau seret foto/file ke sini'}
                     </span>
@@ -1543,7 +1543,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
             </div>
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
               <Button variant="outline" className="rounded-xl" onClick={() => setCaUploadDialog({ open: false, anggaranId: null })}>Batal</Button>
-              <Button className="bg-[#008784] hover:bg-[#007370] text-white rounded-xl" disabled={uploadingId === caUploadDialog.anggaranId} onClick={handleCustomUpload}>
+              <Button className="bg-[#7a1200] hover:bg-[#007370] text-white rounded-xl" disabled={uploadingId === caUploadDialog.anggaranId} onClick={handleCustomUpload}>
                 {uploadingId === caUploadDialog.anggaranId ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Simpan & Upload
               </Button>
@@ -1582,7 +1582,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
         <DialogContent className="max-w-md p-0 overflow-hidden bg-white md:rounded-3xl rounded-2xl border-0 shadow-2xl">
           <DialogHeader className="bg-slate-50 border-b border-slate-100 px-6 py-5">
             <DialogTitle className="text-xl font-bold flex items-center gap-2 text-slate-800">
-              <Upload className="w-5 h-5 text-[#008784]" />
+              <Upload className="w-5 h-5 text-[#7a1200]" />
               Upload Bukti Kembalian
             </DialogTitle>
           </DialogHeader>
@@ -1592,7 +1592,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
               <textarea
                 value={pengDeskripsi}
                 onChange={e => setPengDeskripsi(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#008784] focus:ring-4 focus:ring-[#008784]/10 transition-all outline-none resize-none min-h-[80px]"
+                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#7a1200] focus:ring-4 focus:ring-[#7a1200]/10 transition-all outline-none resize-none min-h-[80px]"
                 placeholder="Ex: Kembalian Sisa Kegiatan"
               />
             </div>
@@ -1603,7 +1603,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                 type="number"
                 value={pengNominal}
                 onChange={e => setPengNominal(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#008784] focus:ring-4 focus:ring-[#008784]/10 transition-all outline-none"
+                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#7a1200] focus:ring-4 focus:ring-[#7a1200]/10 transition-all outline-none"
                 placeholder="50000"
               />
             </div>
@@ -1614,14 +1614,14 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                 multiple
                 accept="image/*,.pdf"
                 onChange={e => setPengFiles(Array.from(e.target.files || []))}
-                className="w-full px-4 py-3 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-[#008784]/10 file:text-[#008784] hover:file:bg-[#008784]/20 transition-all cursor-pointer text-sm text-slate-500"
+                className="w-full px-4 py-3 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-[#7a1200]/10 file:text-[#7a1200] hover:file:bg-[#7a1200]/20 transition-all cursor-pointer text-sm text-slate-500"
               />
-              {pengFiles.length > 0 && <span className="text-xs font-bold text-[#008784] block mt-1">{pengFiles.length} file terpilih</span>}
+              {pengFiles.length > 0 && <span className="text-xs font-bold text-[#7a1200] block mt-1">{pengFiles.length} file terpilih</span>}
             </div>
             <Button
               onClick={handlePengembalianUpload}
               disabled={uploadingId === pengUploadDialog.anggaranId}
-              className="w-full bg-[#008784] hover:bg-[#007370] text-white py-6 rounded-xl font-bold shadow-lg shadow-[#008784]/20"
+              className="w-full bg-[#7a1200] hover:bg-[#007370] text-white py-6 rounded-xl font-bold shadow-lg shadow-[#7a1200]/20"
             >
               {uploadingId === pengUploadDialog.anggaranId ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Upload className="w-5 h-5 mr-2" />}
               Upload Kembalian

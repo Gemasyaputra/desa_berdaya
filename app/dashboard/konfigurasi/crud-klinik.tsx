@@ -254,7 +254,7 @@ export function CRUDKlinik({
     <div>
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Manajemen Klinik</h3>
-        <Button onClick={() => setIsOpen(true)} className="bg-[#7a1200] hover:bg-[#5a0d00]">
+        <Button onClick={() => setIsOpen(true)} className="bg-brand-primary hover:bg-brand-primary-hover text-white">
           <Plus className="w-4 h-4 mr-2" />
           Tambah Klinik
         </Button>
@@ -416,7 +416,7 @@ export function CRUDKlinik({
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button type="submit" className="bg-[#7a1200] hover:bg-[#5a0d00]">
+                <Button type="submit" className="bg-brand-primary hover:bg-brand-primary-hover text-white">
                   <Save className="w-4 h-4 mr-2" />
                   Simpan
                 </Button>

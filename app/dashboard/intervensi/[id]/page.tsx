@@ -192,8 +192,8 @@ export default function DetailIntervensiPage() {
   const SortIcon = ({ colKey }: { colKey: string }) => {
     if (sortConfig?.key !== colKey) return <ArrowUpDown className="w-3 h-3 opacity-30 inline ml-1" />
     return sortConfig.dir === 'asc'
-      ? <ArrowUp className="w-3 h-3 text-[#008784] inline ml-1" />
-      : <ArrowDown className="w-3 h-3 text-[#008784] inline ml-1" />
+      ? <ArrowUp className="w-3 h-3 text-[#7a1200] inline ml-1" />
+      : <ArrowDown className="w-3 h-3 text-[#7a1200] inline ml-1" />
   }
 
   if (loading) return <div className="p-8 text-center text-slate-500">Memuat detail intervensi...</div>
@@ -230,11 +230,11 @@ export default function DetailIntervensiPage() {
 
           {!isLocked && (
             <>
-              <Button onClick={(e) => handleUpdateHeader(e as any)} variant="outline" className="border-[#008784] text-[#008784] hover:bg-[#008784]/10 rounded-xl font-bold shadow-sm">
+              <Button onClick={(e) => handleUpdateHeader(e as any)} variant="outline" className="border-[#7a1200] text-[#7a1200] hover:bg-[#7a1200]/10 rounded-xl font-bold shadow-sm">
                 <Save className="w-4 h-4 mr-2" />
                 SAVE
               </Button>
-              <Button onClick={() => handleStatusChange('APPROVED')} className="bg-[#008784] hover:bg-[#006e6b] text-white rounded-xl font-bold shadow-md shadow-[#008784]/20">
+              <Button onClick={() => handleStatusChange('APPROVED')} className="bg-[#7a1200] hover:bg-[#006e6b] text-white rounded-xl font-bold shadow-md shadow-[#7a1200]/20">
                 APPROVE
               </Button>
             </>
@@ -365,13 +365,13 @@ export default function DetailIntervensiPage() {
         <div className="bg-white border border-slate-200 shadow-sm rounded-[1rem] overflow-hidden min-h-[300px]">
           <div className="flex border-b border-slate-200">
             <button 
-              className={`px-6 py-3 text-xs font-bold uppercase transition-colors ${activeTab === 'ANGGARAN' ? 'border-b-2 border-[#008784] text-[#008784] bg-slate-50/50' : 'text-slate-500 hover:bg-slate-50'}`}
+              className={`px-6 py-3 text-xs font-bold uppercase transition-colors ${activeTab === 'ANGGARAN' ? 'border-b-2 border-[#7a1200] text-[#7a1200] bg-slate-50/50' : 'text-slate-500 hover:bg-slate-50'}`}
               onClick={() => setActiveTab('ANGGARAN')}
             >
               Anggaran
             </button>
             <button 
-              className={`px-6 py-3 text-xs font-bold uppercase transition-colors ${activeTab === 'KPI' ? 'border-b-2 border-[#008784] text-[#008784] bg-slate-50/50' : 'text-slate-500 hover:bg-slate-50'}`}
+              className={`px-6 py-3 text-xs font-bold uppercase transition-colors ${activeTab === 'KPI' ? 'border-b-2 border-[#7a1200] text-[#7a1200] bg-slate-50/50' : 'text-slate-500 hover:bg-slate-50'}`}
               onClick={() => setActiveTab('KPI')}
             >
               KPI
@@ -466,7 +466,7 @@ export default function DetailIntervensiPage() {
                         <td colSpan={10} className="p-0">
                           <div className="flex items-center border-t border-slate-100">
                             <button 
-                              className="flex-1 text-left px-4 py-3 text-[13px] font-bold text-[#008784] hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                              className="flex-1 text-left px-4 py-3 text-[13px] font-bold text-[#7a1200] hover:bg-slate-50 flex items-center gap-2 transition-colors"
                               onClick={() => { setEditingBudget(null); setIsModalOpen(true); }}
                             >
                               <Plus className="w-4 h-4" /> Tambah Anggaran

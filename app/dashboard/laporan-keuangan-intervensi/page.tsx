@@ -66,8 +66,8 @@ export default function LaporanKeuanganIntervensiPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-[#008784]/10 border border-[#008784]/20 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform hover:scale-105">
-            <Receipt className="w-7 h-7 text-[#008784]" />
+          <div className="w-14 h-14 bg-[#7a1200]/10 border border-[#7a1200]/20 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform hover:scale-105">
+            <Receipt className="w-7 h-7 text-[#7a1200]" />
           </div>
           <div>
             <h1 className="text-2xl font-black tracking-tight text-slate-800">Laporan Keuangan Intervensi</h1>
@@ -79,10 +79,10 @@ export default function LaporanKeuanganIntervensiPage() {
       {/* Control Bar */}
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative w-full md:w-96 group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#008784] transition-colors" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#7a1200] transition-colors" />
           <Input
             placeholder="Cari desa, program, atau relawan..."
-            className="pl-11 h-12 w-full rounded-2xl border-slate-200 bg-white text-sm shadow-sm focus:border-[#008784]/40 focus:ring-4 focus:ring-[#008784]/5 transition-all"
+            className="pl-11 h-12 w-full rounded-2xl border-slate-200 bg-white text-sm shadow-sm focus:border-[#7a1200]/40 focus:ring-4 focus:ring-[#7a1200]/5 transition-all"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -110,7 +110,7 @@ export default function LaporanKeuanganIntervensiPage() {
           </div>
           <div className="flex items-center justify-center gap-2 px-5 h-12 min-w-full sm:min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm whitespace-nowrap">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total:</span>
-            <span className="text-sm font-black text-[#008784]">{filtered.length}</span>
+            <span className="text-sm font-black text-[#7a1200]">{filtered.length}</span>
           </div>
         </div>
       </div>
@@ -161,14 +161,14 @@ export default function LaporanKeuanganIntervensiPage() {
                       <td className="px-6 py-5 font-medium text-slate-600">{item.nama_program}</td>
                       <td className="px-6 py-5 font-medium text-slate-600">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-[#008784]/10 border border-[#008784]/20 rounded-full flex items-center justify-center">
-                            <User className="w-4 h-4 text-[#008784]" />
+                          <div className="w-8 h-8 bg-[#7a1200]/10 border border-[#7a1200]/20 rounded-full flex items-center justify-center">
+                            <User className="w-4 h-4 text-[#7a1200]" />
                           </div>
                           <span className="font-bold">{item.nama_relawan}</span>
                         </div>
                       </td>
                       <td className="px-6 py-5">
-                        <span className="text-[10px] font-black text-[#008784] px-3 py-1.5 bg-[#008784]/5 border border-[#008784]/20 rounded-xl uppercase tracking-widest">
+                        <span className="text-[10px] font-black text-[#7a1200] px-3 py-1.5 bg-[#7a1200]/5 border border-[#7a1200]/20 rounded-xl uppercase tracking-widest">
                           {item.sumber_dana || '-'}
                         </span>
                       </td>
@@ -176,15 +176,15 @@ export default function LaporanKeuanganIntervensiPage() {
                       <td className="px-6 py-5">
                         <div className="flex items-center justify-center gap-3 w-48 mx-auto">
                           <Progress value={progress} className="h-2.5 bg-slate-100 flex-1">
-                            <div className="h-full bg-[#008784] rounded-full transition-all" style={{ width: `${progress}%` }} />
+                            <div className="h-full bg-[#7a1200] rounded-full transition-all" style={{ width: `${progress}%` }} />
                           </Progress>
-                          <span className="text-xs font-black text-[#008784] text-right w-20 whitespace-nowrap">{uploaded}/{total} Bln {item.tahun ? `(${item.tahun})` : ''}</span>
+                          <span className="text-xs font-black text-[#7a1200] text-right w-20 whitespace-nowrap">{uploaded}/{total} Bln {item.tahun ? `(${item.tahun})` : ''}</span>
                         </div>
                       </td>
                       <td className="px-6 py-5 text-center">
                         <Button 
                           size="sm"
-                          className="bg-white hover:bg-[#008784] text-[#008784] hover:text-white border-2 border-[#008784]/20 hover:border-[#008784] rounded-xl font-bold transition-all shadow-sm group-hover/row:bg-[#008784] group-hover/row:text-white"
+                          className="bg-white hover:bg-[#7a1200] text-[#7a1200] hover:text-white border-2 border-[#7a1200]/20 hover:border-[#7a1200] rounded-xl font-bold transition-all shadow-sm group-hover/row:bg-[#7a1200] group-hover/row:text-white"
                           onClick={(e) => {
                             e.stopPropagation()
                             router.push(`/dashboard/laporan-keuangan-intervensi/${item.id}`)
@@ -210,14 +210,14 @@ export default function LaporanKeuanganIntervensiPage() {
             return (
               <Card 
                 key={item.id} 
-                className="group border-none shadow-xl shadow-slate-200/40 rounded-[2rem] overflow-hidden bg-white hover:ring-2 hover:ring-[#008784]/30 transition-all cursor-pointer"
+                className="group border-none shadow-xl shadow-slate-200/40 rounded-[2rem] overflow-hidden bg-white hover:ring-2 hover:ring-[#7a1200]/30 transition-all cursor-pointer"
                 onClick={() => router.push(`/dashboard/laporan-keuangan-intervensi/${item.id}`)}
               >
                 <CardHeader className="pb-4 space-y-3 relative">
                   <div className="flex justify-between items-start">
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center gap-2 mb-1">
-                        <Building2 className="w-4 h-4 text-[#008784]" />
+                        <Building2 className="w-4 h-4 text-[#7a1200]" />
                         <span className="text-sm font-black text-slate-800 uppercase tracking-tight line-clamp-1">{item.nama_desa}</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -233,10 +233,10 @@ export default function LaporanKeuanganIntervensiPage() {
                     <div className="space-y-2">
                       <div className="flex justify-between items-end px-1">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress Bukti CA</span>
-                        <span className="text-xs font-black text-[#008784]">{uploaded}/{total} Bulan {item.tahun ? `(${item.tahun})` : ''}</span>
+                        <span className="text-xs font-black text-[#7a1200]">{uploaded}/{total} Bulan {item.tahun ? `(${item.tahun})` : ''}</span>
                       </div>
                       <Progress value={progress} className="h-2.5 bg-slate-200">
-                        <div className="h-full bg-[#008784] rounded-full transition-all" style={{ width: `${progress}%` }} />
+                        <div className="h-full bg-[#7a1200] rounded-full transition-all" style={{ width: `${progress}%` }} />
                       </Progress>
                     </div>
 
@@ -245,14 +245,14 @@ export default function LaporanKeuanganIntervensiPage() {
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Relawan</span>
                         <div className="flex items-center gap-1.5 mt-1">
                           <div className="w-5 h-5 bg-white border border-slate-200 rounded-full flex items-center justify-center">
-                            <User className="w-3 h-3 text-[#008784]" />
+                            <User className="w-3 h-3 text-[#7a1200]" />
                           </div>
                           <span className="text-[11px] font-bold text-slate-600 truncate">{item.nama_relawan}</span>
                         </div>
                       </div>
                       <div className="flex flex-col gap-0.5 text-right">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Sumber Dana</span>
-                        <span className="text-[11px] font-black text-[#008784] mt-1 line-clamp-1 px-2 py-0.5 bg-white border border-[#008784]/20 rounded-lg inline-block self-end uppercase">
+                        <span className="text-[11px] font-black text-[#7a1200] mt-1 line-clamp-1 px-2 py-0.5 bg-white border border-[#7a1200]/20 rounded-lg inline-block self-end uppercase">
                           {item.sumber_dana || '-'}
                         </span>
                       </div>
@@ -260,7 +260,7 @@ export default function LaporanKeuanganIntervensiPage() {
                   </div>
 
                   <Button 
-                    className="w-full h-12 bg-white hover:bg-[#008784] text-[#008784] hover:text-white border-2 border-[#008784]/10 hover:border-[#008784] rounded-2xl font-bold transition-all gap-2 group-hover:shadow-lg group-hover:shadow-[#008784]/10"
+                    className="w-full h-12 bg-white hover:bg-[#7a1200] text-[#7a1200] hover:text-white border-2 border-[#7a1200]/10 hover:border-[#7a1200] rounded-2xl font-bold transition-all gap-2 group-hover:shadow-lg group-hover:shadow-[#7a1200]/10"
                     onClick={(e) => {
                       e.stopPropagation()
                       router.push(`/dashboard/laporan-keuangan-intervensi/${item.id}`)

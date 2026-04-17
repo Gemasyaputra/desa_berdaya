@@ -21,7 +21,9 @@ import {
   FileText,
   X,
   Trash2,
-  Save
+  Save,
+  LayoutGrid,
+  Table
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getDetailLaporanKeuangan, uploadBuktiCA, verifyCA, updateCatatanRelawan, deleteBuktiCA, uploadBuktiPengembalian, deleteBuktiPengembalian, tolakBuktiPengembalian, verifyPengembalian } from '../actions'
@@ -359,6 +361,8 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
       }
     }
 
+    const [viewMode, setViewMode] = useState<'grid' | 'table'>(entries.length > 1 ? 'table' : 'grid')
+
     if (compact) {
       if (entries.length === 0) {
         return (
@@ -417,72 +421,168 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
     }
 
     return (
-      <div className="flex flex-col gap-3 w-full max-w-[200px]">
+      <div className="flex flex-col gap-3 w-full">
         {entries.length > 0 ? (
           <>
-            {entries.map((entry: any) => (
-              <div key={entry.id} className={`bg-slate-50 border rounded-lg p-3 text-left shadow-sm ${entry.ditolak ? 'border-rose-200 bg-rose-50/50' : 'border-slate-100'}`}>
-                {entry.ditolak && (
-                  <div className="mb-3 p-2.5 bg-rose-100/50 text-rose-700 text-[10px] rounded border border-rose-200">
-                    <span className="font-bold block mb-0.5 uppercase tracking-wide">Ditolak Admin/Finance:</span>
-                    <span className="italic leading-tight">{entry.alasan_tolak}</span>
-                  </div>
-                )}
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <div className={`text-[10px] font-bold truncate min-w-0 flex flex-col gap-0.5 ${entry.ditolak ? 'text-rose-700/70 line-through' : 'text-slate-700'}`} title={entry.deskripsi}>
-                    <span>{entry.deskripsi}</span>
-                    {(() => {
-                      const kJuduls = entry.kegiatan_juduls || (entry.kegiatan_judul ? [entry.kegiatan_judul] : [])
-                      if (kJuduls.length === 0) return null
-                      return (
-                        <div className="flex flex-wrap gap-1 mt-0.5">
-                          {kJuduls.map((kj: string, i: number) => (
-                            <span key={i} className="text-[9px] text-[#008784] font-black uppercase tracking-widest bg-[#008784]/5 border border-[#008784]/20 rounded px-1.5 py-0.5 w-fit truncate max-w-full">Kegiatan: {kj}</span>
-                          ))}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                  <div className="flex items-center gap-0.5">
-                    {isAdminOrFinance && !entry.ditolak && (
-                      <button onClick={(e) => { e.stopPropagation(); setRejectPengDialog({ open: true, anggaranId: a.id, entryId: entry.id }) }} className="text-slate-400 hover:text-amber-500 transition-colors p-1 rounded-md flex-shrink-0" title="Tolak Laporan">
-                        <AlertCircle className="w-3.5 h-3.5" />
-                      </button>
+            <div className="flex justify-between items-center mb-2 px-1">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{entries.length} Laporan Pengembalian</span>
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                <button 
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-[#008784] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  title="Grid View"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </button>
+                <button 
+                  onClick={() => setViewMode('table')}
+                  className={`p-1 rounded-md transition-all ${viewMode === 'table' ? 'bg-white text-[#008784] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  title="Table View"
+                >
+                  <Table className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {entries.map((entry: any) => (
+                  <div key={entry.id} className={`bg-slate-50 border rounded-lg p-3 text-left shadow-sm ${entry.ditolak ? 'border-rose-200 bg-rose-50/50' : 'border-slate-100'}`}>
+                    {entry.ditolak && (
+                      <div className="mb-3 p-2.5 bg-rose-100/50 text-rose-700 text-[10px] rounded border border-rose-200">
+                        <span className="font-bold block mb-0.5 uppercase tracking-wide">Ditolak Admin/Finance:</span>
+                        <span className="italic leading-tight">{entry.alasan_tolak}</span>
+                      </div>
                     )}
-                    {(!isAdminOrFinance && a.status_pengembalian !== 'DIVERIFIKASI') && (
-                      <button onClick={(e) => { e.stopPropagation(); handleDeletePengembalianFoto(a.id, entry.id) }} className="text-slate-300 hover:text-rose-500 transition-colors p-1 rounded-md flex-shrink-0" title="Hapus Laporan Ini">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {entry.nominal !== undefined && (
-                  <div className={`text-[11px] font-black mb-2 border-b pb-1.5 ${entry.ditolak ? 'text-rose-700/70 border-rose-100/50 line-through' : 'text-[#008784] border-emerald-100/50'}`}>
-                    Rp {Number(entry.nominal).toLocaleString('id-ID')}
-                  </div>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  {entry.urls.map((u: string) => (
-                    <div key={u} className="relative group w-10 h-10">
-                      {isImage(u) ? (
-                        <img src={u} onClick={(e) => { e.stopPropagation(); setPreviewImage(u) }} className="w-full h-full object-cover rounded-md cursor-pointer border border-slate-200" alt="Bukti Refund" />
-                      ) : (
-                        <a href={u} target="_blank" onClick={(e) => e.stopPropagation()} className="w-full h-full bg-[#008784]/10 text-[#008784] rounded flex items-center justify-center">
-                          <FileText className="w-4 h-4" />
-                        </a>
-                      )}
-                      {(!isAdminOrFinance && a.status_pengembalian !== 'DIVERIFIKASI') && (
-                        <button onClick={(e) => { e.stopPropagation(); handleDeletePengembalianFoto(a.id, entry.id, u) }} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-sm"><X className="w-3 h-3"/></button>
-                      )}
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className={`text-[10px] font-bold truncate min-w-0 flex flex-col gap-0.5 ${entry.ditolak ? 'text-rose-700/70 line-through' : 'text-slate-700'}`} title={entry.deskripsi}>
+                        <span>{entry.deskripsi}</span>
+                        {(() => {
+                          const kJuduls = entry.kegiatan_juduls || (entry.kegiatan_judul ? [entry.kegiatan_judul] : [])
+                          if (kJuduls.length === 0) return null
+                          return (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {kJuduls.map((kj: string, i: number) => (
+                                <span key={i} className="text-[9px] text-[#008784] font-black uppercase tracking-widest bg-[#008784]/5 border border-[#008784]/20 rounded px-1.5 py-0.5 w-fit truncate max-w-full">Kegiatan: {kj}</span>
+                              ))}
+                            </div>
+                          )
+                        })()}
+                      </div>
+                      <div className="flex items-center gap-0.5">
+                        {isAdminOrFinance && !entry.ditolak && (
+                          <button onClick={(e) => { e.stopPropagation(); setRejectPengDialog({ open: true, anggaranId: a.id, entryId: entry.id }) }} className="text-slate-400 hover:text-amber-500 transition-colors p-1 rounded-md flex-shrink-0" title="Tolak Laporan">
+                            <AlertCircle className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {(!isAdminOrFinance && a.status_pengembalian !== 'DIVERIFIKASI') && (
+                          <button onClick={(e) => { e.stopPropagation(); handleDeletePengembalianFoto(a.id, entry.id) }} className="text-slate-300 hover:text-rose-500 transition-colors p-1 rounded-md flex-shrink-0" title="Hapus Laporan Ini">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  ))}
+                    {entry.nominal !== undefined && (
+                      <div className={`text-[11px] font-black mb-2 border-b pb-1.5 ${entry.ditolak ? 'text-rose-700/70 border-rose-100/50 line-through' : 'text-[#008784] border-emerald-100/50'}`}>
+                        Rp {Number(entry.nominal).toLocaleString('id-ID')}
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {entry.urls.map((u: string) => (
+                        <div key={u} className="relative group w-10 h-10">
+                          {isImage(u) ? (
+                            <img src={u} onClick={(e) => { e.stopPropagation(); setPreviewImage(u) }} className="w-full h-full object-cover rounded-md cursor-pointer border border-slate-200" alt="Bukti Refund" />
+                          ) : (
+                            <a href={u} target="_blank" onClick={(e) => e.stopPropagation()} className="w-full h-full bg-[#008784]/10 text-[#008784] rounded flex items-center justify-center">
+                              <FileText className="w-4 h-4" />
+                            </a>
+                          )}
+                          {(!isAdminOrFinance && a.status_pengembalian !== 'DIVERIFIKASI') && (
+                            <button onClick={(e) => { e.stopPropagation(); handleDeletePengembalianFoto(a.id, entry.id, u) }} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-sm"><X className="w-3 h-3"/></button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-hidden border border-slate-200 rounded-xl bg-white shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[11px] border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="px-3 py-2 font-black text-slate-500 uppercase tracking-widest text-left w-6 border-r border-slate-200">No</th>
+                        <th className="px-3 py-2 font-black text-slate-500 uppercase tracking-widest text-left border-r border-slate-200">Deskripsi</th>
+                        <th className="px-3 py-2 font-black text-slate-500 uppercase tracking-widest text-right border-r border-slate-200">Nominal</th>
+                        <th className="px-3 py-2 font-black text-slate-500 uppercase tracking-widest text-center border-r border-slate-200">Bukti</th>
+                        <th className="px-3 py-2 font-black text-slate-500 uppercase tracking-widest text-center">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {entries.map((entry: any, idx: number) => (
+                        <tr key={entry.id} className={`${entry.ditolak ? 'bg-rose-50/30' : 'hover:bg-slate-50/50'} transition-colors`}>
+                          <td className="px-3 py-3 text-center font-bold text-slate-400 border-r border-slate-100">{idx + 1}</td>
+                          <td className="px-3 py-3 border-r border-slate-100">
+                            <div className="flex flex-col gap-1">
+                              <span className={`font-bold ${entry.ditolak ? 'text-rose-700 line-through' : 'text-slate-700'}`}>{entry.deskripsi}</span>
+                              {entry.ditolak && <span className="text-[9px] text-rose-500 font-bold italic">Tolak: {entry.alasan_tolak}</span>}
+                              {(() => {
+                                const kJuduls = entry.kegiatan_juduls || (entry.kegiatan_judul ? [entry.kegiatan_judul] : [])
+                                return kJuduls.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {kJuduls.map((kj: string, i: number) => (
+                                      <span key={i} className="text-[8px] bg-indigo-50 text-indigo-600 px-1 py-0.5 rounded border border-indigo-100 font-bold tracking-tight">Kgt: {kj}</span>
+                                    ))}
+                                  </div>
+                                )
+                              })()}
+                            </div>
+                          </td>
+                          <td className={`px-3 py-3 text-right font-black border-r border-slate-100 ${entry.ditolak ? 'text-rose-700 line-through' : 'text-[#008784]'}`}>
+                            Rp {Number(entry.nominal).toLocaleString('id-ID')}
+                          </td>
+                          <td className="px-3 py-3 border-r border-slate-100">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {entry.urls.map((u: string) => (
+                                <div key={u} className="relative group w-8 h-8 shrink-0">
+                                  {isImage(u) ? (
+                                    <img src={u} onClick={(e) => { e.stopPropagation(); setPreviewImage(u) }} className="w-8 h-8 object-cover rounded border border-slate-200 cursor-pointer hover:scale-110 transition-transform" />
+                                  ) : (
+                                    <a href={u} target="_blank" onClick={(e) => e.stopPropagation()} className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded flex items-center justify-center text-[10px]">
+                                      <FileText className="w-4 h-4" />
+                                    </a>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              {isAdminOrFinance && !entry.ditolak && (
+                                <button onClick={(e) => { e.stopPropagation(); setRejectPengDialog({ open: true, anggaranId: a.id, entryId: entry.id }) }} className="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200">
+                                  <AlertCircle className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {(!isAdminOrFinance && a.status_pengembalian !== 'DIVERIFIKASI') && (
+                                <button onClick={(e) => { e.stopPropagation(); handleDeletePengembalianFoto(a.id, entry.id) }} className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            ))}
+            )}
+
             {(!isAdminOrFinance && a.status_pengembalian !== 'DIVERIFIKASI') && (
               <button
                 onClick={(e) => { e.stopPropagation(); setPengUploadDialog({ open: true, anggaranId: a.id }) }}
-                className="text-[10px] font-bold text-slate-500 hover:text-[#008784] py-2 text-center w-full rounded-lg border border-dashed border-slate-300 hover:bg-[#008784]/5 transition-colors uppercase tracking-widest mt-1"
+                className="text-[10px] font-bold text-slate-500 hover:text-[#008784] py-2.5 text-center w-full rounded-xl border border-dashed border-slate-300 hover:bg-[#008784]/5 transition-colors uppercase tracking-widest mt-1"
               >
                 + Tambah Refund
               </button>
@@ -523,6 +623,8 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
         entries = [{ id: 'legacy', deskripsi: 'Upload Sebelumnya', urls: a.bukti_ca_url.split(',').filter(Boolean) }]
       }
     }
+
+    const [viewMode, setViewMode] = useState<'grid' | 'table'>(entries.length > 1 ? 'table' : 'grid')
 
     if (compact) {
       if (entries.length === 0) {
@@ -582,72 +684,168 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
     }
 
     return (
-      <div className="flex flex-col gap-3 w-full max-w-[200px]">
+      <div className="flex flex-col gap-3 w-full">
         {entries.length > 0 ? (
           <>
-            {entries.map(entry => (
-              <div key={entry.id} className={`bg-slate-50 border rounded-lg p-3 text-left shadow-sm ${entry.ditolak ? 'border-rose-200 bg-rose-50/50' : 'border-slate-100'}`}>
-                {entry.ditolak && (
-                  <div className="mb-3 p-2.5 bg-rose-100/50 text-rose-700 text-[10px] rounded border border-rose-200">
-                    <span className="font-bold block mb-0.5 uppercase tracking-wide">Ditolak Admin/Finance:</span>
-                    <span className="italic leading-tight">{entry.alasan_tolak}</span>
-                  </div>
-                )}
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <div className={`text-[10px] font-bold truncate min-w-0 flex flex-col gap-0.5 ${entry.ditolak ? 'text-rose-700/70 line-through' : 'text-slate-700'}`} title={entry.deskripsi}>
-                    <span>{entry.deskripsi}</span>
-                    {(() => {
-                      const kJuduls = entry.kegiatan_juduls || (entry.kegiatan_judul ? [entry.kegiatan_judul] : [])
-                      if (kJuduls.length === 0) return null
-                      return (
-                        <div className="flex flex-wrap gap-1 mt-0.5">
-                          {kJuduls.map((kj: string, i: number) => (
-                            <span key={i} className="text-[9px] text-[#008784] font-black uppercase tracking-widest bg-[#008784]/5 border border-[#008784]/20 rounded px-1.5 py-0.5 w-fit truncate max-w-full">Kegiatan: {kj}</span>
-                          ))}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                  <div className="flex items-center gap-0.5">
-                    {isAdminOrFinance && !entry.ditolak && (
-                      <button onClick={(e) => { e.stopPropagation(); setRejectDialog({ open: true, anggaranId: a.id, entryId: entry.id }) }} className="text-slate-400 hover:text-amber-500 transition-colors p-1 rounded-md flex-shrink-0" title="Tolak Laporan">
-                        <AlertCircle className="w-3.5 h-3.5" />
-                      </button>
+            <div className="flex justify-between items-center mb-2 px-1">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{entries.length} Laporan Bukti CA</span>
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                <button 
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-[#008784] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  title="Grid View"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </button>
+                <button 
+                  onClick={() => setViewMode('table')}
+                  className={`p-1 rounded-md transition-all ${viewMode === 'table' ? 'bg-white text-[#008784] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  title="Table View"
+                >
+                  <Table className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {entries.map(entry => (
+                  <div key={entry.id} className={`bg-slate-50 border rounded-lg p-3 text-left shadow-sm ${entry.ditolak ? 'border-rose-200 bg-rose-50/50' : 'border-slate-100'}`}>
+                    {entry.ditolak && (
+                      <div className="mb-3 p-2.5 bg-rose-100/50 text-rose-700 text-[10px] rounded border border-rose-200">
+                        <span className="font-bold block mb-0.5 uppercase tracking-wide">Ditolak Admin/Finance:</span>
+                        <span className="italic leading-tight">{entry.alasan_tolak}</span>
+                      </div>
                     )}
-                    {(!isAdminOrFinance && a.status_ca !== 'DIVERIFIKASI') && (
-                      <button onClick={(e) => { e.stopPropagation(); handleDeleteFoto(a.id, entry.id) }} className="text-slate-300 hover:text-rose-500 transition-colors p-1 rounded-md flex-shrink-0" title="Hapus Laporan Ini">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {entry.nominal !== undefined && (
-                  <div className={`text-[11px] font-black mb-2 border-b pb-1.5 ${entry.ditolak ? 'text-rose-700/70 border-rose-100/50 line-through' : 'text-[#008784] border-emerald-100/50'}`}>
-                    Rp {Number(entry.nominal).toLocaleString('id-ID')}
-                  </div>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  {entry.urls.map((u: string) => (
-                    <div key={u} className="relative group w-10 h-10">
-                      {isImage(u) ? (
-                        <img src={u} onClick={(e) => { e.stopPropagation(); setPreviewImage(u) }} className="w-full h-full object-cover rounded-md cursor-pointer border border-slate-200" alt="Bukti CA" />
-                      ) : (
-                        <a href={u} target="_blank" onClick={(e) => e.stopPropagation()} className="w-full h-full bg-[#008784]/10 text-[#008784] rounded flex items-center justify-center">
-                          <FileText className="w-4 h-4" />
-                        </a>
-                      )}
-                      {(!isAdminOrFinance && a.status_ca !== 'DIVERIFIKASI') && (
-                        <button onClick={(e) => { e.stopPropagation(); handleDeleteFoto(a.id, entry.id, u) }} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-sm"><X className="w-3 h-3"/></button>
-                      )}
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className={`text-[10px] font-bold truncate min-w-0 flex flex-col gap-0.5 ${entry.ditolak ? 'text-rose-700/70 line-through' : 'text-slate-700'}`} title={entry.deskripsi}>
+                        <span>{entry.deskripsi}</span>
+                        {(() => {
+                          const kJuduls = entry.kegiatan_juduls || (entry.kegiatan_judul ? [entry.kegiatan_judul] : [])
+                          if (kJuduls.length === 0) return null
+                          return (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {kJuduls.map((kj: string, i: number) => (
+                                <span key={i} className="text-[9px] text-[#008784] font-black uppercase tracking-widest bg-[#008784]/5 border border-[#008784]/20 rounded px-1.5 py-0.5 w-fit truncate max-w-full">Kegiatan: {kj}</span>
+                              ))}
+                            </div>
+                          )
+                        })()}
+                      </div>
+                      <div className="flex items-center gap-0.5">
+                        {isAdminOrFinance && !entry.ditolak && (
+                          <button onClick={(e) => { e.stopPropagation(); setRejectDialog({ open: true, anggaranId: a.id, entryId: entry.id }) }} className="text-slate-400 hover:text-amber-500 transition-colors p-1 rounded-md flex-shrink-0" title="Tolak Laporan">
+                            <AlertCircle className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {(!isAdminOrFinance && a.status_ca !== 'DIVERIFIKASI') && (
+                          <button onClick={(e) => { e.stopPropagation(); handleDeleteFoto(a.id, entry.id) }} className="text-slate-300 hover:text-rose-500 transition-colors p-1 rounded-md flex-shrink-0" title="Hapus Laporan Ini">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  ))}
+                    {entry.nominal !== undefined && (
+                      <div className={`text-[11px] font-black mb-2 border-b pb-1.5 ${entry.ditolak ? 'text-rose-700/70 border-rose-100/50 line-through' : 'text-[#008784] border-emerald-100/50'}`}>
+                        Rp {Number(entry.nominal).toLocaleString('id-ID')}
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {entry.urls.map((u: string) => (
+                        <div key={u} className="relative group w-10 h-10">
+                          {isImage(u) ? (
+                            <img src={u} onClick={(e) => { e.stopPropagation(); setPreviewImage(u) }} className="w-full h-full object-cover rounded-md cursor-pointer border border-slate-200" alt="Bukti CA" />
+                          ) : (
+                            <a href={u} target="_blank" onClick={(e) => e.stopPropagation()} className="w-full h-full bg-[#008784]/10 text-[#008784] rounded flex items-center justify-center">
+                              <FileText className="w-4 h-4" />
+                            </a>
+                          )}
+                          {(!isAdminOrFinance && a.status_ca !== 'DIVERIFIKASI') && (
+                            <button onClick={(e) => { e.stopPropagation(); handleDeleteFoto(a.id, entry.id, u) }} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-sm"><X className="w-3 h-3"/></button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-hidden border border-slate-200 rounded-xl bg-white shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[11px] border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="px-3 py-2 font-black text-slate-500 uppercase tracking-widest text-left w-6 border-r border-slate-200">No</th>
+                        <th className="px-3 py-2 font-black text-slate-500 uppercase tracking-widest text-left border-r border-slate-200">Deskripsi</th>
+                        <th className="px-3 py-2 font-black text-slate-500 uppercase tracking-widest text-right border-r border-slate-200">Nominal</th>
+                        <th className="px-3 py-2 font-black text-slate-500 uppercase tracking-widest text-center border-r border-slate-200">Bukti</th>
+                        <th className="px-3 py-2 font-black text-slate-500 uppercase tracking-widest text-center">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {entries.map((entry: any, idx: number) => (
+                        <tr key={entry.id} className={`${entry.ditolak ? 'bg-rose-50/30' : 'hover:bg-slate-50/50'} transition-colors`}>
+                          <td className="px-3 py-3 text-center font-bold text-slate-400 border-r border-slate-100">{idx + 1}</td>
+                          <td className="px-3 py-3 border-r border-slate-100">
+                            <div className="flex flex-col gap-1">
+                              <span className={`font-bold ${entry.ditolak ? 'text-rose-700 line-through' : 'text-slate-700'}`}>{entry.deskripsi}</span>
+                              {entry.ditolak && <span className="text-[9px] text-rose-500 font-bold italic">Tolak: {entry.alasan_tolak}</span>}
+                              {(() => {
+                                const kJuduls = entry.kegiatan_juduls || (entry.kegiatan_judul ? [entry.kegiatan_judul] : [])
+                                return kJuduls.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {kJuduls.map((kj: string, i: number) => (
+                                      <span key={i} className="text-[8px] bg-emerald-50 text-emerald-600 px-1 py-0.5 rounded border border-emerald-100 font-bold tracking-tight">Kgt: {kj}</span>
+                                    ))}
+                                  </div>
+                                )
+                              })()}
+                            </div>
+                          </td>
+                          <td className={`px-3 py-3 text-right font-black border-r border-slate-100 ${entry.ditolak ? 'text-rose-700 line-through' : 'text-[#008784]'}`}>
+                            Rp {Number(entry.nominal).toLocaleString('id-ID')}
+                          </td>
+                          <td className="px-3 py-3 border-r border-slate-100">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {entry.urls.map((u: string) => (
+                                <div key={u} className="relative group w-8 h-8 shrink-0">
+                                  {isImage(u) ? (
+                                    <img src={u} onClick={(e) => { e.stopPropagation(); setPreviewImage(u) }} className="w-8 h-8 object-cover rounded border border-slate-200 cursor-pointer hover:scale-110 transition-transform" />
+                                  ) : (
+                                    <a href={u} target="_blank" onClick={(e) => e.stopPropagation()} className="w-8 h-8 bg-emerald-50 text-emerald-600 rounded flex items-center justify-center text-[10px]">
+                                      <FileText className="w-4 h-4" />
+                                    </a>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              {isAdminOrFinance && !entry.ditolak && (
+                                <button onClick={(e) => { e.stopPropagation(); setRejectDialog({ open: true, anggaranId: a.id, entryId: entry.id }) }} className="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200">
+                                  <AlertCircle className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {(!isAdminOrFinance && a.status_ca !== 'DIVERIFIKASI') && (
+                                <button onClick={(e) => { e.stopPropagation(); handleDeleteFoto(a.id, entry.id) }} className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            ))}
+            )}
+
             {(!isAdminOrFinance && a.status_ca !== 'DIVERIFIKASI') && (
               <button
                 onClick={(e) => { e.stopPropagation(); setCaUploadDialog({ open: true, anggaranId: a.id }) }}
-                className="text-[10px] font-bold text-slate-500 hover:text-[#008784] py-2 text-center w-full rounded-lg border border-dashed border-slate-300 hover:bg-[#008784]/5 transition-colors uppercase tracking-widest mt-1"
+                className="text-[10px] font-bold text-slate-500 hover:text-[#008784] py-2.5 text-center w-full rounded-xl border border-dashed border-slate-300 hover:bg-[#008784]/5 transition-colors uppercase tracking-widest mt-1"
               >
                 + Tambah CA
               </button>

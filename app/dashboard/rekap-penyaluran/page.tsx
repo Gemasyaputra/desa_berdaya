@@ -109,39 +109,132 @@ export default function RekapPenyaluranPage() {
     return { totalAjuan, totalCair, totalRealisasi, totalPengembalian, totalSisa }
   }, [filteredData])
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage)
-  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  // Find unique programs for column headers
+  const uniquePrograms = useMemo(() => {
+    const programs = new Set<string>()
+    filteredData.forEach(item => {
+      if (item.nama_program && item.nama_program !== '-') programs.add(item.nama_program)
+    })
+    return Array.from(programs).sort()
+  }, [filteredData])
+
+  // Pivot data: Group by Desa + Relawan
+  const pivotData = useMemo(() => {
+    const grouped = new Map<string, any>()
+    filteredData.forEach(item => {
+      const key = `${item.nama_desa}_${item.relawan_nama}`
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          nama_desa: item.nama_desa,
+          relawan_nama: item.relawan_nama,
+          programsData: {}, // key: programName, value: financial data
+          rowTotal: {
+             ajuan: 0, cair: 0, realisasi: 0, pengembalian: 0, sisa: 0
+          }
+        })
+      }
+      
+      const row = grouped.get(key)
+      const progName = item.nama_program
+      
+      if (!row.programsData[progName]) {
+        row.programsData[progName] = { ajuan: 0, cair: 0, realisasi: 0, pengembalian: 0, sisa: 0 }
+      }
+      
+      row.programsData[progName].ajuan += item.total_ajuan || 0
+      row.programsData[progName].cair += item.total_dicairkan || 0
+      row.programsData[progName].realisasi += item.total_realisasi || 0
+      row.programsData[progName].pengembalian += item.total_pengembalian || 0
+      row.programsData[progName].sisa += item.sisa_saldo || 0
+      
+      row.rowTotal.ajuan += item.total_ajuan || 0
+      row.rowTotal.cair += item.total_dicairkan || 0
+      row.rowTotal.realisasi += item.total_realisasi || 0
+      row.rowTotal.pengembalian += item.total_pengembalian || 0
+      row.rowTotal.sisa += item.sisa_saldo || 0
+    })
+    return Array.from(grouped.values()).sort((a,b) => a.nama_desa.localeCompare(b.nama_desa))
+  }, [filteredData])
+
+  const totalPages = Math.ceil(pivotData.length / itemsPerPage)
+  const paginatedData = pivotData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const handleExport = () => {
-    if (filteredData.length === 0) return toast.warning('Tidak ada data untuk diekspor')
-    const exportData = filteredData.map(item => ({
-      'Nama Desa': item.nama_desa,
-      'Relawan': item.relawan_nama,
-      'Nama Program': item.nama_program,
-      'Kategori Program': item.kategori_program,
-      'Sumber Dana': item.sumber_dana,
-      'Total Ajuan RI (Rp)': item.total_ajuan,
-      'Total Dicairkan (Rp)': item.total_dicairkan,
-      'Total Realisasi CA (Rp)': item.total_realisasi,
-      'Total Pengembalian (Rp)': item.total_pengembalian,
-      'Sisa Saldo (Rp)': item.sisa_saldo
-    }))
+    if (pivotData.length === 0) return toast.warning('Tidak ada data untuk diekspor')
     
-    // Add totals row
-    exportData.push({
-      'Nama Desa': 'TOTAL KESELURUHAN',
-      'Relawan': '',
-      'Nama Program': '',
-      'Kategori Program': '',
-      'Sumber Dana': '',
-      'Total Ajuan RI (Rp)': totals.totalAjuan,
-      'Total Dicairkan (Rp)': totals.totalCair,
-      'Total Realisasi CA (Rp)': totals.totalRealisasi,
-      'Total Pengembalian (Rp)': totals.totalPengembalian,
-      'Sisa Saldo (Rp)': totals.totalSisa
+    // Construct AoA (Array of Arrays) for Excel with merged headers
+    const aoa: any[][] = []
+    
+    // Header Row 1: grouping
+    const headerRow1 = ['Nama Desa', 'Nama Relawan']
+    uniquePrograms.forEach(p => {
+      headerRow1.push(p, '', '', '', '') // spans 5 columns
     })
+    headerRow1.push('TOTAL KESELURUHAN', '', '', '', '')
+    aoa.push(headerRow1)
+    
+    // Header Row 2: sub-columns
+    const headerRow2 = ['', ''] // under Desa & Relawan
+    uniquePrograms.forEach(() => {
+      headerRow2.push('Ajuan RI', 'Anggaran Dicairkan', 'Realisasi', 'Refund', 'Saldo')
+    })
+    headerRow2.push('Total Ajuan RI', 'Total Dicairkan', 'Total Realisasi', 'Total Refund', 'Total Saldo')
+    aoa.push(headerRow2)
+    
+    // Data Rows
+    pivotData.forEach(row => {
+      const dataRow = [row.nama_desa, row.relawan_nama]
+      uniquePrograms.forEach(pName => {
+        const pData = row.programsData[pName]
+        if (pData) {
+          dataRow.push(pData.ajuan, pData.cair, pData.realisasi, pData.pengembalian, pData.sisa)
+        } else {
+          dataRow.push(0, 0, 0, 0, 0)
+        }
+      })
+      // Add row total
+      dataRow.push(row.rowTotal.ajuan, row.rowTotal.cair, row.rowTotal.realisasi, row.rowTotal.pengembalian, row.rowTotal.sisa)
+      aoa.push(dataRow)
+    })
+    
+    // Final Grand Totals row
+    const totalsRow = ['GRAND TOTAL', '']
+    uniquePrograms.forEach(pName => {
+      // Calculate total for this specific column
+      let sAjuan = 0, sCair = 0, sReali = 0, sPeng = 0, sSisa = 0
+      pivotData.forEach(r => {
+        if (r.programsData[pName]) {
+          sAjuan += r.programsData[pName].ajuan
+          sCair += r.programsData[pName].cair
+          sReali += r.programsData[pName].realisasi
+          sPeng += r.programsData[pName].pengembalian
+          sSisa += r.programsData[pName].sisa
+        }
+      })
+      totalsRow.push(sAjuan, sCair, sReali, sPeng, sSisa)
+    })
+    totalsRow.push(totals.totalAjuan, totals.totalCair, totals.totalRealisasi, totals.totalPengembalian, totals.totalSisa)
+    aoa.push(totalsRow)
 
-    const ws = XLSX.utils.json_to_sheet(exportData)
+    const ws = XLSX.utils.aoa_to_sheet(aoa)
+    
+    // Merges for Header 1
+    const merges = []
+    // Merge Desa (Row 0-1, Col 0) and Relawan (Row 0-1, Col 1)
+    merges.push({ s: {r:0, c:0}, e: {r:1, c:0} })
+    merges.push({ s: {r:0, c:1}, e: {r:1, c:1} })
+    
+    // Merge Programs (Col 2-6, 7-11, etc.)
+    let colIdx = 2
+    uniquePrograms.forEach(() => {
+      merges.push({ s: {r:0, c:colIdx}, e: {r:0, c:colIdx+4} })
+      colIdx += 5
+    })
+    // Merge Total block
+    merges.push({ s: {r:0, c:colIdx}, e: {r:0, c:colIdx+4} })
+    
+    ws['!merges'] = merges
+    
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Rekap_Penyaluran')
     XLSX.writeFile(wb, `Rekap_Penyaluran_${new Date().getTime()}.xlsx`)
@@ -298,64 +391,73 @@ export default function RekapPenyaluranPage() {
           <table className="w-full text-sm text-left">
             <thead className="text-[11px] uppercase bg-slate-50/80 text-slate-500 border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3.5 font-black tracking-widest min-w-[180px]">Desa & Relawan</th>
-                <th className="px-4 py-3.5 font-black tracking-widest min-w-[200px]">Program</th>
-                <th className="px-4 py-3.5 text-right font-black tracking-widest">Total Ajuan (Rp)</th>
-                <th className="px-4 py-3.5 text-right font-black tracking-widest">Total Cair (Rp)</th>
-                <th className="px-4 py-3.5 text-right font-black tracking-widest whitespace-nowrap"><span className="text-amber-600">Realisasi (Rp)</span></th>
-                <th className="px-4 py-3.5 text-right font-black tracking-widest"><span className="text-rose-500">Refund (Rp)</span></th>
-                <th className="px-4 py-3.5 text-right font-black tracking-widest min-w-[120px]"><span className="text-indigo-600">Sisa Saldo (Rp)</span></th>
+                <th rowSpan={2} className="px-4 py-3.5 font-black tracking-widest min-w-[200px] border-r border-slate-200 bg-white sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">Desa & Relawan</th>
+                {uniquePrograms.map(p => (
+                  <th key={p} colSpan={5} className="px-4 py-2 text-center font-black tracking-widest border-r border-slate-200 bg-slate-100/50">{p}</th>
+                ))}
+                <th colSpan={5} className="px-4 py-2 text-center font-black tracking-widest bg-indigo-50/80 text-indigo-700">TOTAL KESELURUHAN</th>
+              </tr>
+              <tr className="border-t border-slate-200">
+                {uniquePrograms.map(p => (
+                  <React.Fragment key={p + '_sub'}>
+                    <th className="px-3 py-2 text-right font-bold tracking-widest min-w-[100px] border-l border-slate-200">Ajuan RI</th>
+                    <th className="px-3 py-2 text-right font-bold tracking-widest min-w-[100px] text-[#008784]">Cair</th>
+                    <th className="px-3 py-2 text-right font-bold tracking-widest min-w-[100px] text-amber-600">Realisasi</th>
+                    <th className="px-3 py-2 text-right font-bold tracking-widest min-w-[100px] text-rose-500">Refund</th>
+                    <th className="px-3 py-2 text-right font-bold tracking-widest min-w-[120px] border-r border-slate-200">Saldo</th>
+                  </React.Fragment>
+                ))}
+                <th className="px-3 py-2 text-right font-black tracking-widest min-w-[110px] border-l border-slate-300">Total Ajuan</th>
+                <th className="px-3 py-2 text-right font-black tracking-widest min-w-[110px] text-[#008784]">Total Cair</th>
+                <th className="px-3 py-2 text-right font-black tracking-widest min-w-[110px] text-amber-600">Total Realisasi</th>
+                <th className="px-3 py-2 text-right font-black tracking-widest min-w-[110px] text-rose-500">Total Refund</th>
+                <th className="px-3 py-2 text-right font-black tracking-widest min-w-[130px] text-indigo-700 bg-indigo-50/20">Total Saldo</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100/80 font-medium">
               {paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={1 + uniquePrograms.length * 5 + 5} className="px-4 py-12 text-center text-slate-400">
                     <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-20" />
                     <p>Tidak ada data</p>
                   </td>
                 </tr>
               ) : (
                 paginatedData.map(row => (
-                  <tr key={row.program_id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-4 py-3">
+                  <tr key={`${row.nama_desa}_${row.relawan_nama}`} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-4 py-3 bg-white sticky left-0 z-10 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                       <div className="flex flex-col gap-1">
-                        <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                          <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                          {row.nama_desa}
+                        <div className="font-bold text-slate-800 flex items-center gap-1.5 whitespace-nowrap">
+                          <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className="truncate max-w-[200px]">{row.nama_desa}</span>
                         </div>
-                        <div className="text-xs text-slate-500 flex items-center gap-1.5">
-                          <User className="w-3 h-3 opacity-70" />
-                          {row.relawan_nama}
+                        <div className="text-xs text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
+                          <User className="w-3 h-3 opacity-70 shrink-0" />
+                          <span className="truncate max-w-[200px]">{row.relawan_nama}</span>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="font-bold text-slate-700 line-clamp-2" title={row.nama_program}>{row.nama_program}</div>
-                      <div className="flex gap-1.5 mt-1">
-                         <span className="text-[9px] uppercase tracking-widest font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">{row.kategori_program}</span>
-                         {row.sumber_dana && row.sumber_dana !== '-' && (
-                           <span className="text-[9px] uppercase tracking-widest font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100">{row.sumber_dana}</span>
-                         )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {row.total_ajuan.toLocaleString('id-ID')}
-                    </td>
-                    <td className="px-4 py-3 text-right font-bold text-[#008784]">
-                      {row.total_dicairkan.toLocaleString('id-ID')}
-                    </td>
-                    <td className="px-4 py-3 text-right font-bold text-amber-600">
-                      {row.total_realisasi.toLocaleString('id-ID')}
-                    </td>
-                    <td className="px-4 py-3 text-right text-rose-500">
-                      {row.total_pengembalian.toLocaleString('id-ID')}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={`font-black px-2 py-1 rounded-md text-xs ${row.sisa_saldo < 0 ? 'bg-rose-100/50 text-rose-600 border border-rose-200/50' : 'bg-slate-100/80 text-slate-700 border border-slate-200'}`}>
-                         {row.sisa_saldo.toLocaleString('id-ID')}
-                      </span>
-                    </td>
+                    {uniquePrograms.map(p => {
+                      const pData = row.programsData[p] || { ajuan: 0, cair: 0, realisasi: 0, pengembalian: 0, sisa: 0 }
+                      return (
+                        <React.Fragment key={`${row.nama_desa}_${p}`}>
+                          <td className="px-3 py-3 text-right tabular-nums border-l border-slate-100/50">{pData.ajuan === 0 ? '-' : pData.ajuan.toLocaleString('id-ID')}</td>
+                          <td className="px-3 py-3 text-right tabular-nums font-bold text-[#008784]/80">{pData.cair === 0 ? '-' : pData.cair.toLocaleString('id-ID')}</td>
+                          <td className="px-3 py-3 text-right tabular-nums font-bold text-amber-600/80">{pData.realisasi === 0 ? '-' : pData.realisasi.toLocaleString('id-ID')}</td>
+                          <td className="px-3 py-3 text-right tabular-nums text-rose-500/80">{pData.pengembalian === 0 ? '-' : pData.pengembalian.toLocaleString('id-ID')}</td>
+                          <td className="px-3 py-3 text-right tabular-nums border-r border-slate-100/50">
+                            <span className={`font-black px-1.5 py-0.5 rounded-md text-xs ${pData.sisa < 0 ? 'bg-rose-100/50 text-rose-600' : 'text-slate-500'}`}>
+                               {pData.cair === 0 && pData.ajuan === 0 ? '-' : pData.sisa.toLocaleString('id-ID')}
+                            </span>
+                          </td>
+                        </React.Fragment>
+                      )
+                    })}
+                    <td className="px-3 py-3 text-right tabular-nums font-black border-l border-slate-300 bg-slate-50/50">{row.rowTotal.ajuan.toLocaleString('id-ID')}</td>
+                    <td className="px-3 py-3 text-right tabular-nums font-black text-[#008784] bg-emerald-50/30">{row.rowTotal.cair.toLocaleString('id-ID')}</td>
+                    <td className="px-3 py-3 text-right tabular-nums font-black text-amber-600 bg-amber-50/30">{row.rowTotal.realisasi.toLocaleString('id-ID')}</td>
+                    <td className="px-3 py-3 text-right tabular-nums font-black text-rose-500 bg-rose-50/30">{row.rowTotal.pengembalian.toLocaleString('id-ID')}</td>
+                    <td className="px-3 py-3 text-right tabular-nums font-black text-indigo-700 bg-indigo-50/50">{row.rowTotal.sisa.toLocaleString('id-ID')}</td>
                   </tr>
                 ))
               )}

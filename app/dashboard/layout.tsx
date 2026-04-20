@@ -151,7 +151,6 @@ export default function DashboardLayout({
           { href: '/dashboard/ekonomi', label: 'Update Ekonomi', icon: TrendingUp },
           { href: '/dashboard/kesehatan', label: 'Update Kesehatan', icon: Heart },
           { href: '/dashboard/kelompok', label: 'Daftar Kelompok', icon: UsersRound },
-          { href: '/dashboard/keuangan', label: 'Keuangan', icon: ClipboardList },
           { href: '/dashboard/laporan-kegiatan', label: 'Laporan Kegiatan', icon: FileText },
           { href: '/dashboard/laporan-keuangan-intervensi', label: 'Laporan Keuangan', icon: Receipt },
           { href: '/dashboard/rekap-penyaluran', label: 'Rekap Penyaluran', icon: Wallet },

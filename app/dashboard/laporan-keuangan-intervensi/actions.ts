@@ -114,7 +114,9 @@ export async function getLaporanKegiatanForIntervensi(intervensiId: number) {
   const res = await sql`
     SELECT lk.id, lk.judul_kegiatan, lk.tanggal_kegiatan
     FROM laporan_kegiatan lk
-    JOIN intervensi_program ip ON lk.desa_berdaya_id = ip.desa_berdaya_id
+    JOIN program p1 ON lk.program_id = p1.id
+    JOIN intervensi_program ip ON lk.desa_berdaya_id = ip.desa_berdaya_id 
+       AND p1.kategori_id = ip.kategori_program_id
     WHERE ip.id = ${intervensiId}
     ORDER BY lk.tanggal_kegiatan DESC
   `

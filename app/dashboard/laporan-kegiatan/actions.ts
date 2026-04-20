@@ -53,11 +53,14 @@ export async function getLaporanKegiatan() {
 
   const result = await sql`
     SELECT 
-      l.*, 
+      l.*,
+      kp.nama_kategori as jenis_kegiatan,
       dc.nama_desa,
       (SELECT array_agg(nama_kelompok) FROM kelompok WHERE id = ANY(l.kelompok_ids)) as nama_kelompok_list,
       (SELECT array_agg(nama) FROM penerima_manfaat WHERE id = ANY(l.penerima_manfaat_ids)) as nama_pm_list
     FROM laporan_kegiatan l
+    LEFT JOIN program p ON l.program_id = p.id
+    LEFT JOIN kategori_program kp ON p.kategori_id = kp.id
     JOIN desa_berdaya db ON l.desa_berdaya_id = db.id
     JOIN desa_config dc ON db.desa_id = dc.id
     WHERE l.desa_berdaya_id = ANY(${desaIds})
@@ -72,11 +75,14 @@ export async function getLaporanKegiatanById(id: number) {
 
   const result = await sql`
     SELECT 
-      l.*, 
+      l.*,
+      kp.nama_kategori as jenis_kegiatan,
       dc.nama_desa,
       (SELECT array_agg(nama_kelompok) FROM kelompok WHERE id = ANY(l.kelompok_ids)) as nama_kelompok_list,
       (SELECT array_agg(nama) FROM penerima_manfaat WHERE id = ANY(l.penerima_manfaat_ids)) as nama_pm_list
     FROM laporan_kegiatan l
+    LEFT JOIN program p ON l.program_id = p.id
+    LEFT JOIN kategori_program kp ON p.kategori_id = kp.id
     JOIN desa_berdaya db ON l.desa_berdaya_id = db.id
     JOIN desa_config dc ON db.desa_id = dc.id
     WHERE l.id = ${id}

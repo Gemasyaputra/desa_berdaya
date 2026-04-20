@@ -354,14 +354,14 @@ export default function RekapPenyaluranPage() {
               ]}
             />
             <MultiSelectGroup 
-              title="Filter Area & PIC"
+              title="Filter Desa & Relawan"
               groups={[
                 { key: 'desa', title: 'Desa', options: filterOptions.desa, selected: filterDesa, onChange: setFilterDesa },
                 { key: 'relawan', title: 'Relawan', options: filterOptions.relawan, selected: filterRelawan, onChange: setFilterRelawan }
               ]}
             />
             <MultiSelectGroup 
-              title="Filter Dana & Kategori"
+              title="Filter Sumber Dana & Kategori"
               groups={[
                 { key: 'kategori', title: 'Kategori', options: filterOptions.kategori, selected: filterKategori, onChange: setFilterKategori },
                 { key: 'sumberDana', title: 'Sumber Dana', options: filterOptions.sumberDana, selected: filterSumberDana, onChange: setFilterSumberDana }

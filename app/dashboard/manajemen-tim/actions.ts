@@ -817,42 +817,52 @@ export async function getRelawanWilayah(relawanId: number): Promise<DesaItem[]> 
 
 // Semua relawan + desa di bawah satu korwil
 export async function getKorwilWilayah(korwilId: number): Promise<KorwilWilayahDetail> {
-  const korwilRow = await sql`SELECT nama FROM relawan WHERE id = ${korwilId} LIMIT 1`
-  const korwil_nama = (korwilRow as any[])[0]?.nama ?? 'Korwil'
+  try {
+    const korwilRow = await sql`SELECT nama FROM relawan WHERE id = ${korwilId} LIMIT 1`
+    const korwil_nama = (korwilRow as any[])[0]?.nama ?? 'Korwil'
 
-  const relawanRows = await sql`
-    SELECT id, nama FROM relawan
-    WHERE korwil_id = ${korwilId} AND is_korwil = false
-    ORDER BY nama
-  `
+    const relawanRows = await sql`
+      SELECT id, nama FROM relawan
+      WHERE korwil_id = ${korwilId} AND is_korwil = false
+      ORDER BY nama
+    `
 
-  const relawans: RelawanWilayahItem[] = await Promise.all(
-    (relawanRows as any[]).map(async (r) => ({
-      relawan_id: Number(r.id),
-      relawan_nama: r.nama,
-      desa: await getRelawanWilayah(Number(r.id)),
-    }))
-  )
+    const relawans: RelawanWilayahItem[] = await Promise.all(
+      (relawanRows as any[]).map(async (r) => ({
+        relawan_id: Number(r.id),
+        relawan_nama: r.nama,
+        desa: await getRelawanWilayah(Number(r.id)),
+      }))
+    )
 
-  return { korwil_id: korwilId, korwil_nama, relawans }
+    return { korwil_id: korwilId, korwil_nama, relawans }
+  } catch (e) {
+    console.error('getKorwilWilayah error:', e)
+    return { korwil_id: korwilId, korwil_nama: 'Error/Korwil', relawans: [] }
+  }
 }
 
 // Semua korwil+relawan+desa di bawah satu monev
 export async function getMonevWilayah(monevId: number): Promise<MonevWilayahDetail> {
-  const monevRow = await sql`SELECT nama FROM monev WHERE id = ${monevId} LIMIT 1`
-  const monev_nama = (monevRow as any[])[0]?.nama ?? 'Monev'
+  try {
+    const monevRow = await sql`SELECT nama FROM monev WHERE id = ${monevId} LIMIT 1`
+    const monev_nama = (monevRow as any[])[0]?.nama ?? 'Monev'
 
-  const korwilRows = await sql`
-    SELECT id, nama FROM relawan
-    WHERE monev_id = ${monevId} AND is_korwil = true
-    ORDER BY nama
-  `
+    const korwilRows = await sql`
+      SELECT id, nama FROM relawan
+      WHERE monev_id = ${monevId} AND is_korwil = true
+      ORDER BY nama
+    `
 
-  const korwils: KorwilWilayahDetail[] = await Promise.all(
-    (korwilRows as any[]).map(async (k) => getKorwilWilayah(Number(k.id)))
-  )
+    const korwils: KorwilWilayahDetail[] = await Promise.all(
+      (korwilRows as any[]).map(async (k) => getKorwilWilayah(Number(k.id)))
+    )
 
-  return { monev_id: monevId, monev_nama, korwils }
+    return { monev_id: monevId, monev_nama, korwils }
+  } catch (e) {
+    console.error('getMonevWilayah error:', e)
+    return { monev_id: monevId, monev_nama: 'Error/Monev', korwils: [] }
+  }
 }
 
 // ============================================================

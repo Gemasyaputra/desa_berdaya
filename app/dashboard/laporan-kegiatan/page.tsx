@@ -85,7 +85,7 @@ export default function LaporanKegiatanListPage() {
                     </Badge>
                   </div>
                   <div className="text-[10px] font-semibold text-slate-500 uppercase shrink-0 bg-slate-100 px-2 py-1 rounded-md">
-                    {formatDate(laporan.created_at)}
+                    {formatDate(laporan.tanggal_kegiatan || laporan.created_at)}
                   </div>
                 </div>
 
@@ -123,7 +123,7 @@ export default function LaporanKegiatanListPage() {
               <tr>
                 <th className="px-6 py-4">Judul Kegiatan</th>
                 <th className="px-6 py-4">Desa Binaan</th>
-                <th className="px-6 py-4">Tanggal</th>
+                <th className="px-6 py-4">Tanggal Aktifitas</th>
                 <th className="px-6 py-4 text-right">Aksi</th>
               </tr>
             </thead>
@@ -146,7 +146,7 @@ export default function LaporanKegiatanListPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-slate-600">
-                      {formatDate(laporan.created_at)}
+                      {formatDate(laporan.tanggal_kegiatan || laporan.created_at)}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">

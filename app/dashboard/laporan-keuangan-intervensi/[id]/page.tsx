@@ -23,7 +23,8 @@ import {
   Trash2,
   Save,
   LayoutGrid,
-  Table
+  Table,
+  Link2
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getDetailLaporanKeuangan, uploadBuktiCA, verifyCA, updateCatatanRelawan, deleteBuktiCA, uploadBuktiPengembalian, deleteBuktiPengembalian, tolakBuktiPengembalian, verifyPengembalian } from '../actions'
@@ -58,6 +59,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
 
   const [caViewModes, setCaViewModes] = useState<Record<string, 'grid' | 'table'>>({})
   const [pengViewModes, setPengViewModes] = useState<Record<string, 'grid' | 'table'>>({})
+  const [isEditingTautan, setIsEditingTautan] = useState(false)
 
   const isImage = (url: string) => /\.(jpeg|jpg|gif|png|webp|avif)/i.test(url)
   
@@ -89,6 +91,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
   
   useEffect(() => {
     if (detailAnggaran) {
+       setIsEditingTautan(false)
        let kt = detailAnggaran.kegiatan_terkait
        try {
          if (typeof kt === 'string' && kt.trim().startsWith('[')) {
@@ -118,6 +121,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
       const freshData = await import('../actions').then(m => m.getDetailLaporanKeuangan(parseInt(id)))
       setData(freshData)
       toast.success('Pilihan kegiatan berhasil disimpan', { id: 'save-tg' })
+      setIsEditingTautan(false)
     } catch (e) {
       toast.error('Gagal menyimpan pilihan')
     } finally {
@@ -477,7 +481,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                       <div className="flex items-center gap-0.5">
                         {isAdminOrFinance && !entry.ditolak && (
                           <button onClick={(e) => { e.stopPropagation(); setRejectPengDialog({ open: true, anggaranId: a.id, entryId: entry.id }) }} className="text-slate-400 hover:text-amber-500 transition-colors p-1 rounded-md flex-shrink-0" title="Tolak Laporan">
-                            <AlertCircle className="w-3.5 h-3.5" />
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         )}
                         {(!isAdminOrFinance && a.status_pengembalian !== 'DIVERIFIKASI') && (
@@ -566,7 +570,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                             <div className="flex items-center justify-center gap-1">
                               {isAdminOrFinance && !entry.ditolak && (
                                 <button onClick={(e) => { e.stopPropagation(); setRejectPengDialog({ open: true, anggaranId: a.id, entryId: entry.id }) }} className="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200">
-                                  <AlertCircle className="w-3.5 h-3.5" />
+                                  <X className="w-3.5 h-3.5" />
                                 </button>
                               )}
                               {(!isAdminOrFinance && a.status_pengembalian !== 'DIVERIFIKASI') && (
@@ -742,7 +746,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                       <div className="flex items-center gap-0.5">
                         {isAdminOrFinance && !entry.ditolak && (
                           <button onClick={(e) => { e.stopPropagation(); setRejectDialog({ open: true, anggaranId: a.id, entryId: entry.id }) }} className="text-slate-400 hover:text-amber-500 transition-colors p-1 rounded-md flex-shrink-0" title="Tolak Laporan">
-                            <AlertCircle className="w-3.5 h-3.5" />
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         )}
                         {(!isAdminOrFinance && a.status_ca !== 'DIVERIFIKASI') && (
@@ -831,7 +835,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                             <div className="flex items-center justify-center gap-1">
                               {isAdminOrFinance && !entry.ditolak && (
                                 <button onClick={(e) => { e.stopPropagation(); setRejectDialog({ open: true, anggaranId: a.id, entryId: entry.id }) }} className="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200">
-                                  <AlertCircle className="w-3.5 h-3.5" />
+                                  <X className="w-3.5 h-3.5" />
                                 </button>
                               )}
                               {(!isAdminOrFinance && a.status_ca !== 'DIVERIFIKASI') && (
@@ -1000,9 +1004,27 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
         </CardHeader>
         <CardContent className="p-0">
           {/* MOBILE VIEW */}
-          <div className="md:hidden divide-y divide-slate-100">
+            <div className="md:hidden divide-y divide-slate-100">
              {filteredAnggaran.map((a: any) => {
-                const rowBgClass = a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50/20 hover:bg-emerald-50/50' : a.status_ca === 'UPLOADED' ? 'bg-amber-50/20 hover:bg-amber-50/50' : 'bg-rose-50/20 hover:bg-rose-50/50';
+                const rowBgClass = a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50/30 hover:bg-emerald-50/60 border-l-[4px] border-l-emerald-500' : a.status_ca === 'UPLOADED' ? 'bg-amber-50/30 hover:bg-amber-50/60 border-l-[4px] border-l-amber-500' : 'bg-rose-50/30 hover:bg-rose-50/60 border-l-[4px] border-l-rose-500';
+                
+                let kegCount = 0;
+                if (a?.kegiatan_terkait && kegiatanList.length > 0) {
+                  let ids: number[] = [];
+                  if (typeof a.kegiatan_terkait === 'string' && a.kegiatan_terkait.trim().startsWith('[')) {
+                    ids = JSON.parse(a.kegiatan_terkait).map(Number);
+                  } else if (Array.isArray(a.kegiatan_terkait)) {
+                    ids = a.kegiatan_terkait.map(Number);
+                  }
+                  kegCount = ids.filter(id => {
+                    const k = kegiatanList.find((x: any) => Number(x.id) === id);
+                    if (!k) return false;
+                    const d = new Date(k.tanggal_kegiatan);
+                    const mList = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                    return d.getMonth() === mList.indexOf(a.bulan) && d.getFullYear() === Number(a.tahun);
+                  }).length;
+                }
+
                 return (
                   <div key={a.id} className={`p-6 space-y-4 cursor-pointer transition-colors group/card ${rowBgClass}`} onClick={(e) => {
                     if ((e.target as HTMLElement).closest('button, input, textarea, a')) return;
@@ -1047,6 +1069,17 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                           <div className="flex justify-between gap-4">
                             <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Sisa Saldo:</span>
                             <span className={`font-black ${sisa < 0 ? 'text-rose-600' : 'text-slate-700'}`}>Rp {sisa.toLocaleString('id-ID')}</span>
+                          </div>
+                          <div className="flex justify-between gap-4 pt-2 mt-2 border-t border-slate-200">
+                            <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Lap. Kegiatan:</span>
+                            {kegCount > 0 ? (
+                              <div className="inline-flex items-center gap-1.5 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                                <Link2 className="w-3 h-3" />
+                                {kegCount} Tautan
+                              </div>
+                            ) : (
+                              <span className="font-bold text-slate-400">-</span>
+                            )}
                           </div>
                         </>
                       );
@@ -1124,6 +1157,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                   <th className="px-8 py-5">Cair</th>
                   <th className="px-8 py-5">Realisasi</th>
                   <th className="px-8 py-5">Sisa Saldo</th>
+                  <th className="px-8 py-5 text-center">Lap. Kegiatan</th>
                   <th className="px-8 py-5 text-center">Bukti CA</th>
                   <th className="px-8 py-5 text-center">Pengembalian</th>
                   <th className="px-8 py-5 text-center">Status</th>
@@ -1139,14 +1173,33 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
               <tbody className="divide-y divide-slate-100">
                 {filteredAnggaran.map((a: any) => {
                   const { realisasi, sisa } = getRealisasiAndSisa(a);
-                  const statusShadow = a.status_ca === 'DIVERIFIKASI' ? 'shadow-[inset_4px_0_0_0_#10b981,1px_0_0_0_#f1f5f9]' : a.status_ca === 'UPLOADED' ? 'shadow-[inset_4px_0_0_0_#fbbf24,1px_0_0_0_#f1f5f9]' : 'shadow-[inset_4px_0_0_0_#fb7185,1px_0_0_0_#f1f5f9]';
+                  const rowBg = a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50/40' : a.status_ca === 'UPLOADED' ? 'bg-amber-50/40' : 'bg-rose-50/40';
+                  const rowHoverBg = a.status_ca === 'DIVERIFIKASI' ? 'group-hover/row:bg-emerald-50/80 hover:bg-emerald-50/80' : a.status_ca === 'UPLOADED' ? 'group-hover/row:bg-amber-50/80 hover:bg-amber-50/80' : 'group-hover/row:bg-rose-50/80 hover:bg-rose-50/80';
+                  const statusShadow = a.status_ca === 'DIVERIFIKASI' ? 'shadow-[inset_4px_0_0_0_#10b981,1px_0_0_0_#f1f5f9]' : a.status_ca === 'UPLOADED' ? 'shadow-[inset_4px_0_0_0_#f59e0b,1px_0_0_0_#f1f5f9]' : 'shadow-[inset_4px_0_0_0_#f43f5e,1px_0_0_0_#f1f5f9]';
                   
+                  let kegCount = 0;
+                  if (a?.kegiatan_terkait && kegiatanList.length > 0) {
+                    let ids: number[] = [];
+                    if (typeof a.kegiatan_terkait === 'string' && a.kegiatan_terkait.trim().startsWith('[')) {
+                      ids = JSON.parse(a.kegiatan_terkait).map(Number);
+                    } else if (Array.isArray(a.kegiatan_terkait)) {
+                      ids = a.kegiatan_terkait.map(Number);
+                    }
+                    kegCount = ids.filter(id => {
+                      const k = kegiatanList.find((x: any) => Number(x.id) === id);
+                      if (!k) return false;
+                      const d = new Date(k.tanggal_kegiatan);
+                      const mList = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                      return d.getMonth() === mList.indexOf(a.bulan) && d.getFullYear() === Number(a.tahun);
+                    }).length;
+                  }
+
                   return (
-                    <tr key={a.id} className="bg-white hover:bg-slate-50/80 border-b border-slate-100 transition-colors cursor-pointer group/row" onClick={(e) => {
+                    <tr key={a.id} className={`${rowBg} ${rowHoverBg} border-b border-slate-100 transition-colors cursor-pointer group/row`} onClick={(e) => {
                       if ((e.target as HTMLElement).closest('button, input, textarea, a')) return;
                     setDetailAnggaran(a);
                   }}>
-                    <td className={`px-8 py-6 sticky left-0 z-10 bg-white group-hover/row:bg-slate-50 ${statusShadow}`}>
+                    <td className={`px-8 py-6 sticky left-0 z-10 ${rowBg} ${rowHoverBg} ${statusShadow}`}>
                       <div className="text-left outline-none">
                         <div className="font-black text-slate-800 transition-colors flex items-center gap-2 group-hover/row:text-[#7a1200]">
                           {a.bulan}
@@ -1166,6 +1219,16 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                     </td>
                     <td className="px-8 py-6 whitespace-nowrap">
                       <span className={`font-black tracking-tight ${sisa < 0 ? 'text-rose-600' : 'text-slate-700'}`}>Rp {sisa.toLocaleString('id-ID')}</span>
+                    </td>
+                    <td className="px-8 py-6 text-center align-middle">
+                      {kegCount > 0 ? (
+                        <div className="inline-flex items-center justify-center gap-1.5 text-[10px] font-bold bg-indigo-50 border border-indigo-100 text-indigo-600 px-2.5 py-1.5 rounded-lg whitespace-nowrap">
+                          <Link2 className="w-3.5 h-3.5" />
+                          {kegCount} Laporan
+                        </div>
+                      ) : (
+                        <span className="text-[10px] font-bold text-slate-300">-</span>
+                      )}
                     </td>
                     <td className="px-8 py-6 text-center align-middle">
                       <BuktiCAUploader a={a} compact={true} />
@@ -1388,36 +1451,66 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
 
             {/* Tautan Kegiatan Section */}
             {(() => {
-              const displayedKegiatan = isAdminOrFinance ? kegiatanList.filter(k => activeTerkaitIds.includes(Number(k.id))) : kegiatanList;
-              if (displayedKegiatan.length === 0) {
-                 if (isAdminOrFinance && kegiatanList.length > 0) {
+              const mList = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+              const targetMonth = mList.indexOf(detailAnggaran?.bulan);
+              const targetYear = Number(detailAnggaran?.tahun);
+
+              const filteredKegiatan = kegiatanList.filter(k => {
+                 const d = new Date(k.tanggal_kegiatan);
+                 return d.getMonth() === targetMonth && d.getFullYear() === targetYear;
+              });
+
+              const linkedKegiatan = filteredKegiatan.filter(k => activeTerkaitIds.includes(Number(k.id)));
+              const displayedKegiatan = isEditingTautan ? filteredKegiatan : linkedKegiatan;
+
+              if (displayedKegiatan.length === 0 && !isEditingTautan) {
+                 if (isAdminOrFinance) {
                    return (
                      <div className="pt-2 rounded-2xl bg-indigo-50/50 border border-indigo-100 p-4 -mx-1 text-center font-bold text-[11px] uppercase tracking-widest text-indigo-400">
                        Belum ada laporan kegiatan yang ditautkan
                      </div>
                    );
+                 } else {
+                   return (
+                     <div className="pt-2 rounded-2xl bg-indigo-50/50 border border-indigo-100 p-4 -mx-1 flex flex-col items-center justify-center gap-3">
+                       <div className="text-center font-bold text-[11px] uppercase tracking-widest text-indigo-400">
+                         Belum ada laporan kegiatan yang ditautkan
+                       </div>
+                       <Button size="sm" onClick={() => setIsEditingTautan(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold">
+                         + Tambah Tautan Kegiatan
+                       </Button>
+                     </div>
+                   );
                  }
-                 return null;
               }
+
               return (
                 <div className="pt-2 rounded-2xl bg-indigo-50/50 border border-indigo-100 p-4 -mx-1">
-                  <div className="flex items-center gap-2 mb-4 border-b border-indigo-200/60 pb-2">
-                    <div className="w-1.5 h-4 rounded-full bg-indigo-400" />
-                    <h4 className="text-[11px] font-black uppercase text-indigo-600 tracking-wider">Tautan Laporan Kegiatan {detailAnggaran?.bulan}</h4>
+                  <div className="flex items-center justify-between mb-4 border-b border-indigo-200/60 pb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-4 rounded-full bg-indigo-400" />
+                      <h4 className="text-[11px] font-black uppercase text-indigo-600 tracking-wider">Tautan Laporan Kegiatan {detailAnggaran?.bulan}</h4>
+                    </div>
+                    {!isAdminOrFinance && !isEditingTautan && (
+                      <Button size="sm" variant="outline" onClick={() => setIsEditingTautan(true)} className="h-7 text-[10px] font-bold text-indigo-600 border-indigo-200 hover:bg-indigo-50 transition-colors">
+                        + Edit/Tambah Tautan
+                      </Button>
+                    )}
                   </div>
                   <div className="bg-white border border-indigo-100 rounded-xl p-3 min-h-[50px] max-h-[160px] overflow-y-auto custom-scrollbar">
                     <div className="flex flex-col gap-2">
                       {displayedKegiatan.map(k => (
                         <div key={k.id} className="flex items-start justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-100 shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-colors">
                           <div className="flex items-start space-x-2 flex-1">
-                            <Checkbox 
-                              id={`terkait-keg-${k.id}`}
-                              checked={activeTerkaitIds.includes(Number(k.id))}
-                              onCheckedChange={() => toggleActiveTerkait(Number(k.id))}
-                              disabled={isAdminOrFinance}
-                              className="mt-0.5 data-[state=checked]:bg-indigo-600 data-[state=checked]:text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                            />
-                            {isAdminOrFinance ? (
+                            {isEditingTautan && (
+                              <Checkbox 
+                                id={`terkait-keg-${k.id}`}
+                                checked={activeTerkaitIds.includes(Number(k.id))}
+                                onCheckedChange={() => toggleActiveTerkait(Number(k.id))}
+                                className="mt-0.5 data-[state=checked]:bg-indigo-600 data-[state=checked]:text-white"
+                              />
+                            )}
+                            {(!isEditingTautan || isAdminOrFinance) ? (
                               <div 
                                 onClick={() => window.open(`/dashboard/laporan-kegiatan/${k.id}`, '_blank')}
                                 className="text-xs font-bold text-slate-700 flex-1 leading-tight cursor-pointer hover:text-indigo-600 transition-colors opacity-80"
@@ -1449,8 +1542,28 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                       ))}
                     </div>
                   </div>
-                  {!isAdminOrFinance && (
-                    <div className="mt-4 flex justify-end">
+                  {!isAdminOrFinance && isEditingTautan && (
+                    <div className="mt-4 flex justify-end gap-2">
+                       <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={() => {
+                           // Reset ke aslinya
+                           let kt = detailAnggaran?.kegiatan_terkait
+                           if (typeof kt === 'string' && kt.trim().startsWith('[')) {
+                             setActiveTerkaitIds(JSON.parse(kt).map(Number))
+                           } else if (Array.isArray(kt)) {
+                             setActiveTerkaitIds(kt.map(Number))
+                           } else {
+                             setActiveTerkaitIds([])
+                           }
+                           setIsEditingTautan(false)
+                        }} 
+                        disabled={isSavingTerkait}
+                        className="text-slate-500 hover:bg-slate-100 rounded-lg text-xs font-bold"
+                      >
+                        Batal
+                      </Button>
                       <Button 
                         size="sm" 
                         onClick={handleSaveTerkait} 

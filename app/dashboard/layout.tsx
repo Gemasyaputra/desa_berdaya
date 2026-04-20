@@ -187,7 +187,12 @@ export default function DashboardLayout({
           ...(isRelawan ? [{ href: '/dashboard/profil', label: 'Profil Saya', icon: UserCircle }] : []),
         ]
 
-  const isActive = (href: string) => pathname === href
+  const isActive = (href: string) => {
+    if (href === '/dashboard') {
+      return pathname === href
+    }
+    return pathname === href || pathname.startsWith(`${href}/`)
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">

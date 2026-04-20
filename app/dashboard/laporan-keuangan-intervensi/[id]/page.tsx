@@ -56,6 +56,9 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
   const [rejectPengDialog, setRejectPengDialog] = useState<{ open: boolean, anggaranId: number | null, entryId: string | null }>({ open: false, anggaranId: null, entryId: null })
   const [rejectPengReason, setRejectPengReason] = useState('')
 
+  const [caViewModes, setCaViewModes] = useState<Record<string, 'grid' | 'table'>>({})
+  const [pengViewModes, setPengViewModes] = useState<Record<string, 'grid' | 'table'>>({})
+
   const isImage = (url: string) => /\.(jpeg|jpg|gif|png|webp|avif)/i.test(url)
   
   const router = useRouter()
@@ -361,7 +364,9 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
       }
     }
 
-    const [viewMode, setViewMode] = useState<'grid' | 'table'>(entries.length > 1 ? 'table' : 'grid')
+    const defaultMode = entries.length > 1 ? 'table' : 'grid'
+    const viewMode = pengViewModes[a.id] || defaultMode
+    const setViewMode = (mode: 'grid' | 'table') => setPengViewModes(prev => ({...prev, [a.id]: mode}))
 
     if (compact) {
       if (entries.length === 0) {
@@ -624,7 +629,9 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
       }
     }
 
-    const [viewMode, setViewMode] = useState<'grid' | 'table'>(entries.length > 1 ? 'table' : 'grid')
+    const defaultMode = entries.length > 1 ? 'table' : 'grid'
+    const viewMode = caViewModes[a.id] || defaultMode
+    const setViewMode = (mode: 'grid' | 'table') => setCaViewModes(prev => ({...prev, [a.id]: mode}))
 
     if (compact) {
       if (entries.length === 0) {

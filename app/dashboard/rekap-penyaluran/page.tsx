@@ -21,6 +21,7 @@ import * as XLSX from 'xlsx'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MultiSelect } from '@/components/ui/multi-select'
+import { MultiSelectGroup } from '@/components/ui/multi-select-group'
 
 export default function RekapPenyaluranPage() {
   const [data, setData] = useState<any[]>([])
@@ -333,53 +334,38 @@ export default function RekapPenyaluranPage() {
       </div>
 
       <div className="bg-white p-4 lg:p-6 rounded-2xl shadow-sm border border-slate-100">
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex-1 relative min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <div className="flex flex-wrap gap-4 mb-6 items-start">
+          <div className="w-full md:w-[300px] shrink-0 relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input 
               type="text"
               placeholder="Cari kata kunci..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#7a1200] focus:ring-4 focus:ring-[#7a1200]/10 transition-all outline-none text-sm text-slate-700"
+              className="w-full min-h-[42px] pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:border-[#7a1200] focus:ring-4 focus:ring-[#7a1200]/10 transition-all outline-none text-sm text-slate-700 font-medium"
             />
           </div>
-          <div className="flex flex-wrap lg:flex-nowrap gap-3">
-            <MultiSelect 
-              title="Tahun" 
-              options={filterOptions.tahun} 
-              selected={filterTahun} 
-              onChange={setFilterTahun} 
+          <div className="flex flex-wrap gap-3 flex-1">
+            <MultiSelectGroup 
+              title="Filter Waktu"
+              groups={[
+                { key: 'tahun', title: 'Tahun', options: filterOptions.tahun, selected: filterTahun, onChange: setFilterTahun },
+                { key: 'bulan', title: 'Bulan', options: filterOptions.bulan, selected: filterBulan, onChange: setFilterBulan }
+              ]}
             />
-            <MultiSelect 
-              title="Bulan" 
-              options={filterOptions.bulan} 
-              selected={filterBulan} 
-              onChange={setFilterBulan} 
+            <MultiSelectGroup 
+              title="Filter Area & PIC"
+              groups={[
+                { key: 'desa', title: 'Desa', options: filterOptions.desa, selected: filterDesa, onChange: setFilterDesa },
+                { key: 'relawan', title: 'Relawan', options: filterOptions.relawan, selected: filterRelawan, onChange: setFilterRelawan }
+              ]}
             />
-            <MultiSelect 
-              title="Desa" 
-              options={filterOptions.desa} 
-              selected={filterDesa} 
-              onChange={setFilterDesa} 
-            />
-            <MultiSelect 
-              title="Kategori" 
-              options={filterOptions.kategori} 
-              selected={filterKategori} 
-              onChange={setFilterKategori} 
-            />
-            <MultiSelect 
-              title="Sumber Dana" 
-              options={filterOptions.sumberDana} 
-              selected={filterSumberDana} 
-              onChange={setFilterSumberDana} 
-            />
-            <MultiSelect 
-              title="Relawan" 
-              options={filterOptions.relawan} 
-              selected={filterRelawan} 
-              onChange={setFilterRelawan} 
+            <MultiSelectGroup 
+              title="Filter Dana & Kategori"
+              groups={[
+                { key: 'kategori', title: 'Kategori', options: filterOptions.kategori, selected: filterKategori, onChange: setFilterKategori },
+                { key: 'sumberDana', title: 'Sumber Dana', options: filterOptions.sumberDana, selected: filterSumberDana, onChange: setFilterSumberDana }
+              ]}
             />
 
             <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(Number(val))}>

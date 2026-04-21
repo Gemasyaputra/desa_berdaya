@@ -5,6 +5,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
+    "postinstall": "patch-package",
     "lint": "eslint .",
     "migrate": "tsx scripts/migrate.ts",
     "migrate:summary-fields": "tsx scripts/add-summary-fields.ts",
@@ -128,7 +129,7 @@
     "vaul": "^1.1.2",
     "xlsx": "^0.18.5",
     "zod": "3.25.76",
-    "zudoku": "^0.75.0"
+    "zudoku": "^0.62.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.9",
@@ -138,6 +139,7 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "patch-package": "^8.0.1",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
     "tsx": "^4.7.0",

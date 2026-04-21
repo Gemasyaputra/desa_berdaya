@@ -1,0 +1,31 @@
+diff --git a/node_modules/zudoku/dist/config/loader.js b/node_modules/zudoku/dist/config/loader.js
+index 25a9ef8..bb0878d 100644
+--- a/node_modules/zudoku/dist/config/loader.js
++++ b/node_modules/zudoku/dist/config/loader.js
+@@ -55,7 +55,7 @@ export function findOutputPathOfServerConfig(output) {
+         throw new Error("Expected a single output, but got an array");
+     }
+     if ("output" in output) {
+-        const result = output.output.find((o) => "isEntry" in o && o.isEntry && o.fileName === "zudoku.config.js");
++        const result = output.output.find((o) => "isEntry" in o && o.isEntry && (o.fileName === "zudoku.config.js" || o.fileName === "zudoku.config.mjs"));
+         if (result) {
+             return result.fileName;
+         }
+diff --git a/node_modules/zudoku/dist/vite/prerender/prerender.js b/node_modules/zudoku/dist/vite/prerender/prerender.js
+index c4f789d..ec54099 100644
+--- a/node_modules/zudoku/dist/vite/prerender/prerender.js
++++ b/node_modules/zudoku/dist/vite/prerender/prerender.js
+@@ -32,7 +32,12 @@ const routesToPaths = (routes) => {
+ export const prerender = async ({ html, dir, basePath = "", serverConfigFilename, writeRedirects = true, }) => {
+     const distDir = path.join(dir, "dist", basePath);
+     const serverConfigPath = pathToFileURL(path.join(distDir, "server", serverConfigFilename)).href;
+-    const entryServerPath = pathToFileURL(path.join(distDir, "server/entry.server.js")).href;
++    // Support both .js and .mjs output (fix for Vite outputting .mjs)
++    const { existsSync } = await import("node:fs");
++    const entryServerJs = path.join(distDir, "server/entry.server.js");
++    const entryServerMjs = path.join(distDir, "server/entry.server.mjs");
++    const entryServerFile = existsSync(entryServerJs) ? entryServerJs : entryServerMjs;
++    const entryServerPath = pathToFileURL(entryServerFile).href;
+     const config = await import(serverConfigPath).then((m) => m.default);
+     const buildConfig = await getBuildConfig();
+     const module = await import(entryServerPath);

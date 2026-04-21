@@ -1,0 +1,61 @@
+---
+title: Introduction & Overview
+---
+
+# SIDB — Sistem Monitoring Desa Berdaya
+
+Sistem manajemen operasional lapangan (Desa Berdaya V2) untuk Relawan Rumah Zakat dengan arsitektur murni Serverless (Next.js App Router + Neon Postgres). Sistem ini digunakan untuk mengelola program pembinaan desa secara aktif.
+
+## 🏗️ Arsitektur Baru
+
+Sistem ini dirancang menggunakan stack modern serverless:
+- **Frontend + API**: Next.js App Router (UI Dashboard & Mobile First)
+- **AI Integration**: Vercel AI SDK (KTP OCR Scanner)
+- **Storage**: Vercel Blob (Image & Receipt Storage)
+- **Database**: Neon Serverless (Postgres DB) via Drizzle ORM
+
+## 🚀 Fitur Utama
+
+1. **Manajemen Penerima Manfaat (PM) & Desa Binaan**
+   - Pencatatan Penerima Manfaat berdasarkan kategori: LANSIA, BUMIL, BALITA, EKONOMI.
+   - Pengelompokan hirarkis wilayah (Provinsi -> Kota -> Kecamatan -> Desa).
+
+2. **Modul AI KTP Scanner (OCR)**
+   - Otomatisasi pembacaan KTP (NIK, Nama, dan Alamat) menggunakan Vercel AI SDK (Vision), mempermudah Relawan saat memasukkan data di lapangan.
+
+3. **Hierarki User**
+
+   Sistem memiliki dua jalur peran yang berbeda:
+
+   **Jalur Lapangan (Relawan):**
+   - **MONEV**: Mengawasi seluruh Korwil dan Relawan di semua wilayah. Akses penuh ke semua data.
+   - **ADMIN**: Relawan dengan hak akses admin — dapat mengelola konfigurasi, user, dan semua fitur.
+   - **KORWIL** (flag `is_korwil = true` di tabel relawan): Relawan senior yang menjadi supervisor/validator bagi Relawan di wilayahnya.
+   - **RELAWAN**: Menginput kegiatan, data Penerima Manfaat, dan laporan keuangan bulanan.
+
+   **Jalur Kantor (Office):**
+   - **OFFICE**: Staf kantor yang memantau dan memvalidasi laporan dari sisi administrasi.
+   - **FINANCE**: Staf keuangan yang mengelola pencairan dana dan verifikasi anggaran.
+   - **PROG_HEAD**: Kepala program yang mengawasi jalannya program pemberdayaan desa.
+
+4. **Pelaporan Kegiatan & Keuangan Bulanan**
+   - Double-entry system (Alokasi vs Realisasi).
+   - Sistem Refund jika realisasi di bawah alokasi dana akhir bulan.
+
+5. **Formulir Monitoring Dinamis (JSONB)**
+   - Penyimpanan laporan bulanan berbentuk _schemaless_ yang bergantung pada kategori Penerima Manfaat.
+
+---
+
+## 📦 Setup & Instalasi Lokal
+
+### Environment Variables (.env.local)
+
+Pastikan variabel lingkungan sudah diatur untuk Database, Vercel Blob, dan Sinkronisasi Zains API.
+
+### Database Operations
+
+```bash
+npm run migrate   # Jalankan migrasi schema database
+npm run seed      # Isi data awal: user, master data, dan role
+```

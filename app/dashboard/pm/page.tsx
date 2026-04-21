@@ -27,6 +27,7 @@ export default function PenerimaManfaatPage() {
   const [isImporting, setIsImporting] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [filterKtpStatus, setFilterKtpStatus] = useState('all')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   const role = (session?.user as any)?.role
   const canAdd = role === 'RELAWAN' || role === 'PROG_HEAD'
@@ -83,9 +84,14 @@ export default function PenerimaManfaatPage() {
     xlsx.writeFile(wb, `Template_Import_PM_${desa.nama_desa.replace(/\s+/g, '_')}.xlsx`)
   }
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setSelectedFile(file)
+  }
+
+  const handleDoUpload = async () => {
+    if (!selectedFile) return
 
     setIsImporting(true)
     const reader = new FileReader()
@@ -128,24 +134,23 @@ export default function PenerimaManfaatPage() {
             title: 'Import Berhasil', 
             description: `${res.successCount} data berhasil diimport.${res.errorCount > 0 ? ` ${res.errorCount} data gagal.` : ''}` 
           })
+          setSelectedFile(null)
           fetchData()
+          setIsImportModalOpen(false)
         } else {
           toast({ title: 'Import Gagal', description: 'Gagal mengimport data.', variant: 'destructive' })
         }
         
         if (res.errors && res.errors.length > 0) {
           console.error("Import errors:", res.errors)
-        } else {
-          setIsImportModalOpen(false)
         }
       } catch (err: any) {
         toast({ title: 'Error', description: err.message || 'Gagal memproses file.', variant: 'destructive' })
       } finally {
         setIsImporting(false)
-        if (e.target) e.target.value = '' // reset file input
       }
     }
-    reader.readAsBinaryString(file)
+    reader.readAsBinaryString(selectedFile)
   }
 
   return (
@@ -420,20 +425,33 @@ export default function PenerimaManfaatPage() {
                 Pastikan data sudah diisi sesuai format di dalam template sebelum diupload.
               </p>
               <div className="pl-7">
+                {/* Drop zone / file picker */}
                 <div className="relative">
                   <input 
                     type="file" 
-                    accept=".xlsx, .xls" 
-                    onChange={handleFileUpload}
+                    accept=".xlsx, .xls"
+                    onChange={handleFileSelect}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     disabled={isImporting || desaOptions.length === 0}
                     title="Pilih file Excel"
                   />
-                  <div className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-6 transition-colors ${isImporting ? 'bg-slate-50 border-slate-200' : 'bg-slate-50/50 border-emerald-200 hover:bg-emerald-50'}`}>
+                  <div className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-6 transition-colors ${
+                    selectedFile
+                      ? 'bg-emerald-50 border-emerald-400'
+                      : isImporting
+                        ? 'bg-slate-50 border-slate-200'
+                        : 'bg-slate-50/50 border-emerald-200 hover:bg-emerald-50'
+                  }`}>
                     {isImporting ? (
                       <div className="text-center">
                         <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
                         <p className="text-sm text-emerald-700 font-medium">Sedang memproses...</p>
+                      </div>
+                    ) : selectedFile ? (
+                      <div className="text-center">
+                        <FileSpreadsheet className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+                        <p className="text-sm font-semibold text-emerald-800 truncate max-w-[200px]">{selectedFile.name}</p>
+                        <p className="text-xs text-emerald-600/70 mt-1">{(selectedFile.size / 1024).toFixed(1)} KB · Klik untuk ganti file</p>
                       </div>
                     ) : (
                       <div className="text-center">
@@ -444,6 +462,26 @@ export default function PenerimaManfaatPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Tombol upload — hanya muncul setelah file dipilih */}
+                {selectedFile && !isImporting && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button
+                      onClick={handleDoUpload}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Upload Sekarang
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setSelectedFile(null)}
+                      className="text-slate-500 border-slate-200"
+                    >
+                      Batal
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

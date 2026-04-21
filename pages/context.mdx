@@ -1,0 +1,20 @@
+---
+title: Project Context
+---
+
+# Konteks Perombakan Proyek
+
+Konteks peralihan dari sistem penarik data otomatis (scraper) berdasarkan CSF Panel menuju **Desa Berdaya V2**, sebuah aplikasi manajemen fungsional untuk relawan.
+
+## Peralihan Fungsi Utilitas
+Sistem telah diubah fungsi utamanya dari alat penarik data pasif (scraper) menjadi aplikasi manajemen operasional aktif (CRUD) untuk mengelola program pembinaan desa. Direktori lama terkait Playwright seperti `app/api/scrap` dan `app/api/cron` untuk antrean otomatis tidak lagi digunakan.
+
+## Performa dan Kehandalan
+1. **Lightning Fast**: Mencapai page load time < 1 detik untuk memfasilitasi Relawan yang sering bekerja di area susah sinyal.
+2. **Akurasi Keuangan (Anti-Fraud)**: Membangun sistem pelaporan kegiatan dan pencatatan keuangan (double-entry alokasi vs realisasi) yang 100% akurat tanpa selisih.
+3. **UX Cepat Terhadap Kendala Jaringan**: Mengoptimalkan Skeleton Loading dan memberikan balasan visual cepat setiap kali Relawan selesai menyimpan data.
+
+## Aturan Bisnis (Business Logic) Utama
+- **Hierarki Self-Referencing User**: Korwil pada dasarnya adalah pengguna dengan role RELAWAN namun memiliki status pengawas untuk desa di wilayahnya. Keduanya diawasi oleh akun MONEV.
+- **Logika Keuangan Mutlak**: Relawan tidak bisa menginput laporan kegiatan (pengeluaran) jika nominalnya melebihi Sisa Dana (Alokasi). Jika ada sisa saldo di akhir bulan (End of Month Closing), sistem wajib mewajibkan Relawan untuk mengunggah bukti pengembalian dana (Refund).
+- **Integrasi ZAINS (Masa Depan)**: Sinkronisasi Zains API akan diadaptasi untuk mengubah data sinkronisasi dari fungsi "transaksi klinik" ke laporan pencairan dana & refund ke sistem ZAINS FINS pusat.

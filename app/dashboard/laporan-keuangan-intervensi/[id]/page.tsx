@@ -61,6 +61,9 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
   const [pengViewModes, setPengViewModes] = useState<Record<string, 'grid' | 'table'>>({})
   const [isEditingTautan, setIsEditingTautan] = useState(false)
 
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(12)
+
   const isImage = (url: string) => /\.(jpeg|jpg|gif|png|webp|avif)/i.test(url)
   
   const router = useRouter()
@@ -897,6 +900,13 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
     return monthB - monthA;
   });
 
+  const totalPages = Math.ceil(filteredAnggaran.length / itemsPerPage);
+  const paginatedAnggaran = filteredAnggaran.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  if (currentPage > totalPages && totalPages > 0) {
+    setCurrentPage(totalPages);
+  }
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 bg-slate-50/50 min-h-screen">
       <div className="flex flex-col gap-6">
@@ -1005,7 +1015,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
         <CardContent className="p-0">
           {/* MOBILE VIEW */}
             <div className="md:hidden divide-y divide-slate-100">
-             {filteredAnggaran.map((a: any) => {
+             {paginatedAnggaran.map((a: any) => {
                 const rowBgClass = a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50/30 hover:bg-emerald-50/60 border-l-[4px] border-l-emerald-500' : a.status_ca === 'UPLOADED' ? 'bg-amber-50/30 hover:bg-amber-50/60 border-l-[4px] border-l-amber-500' : 'bg-rose-50/30 hover:bg-rose-50/60 border-l-[4px] border-l-rose-500';
                 
                 let kegCount = 0;
@@ -1152,29 +1162,29 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-50 text-[11px] font-black text-slate-500 uppercase tracking-widest sticky top-0 z-30 shadow-sm">
                 <tr>
-                  <th className="px-8 py-5 sticky left-0 z-40 bg-slate-50 shadow-[1px_0_0_#f1f5f9]">Bulan</th>
-                  <th className="px-8 py-5">Ajuan</th>
-                  <th className="px-8 py-5">Cair</th>
-                  <th className="px-8 py-5">Realisasi</th>
-                  <th className="px-8 py-5">Sisa Saldo</th>
-                  <th className="px-8 py-5 text-center">Lap. Kegiatan</th>
-                  <th className="px-8 py-5 text-center">Bukti CA</th>
-                  <th className="px-8 py-5 text-center">Pengembalian</th>
-                  <th className="px-8 py-5 text-center">Status</th>
-                  <th className="px-8 py-5">Catatan/Feedback</th>
+                  <th className="px-4 py-3 sticky left-0 z-40 bg-slate-50 shadow-[1px_0_0_#f1f5f9]">Bulan</th>
+                  <th className="px-4 py-3">Ajuan</th>
+                  <th className="px-4 py-3">Cair</th>
+                  <th className="px-4 py-3">Realisasi</th>
+                  <th className="px-4 py-3">Sisa Saldo</th>
+                  <th className="px-4 py-3 text-center">Lap. Kegiatan</th>
+                  <th className="px-4 py-3 text-center">Bukti CA</th>
+                  <th className="px-4 py-3 text-center">Pengembalian</th>
+                  <th className="px-4 py-3 text-center">Status</th>
+                  <th className="px-4 py-3">Catatan/Feedback</th>
                   {isAdminOrFinance && (
                     <>
-                      <th className="px-8 py-5 text-center">Verif CA</th>
-                      <th className="px-8 py-5 text-center">Verif Refund</th>
+                      <th className="px-4 py-3 text-center">Verif CA</th>
+                      <th className="px-4 py-3 text-center">Verif Refund</th>
                     </>
                   )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredAnggaran.map((a: any) => {
+                {paginatedAnggaran.map((a: any) => {
                   const { realisasi, sisa } = getRealisasiAndSisa(a);
-                  const rowBg = a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50/40' : a.status_ca === 'UPLOADED' ? 'bg-amber-50/40' : 'bg-rose-50/40';
-                  const rowHoverBg = a.status_ca === 'DIVERIFIKASI' ? 'group-hover/row:bg-emerald-50/80 hover:bg-emerald-50/80' : a.status_ca === 'UPLOADED' ? 'group-hover/row:bg-amber-50/80 hover:bg-amber-50/80' : 'group-hover/row:bg-rose-50/80 hover:bg-rose-50/80';
+                  const rowBg = a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50' : a.status_ca === 'UPLOADED' ? 'bg-amber-50' : 'bg-rose-50';
+                  const rowHoverBg = a.status_ca === 'DIVERIFIKASI' ? 'group-hover/row:bg-emerald-100 hover:bg-emerald-100' : a.status_ca === 'UPLOADED' ? 'group-hover/row:bg-amber-100 hover:bg-amber-100' : 'group-hover/row:bg-rose-100 hover:bg-rose-100';
                   const statusShadow = a.status_ca === 'DIVERIFIKASI' ? 'shadow-[inset_4px_0_0_0_#10b981,1px_0_0_0_#f1f5f9]' : a.status_ca === 'UPLOADED' ? 'shadow-[inset_4px_0_0_0_#f59e0b,1px_0_0_0_#f1f5f9]' : 'shadow-[inset_4px_0_0_0_#f43f5e,1px_0_0_0_#f1f5f9]';
                   
                   let kegCount = 0;
@@ -1199,7 +1209,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                       if ((e.target as HTMLElement).closest('button, input, textarea, a')) return;
                     setDetailAnggaran(a);
                   }}>
-                    <td className={`px-8 py-6 sticky left-0 z-10 ${rowBg} ${rowHoverBg} ${statusShadow}`}>
+                    <td className={`px-4 py-3 sticky left-0 z-10 ${rowBg} ${rowHoverBg} ${statusShadow}`}>
                       <div className="text-left outline-none">
                         <div className="font-black text-slate-800 transition-colors flex items-center gap-2 group-hover/row:text-[#7a1200]">
                           {a.bulan}
@@ -1208,19 +1218,19 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                         <div className="text-[10px] font-bold text-slate-400 transition-colors group-hover/row:text-[#7a1200]/60">{a.tahun}</div>
                       </div>
                     </td>
-                    <td className="px-8 py-6 font-bold text-slate-700 whitespace-nowrap">
+                    <td className="px-4 py-3 font-bold text-slate-700 whitespace-nowrap">
                       Rp {parseInt(a.ajuan_ri).toLocaleString('id-ID')}
                     </td>
-                    <td className="px-8 py-6 font-black text-[#7a1200] whitespace-nowrap">
+                    <td className="px-4 py-3 font-black text-[#7a1200] whitespace-nowrap">
                       Rp {parseInt(a.anggaran_dicairkan).toLocaleString('id-ID')}
                     </td>
-                    <td className="px-8 py-6 font-bold text-amber-600 whitespace-nowrap">
+                    <td className="px-4 py-3 font-bold text-amber-600 whitespace-nowrap">
                       Rp {realisasi.toLocaleString('id-ID')}
                     </td>
-                    <td className="px-8 py-6 whitespace-nowrap">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`font-black tracking-tight ${sisa < 0 ? 'text-rose-600' : 'text-slate-700'}`}>Rp {sisa.toLocaleString('id-ID')}</span>
                     </td>
-                    <td className="px-8 py-6 text-center align-middle">
+                    <td className="px-4 py-3 text-center align-middle">
                       {kegCount > 0 ? (
                         <div className="inline-flex items-center justify-center gap-1.5 text-[10px] font-bold bg-indigo-50 border border-indigo-100 text-indigo-600 px-2.5 py-1.5 rounded-lg whitespace-nowrap">
                           <Link2 className="w-3.5 h-3.5" />
@@ -1230,13 +1240,13 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                         <span className="text-[10px] font-bold text-slate-300">-</span>
                       )}
                     </td>
-                    <td className="px-8 py-6 text-center align-middle">
+                    <td className="px-4 py-3 text-center align-middle">
                       <BuktiCAUploader a={a} compact={true} />
                     </td>
-                    <td className="px-8 py-6 text-center align-middle">
+                    <td className="px-4 py-3 text-center align-middle">
                       <BuktiPengembalianUploader a={a} compact={true} />
                     </td>
-                    <td className="px-8 py-6 align-middle">
+                    <td className="px-4 py-3 align-middle">
                       <div className="flex flex-col items-center gap-1">
                         {a.status_ca === 'DIVERIFIKASI' ? (
                           <Badge className="bg-emerald-100 text-emerald-700 text-[9px]">DIVERIFIKASI</Badge>
@@ -1247,7 +1257,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                         )}
                       </div>
                     </td>
-                    <td className="px-8 py-6 align-middle">
+                    <td className="px-4 py-3 align-middle">
                       <textarea 
                         className="w-full text-xs p-2 bg-slate-50 border border-slate-100 rounded-lg min-h-[50px] resize-none"
                         defaultValue={a.catatan_ca || ''}
@@ -1258,48 +1268,76 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                     </td>
                     {isAdminOrFinance && (
                       <>
-                        <td className="px-8 py-6 text-center align-middle">
-                          <div className="flex flex-col gap-2 min-w-[110px] justify-center items-center">
+                        <td className="px-4 py-3 text-center align-middle">
+                          <div className="flex flex-row gap-1 justify-center items-center">
                             {/* Verif CA */}
-                            <Button 
-                              size="sm" 
-                              className={`h-8 w-full rounded-lg text-[10px] font-bold transition-all ${a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50 text-emerald-700 pointer-events-none shadow-none border border-emerald-100' : 'bg-[#7a1200] hover:bg-[#007370] text-white'}`}
-                              onClick={() => {
-                                const note = (document.getElementById(`note-${a.id}`) as HTMLTextAreaElement).value
-                                handleVerify(a.id, 'DIVERIFIKASI', note)
-                              }}
-                              disabled={!a.bukti_ca_url || verifyingId === a.id}
-                            >
-                              {verifyingId === a.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle2 className={`w-3 h-3 mr-1 ${a.status_ca === 'DIVERIFIKASI' ? 'text-emerald-500' : ''}`} />}
-                              {a.status_ca === 'DIVERIFIKASI' ? 'Verified CA' : 'Verif CA'}
-                            </Button>
-                            {a.status_ca === 'DIVERIFIKASI' && (
-                              <Button variant="ghost" className="h-6 text-[9px] text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg w-full" onClick={() => handleVerify(a.id, 'UPLOADED', '')}>Batalkan</Button>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-8 py-6 text-center align-middle">
-                          <div className="flex flex-col gap-2 min-w-[110px] justify-center items-center">
-                            {/* Verif Refund */}
-                            {a.bukti_pengembalian_url ? (
+                            {a.status_ca === 'DIVERIFIKASI' ? (
                               <>
                                 <Button 
                                   size="sm" 
-                                  className={`h-8 w-full rounded-lg text-[10px] font-bold transition-all ${
-                                    a.status_pengembalian === 'DIVERIFIKASI'
-                                      ? 'bg-indigo-50 text-indigo-700 pointer-events-none shadow-none border border-indigo-100'
-                                      : 'bg-rose-500 hover:bg-rose-600 text-white'
-                                  }`}
+                                  className="h-8 w-8 p-0 rounded-lg bg-emerald-50 text-emerald-700 pointer-events-none shadow-none border border-emerald-100"
+                                >
+                                  <CheckCircle2 className="w-5 h-5" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="h-8 w-8 p-0 text-slate-400 hover:bg-rose-50 hover:text-rose-500 rounded-lg" 
+                                  onClick={() => handleVerify(a.id, 'UPLOADED', '')}
+                                  title="Batalkan"
+                                >
+                                  <X className="w-5 h-5" />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                className="h-8 w-8 p-0 rounded-lg transition-all bg-[#7a1200] hover:bg-[#007370] text-white"
+                                onClick={() => {
+                                  const note = (document.getElementById(`note-${a.id}`) as HTMLTextAreaElement).value
+                                  handleVerify(a.id, 'DIVERIFIKASI', note)
+                                }}
+                                disabled={!a.bukti_ca_url || verifyingId === a.id}
+                                title="Verifikasi CA"
+                              >
+                                {verifyingId === a.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-center align-middle">
+                          <div className="flex flex-row gap-1 justify-center items-center">
+                            {/* Verif Refund */}
+                            {a.bukti_pengembalian_url ? (
+                              a.status_pengembalian === 'DIVERIFIKASI' ? (
+                                <>
+                                  <Button 
+                                    size="sm" 
+                                    className="h-8 w-8 p-0 rounded-lg bg-indigo-50 text-indigo-700 pointer-events-none shadow-none border border-indigo-100"
+                                  >
+                                    <CheckCircle2 className="w-5 h-5" />
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    className="h-8 w-8 p-0 text-slate-400 hover:bg-slate-50 hover:text-rose-500 rounded-lg" 
+                                    onClick={() => handleVerifyPengembalian(a.id, 'UPLOADED', '')}
+                                    title="Batalkan"
+                                  >
+                                    <X className="w-5 h-5" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button 
+                                  size="sm" 
+                                  className="h-8 w-8 p-0 rounded-lg transition-all bg-rose-500 hover:bg-rose-600 text-white"
                                   onClick={() => handleVerifyPengembalian(a.id, 'DIVERIFIKASI', '')}
                                   disabled={verifyingId === a.id}
+                                  title="Approved"
                                 >
-                                  {verifyingId === a.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle2 className={`w-3 h-3 mr-1`} />}
-                                  {a.status_pengembalian === 'DIVERIFIKASI' ? 'Approved' : 'Verif Refund'}
+                                  {verifyingId === a.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
                                 </Button>
-                                {a.status_pengembalian === 'DIVERIFIKASI' && (
-                                  <Button variant="ghost" className="h-6 text-[9px] text-slate-400 hover:bg-slate-50 rounded-lg w-full" onClick={() => handleVerifyPengembalian(a.id, 'UPLOADED', '')}>Batalkan</Button>
-                                )}
-                              </>
+                              )
                             ) : (
                               <span className="text-[10px] font-bold text-slate-300">-</span>
                             )}
@@ -1313,6 +1351,50 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
               </tbody>
             </table>
           </div>
+          {totalPages > 0 && (
+            <div className="flex flex-col sm:flex-row justify-between items-center bg-slate-50 p-4 border-t border-slate-100 gap-4">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-bold text-slate-500">
+                  Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredAnggaran.length)} dari {filteredAnggaran.length} data
+                </span>
+                <select
+                  value={itemsPerPage.toString()}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value))
+                    setCurrentPage(1)
+                  }}
+                  className="px-2 py-1 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7a1200] cursor-pointer"
+                >
+                  <option value="6">6 Baris</option>
+                  <option value="12">12 Baris</option>
+                  <option value="24">24 Baris</option>
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="font-bold border-slate-200"
+                >
+                  Prev
+                </Button>
+                <div className="flex items-center justify-center px-3 font-bold text-sm text-slate-600">
+                  {currentPage} / {totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="font-bold border-slate-200"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
       <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
@@ -1497,9 +1579,13 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                       </Button>
                     )}
                   </div>
-                  <div className="bg-white border border-indigo-100 rounded-xl p-3 min-h-[50px] max-h-[160px] overflow-y-auto custom-scrollbar">
-                    <div className="flex flex-col gap-2">
-                      {displayedKegiatan.map(k => (
+                  <div className="bg-white border border-indigo-100 rounded-xl p-3 min-h-[50px] max-h-[160px] overflow-y-auto custom-scrollbar flex items-center justify-center">
+                    <div className="flex flex-col gap-2 w-full">
+                      {displayedKegiatan.length === 0 ? (
+                        <div className="text-center font-bold text-[11px] uppercase tracking-widest text-slate-400 py-2">
+                          Tidak ada laporan yang tersedia di bulan ini
+                        </div>
+                      ) : displayedKegiatan.map(k => (
                         <div key={k.id} className="flex items-start justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-100 shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-colors">
                           <div className="flex items-start space-x-2 flex-1">
                             {isEditingTautan && (

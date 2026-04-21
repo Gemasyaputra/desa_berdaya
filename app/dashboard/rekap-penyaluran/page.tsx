@@ -460,7 +460,7 @@ export default function RekapPenyaluranPage() {
         </div>
 
         {/* Pagination Setup */}
-        {totalPages > 1 && (
+        {totalPages > 0 && (
           <div className="flex justify-between items-center mt-6 p-4 border-t border-slate-100">
             <span className="text-sm font-medium text-slate-500">
               Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredData.length)} dari {filteredData.length} data

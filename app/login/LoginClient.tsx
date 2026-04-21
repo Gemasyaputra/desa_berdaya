@@ -29,17 +29,17 @@ export function LoginClient({ settings }: { settings: LoginSettings }) {
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const logoUrl = settings?.[APP_SETTINGS_KEYS.LOGO_URL] || '/asset/logo_csf_new.png'
-  const companyName = settings?.[APP_SETTINGS_KEYS.COMPANY_NAME] || 'Cita Sehat Foundation'
-  const bgImage = settings?.[APP_SETTINGS_KEYS.LOGIN_BG_IMAGE] || 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d'
-  const toneBg = settings?.[APP_SETTINGS_KEYS.LOGIN_TONE_BG] || 'linear-gradient(to bottom right, rgba(19,78,74,0.85), rgba(25,58,58,0.75), rgba(30,58,138,0.85))'
-  const brandColor = settings?.['app_sidebar_bg_color'] || '#00786F'
-  const defaultLoginContent = `<h2>Kelola Klinik dengan Lebih Efisien</h2>
-<p>Pantau transaksi, kelola pasien, dan optimalkan operasional klinik dalam satu dashboard yang terpadu.</p>
+  const logoUrl = settings?.[APP_SETTINGS_KEYS.LOGO_URL] || '/icon.svg'
+  const companyName = settings?.[APP_SETTINGS_KEYS.COMPANY_NAME] || 'Rumah Zakat'
+  const bgImage = settings?.[APP_SETTINGS_KEYS.LOGIN_BG_IMAGE] || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b'
+  const toneBg = settings?.[APP_SETTINGS_KEYS.LOGIN_TONE_BG] || 'linear-gradient(to bottom right, rgba(92,51,23,0.85), rgba(120,72,34,0.75), rgba(78,44,18,0.85))'
+  const brandColor = settings?.['app_sidebar_bg_color'] || '#7a3a1a'
+  const defaultLoginContent = `<h2>Sistem Monitoring Desa Berdaya</h2>
+<p>Platform manajemen operasional lapangan untuk Relawan Rumah Zakat dalam mengelola program pembinaan desa secara aktif.</p>
 <ul>
-<li><strong>Monitoring Real-time</strong> — Lihat progres transaksi dan aktivitas klinik secara langsung dengan update real-time.</li>
-<li><strong>Tim Lebih Terkoordinasi</strong> — Berikan akses terkontrol untuk operator dan tim lapangan dengan manajemen peran yang fleksibel.</li>
-<li><strong>Laporan Siap Pakai</strong> — Unduh laporan transaksi dan kehadiran pasien untuk evaluasi dan analisis operasional klinik.</li>
+<li><strong>Pantau Desa Binaan</strong> — Kelola data Penerima Manfaat dan kegiatan desa dalam satu tampilan yang terstruktur.</li>
+<li><strong>Laporan Keuangan Akurat</strong> — Sistem double-entry alokasi vs realisasi untuk memastikan akuntabilitas dana 100%.</li>
+<li><strong>Mobile-First</strong> — Dirancang khusus untuk Relawan di lapangan dengan koneksi terbatas.</li>
 </ul>`
   const loginContent = settings?.[APP_SETTINGS_KEYS.LOGIN_CONTENT] ?? defaultLoginContent
 

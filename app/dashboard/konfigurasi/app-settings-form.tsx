@@ -14,24 +14,24 @@ import { APP_SETTINGS_KEYS } from '@/lib/app-settings-keys'
 const API = '/api/settings/app'
 const UPLOAD_API = '/api/upload/blob'
 
-const DEFAULT_LOGIN_CONTENT = `<h2>Kelola Klinik dengan Lebih Efisien</h2>
-<p>Pantau transaksi, kelola pasien, dan optimalkan operasional klinik dalam satu dashboard yang terpadu.</p>
+const DEFAULT_LOGIN_CONTENT = `<h2>Sistem Monitoring Desa Berdaya</h2>
+<p>Platform manajemen operasional lapangan untuk Relawan Rumah Zakat dalam mengelola program pembinaan desa secara aktif.</p>
 <ul>
-<li><strong>Monitoring Real-time</strong> — Lihat progres transaksi dan aktivitas klinik secara langsung dengan update real-time.</li>
-<li><strong>Tim Lebih Terkoordinasi</strong> — Berikan akses terkontrol untuk operator dan tim lapangan dengan manajemen peran yang fleksibel.</li>
-<li><strong>Laporan Siap Pakai</strong> — Unduh laporan transaksi dan kehadiran pasien untuk evaluasi dan analisis operasional klinik.</li>
+<li><strong>Pantau Desa Binaan</strong> — Kelola data Penerima Manfaat dan kegiatan desa dalam satu tampilan yang terstruktur.</li>
+<li><strong>Laporan Keuangan Akurat</strong> — Sistem double-entry alokasi vs realisasi untuk memastikan akuntabilitas dana 100%.</li>
+<li><strong>Mobile-First</strong> — Dirancang khusus untuk Relawan di lapangan dengan koneksi terbatas.</li>
 </ul>`
 
 const DEFAULT_SETTINGS: Record<string, string> = {
-  [APP_SETTINGS_KEYS.APP_TITLE]: 'Cita Sehat - Dashboard',
+  [APP_SETTINGS_KEYS.APP_TITLE]: 'SIDB - Dashboard',
   [APP_SETTINGS_KEYS.APP_FAVICON_URL]: '/favicon.png',
-  [APP_SETTINGS_KEYS.LOGO_URL]: '/asset/logo_csf_new.png',
-  [APP_SETTINGS_KEYS.SIDEBAR_BG_COLOR]: '#00786F',
-  [APP_SETTINGS_KEYS.COMPANY_NAME]: 'Cita Sehat Foundation',
+  [APP_SETTINGS_KEYS.LOGO_URL]: '/icon.svg',
+  [APP_SETTINGS_KEYS.SIDEBAR_BG_COLOR]: '#7a3a1a',
+  [APP_SETTINGS_KEYS.COMPANY_NAME]: 'Rumah Zakat',
   [APP_SETTINGS_KEYS.LOGIN_CONTENT]: DEFAULT_LOGIN_CONTENT,
   [APP_SETTINGS_KEYS.LOGIN_TONE_BG]:
-    'linear-gradient(to bottom right, rgba(19,78,74,0.85), rgba(25,58,58,0.75), rgba(30,58,138,0.85))',
-  [APP_SETTINGS_KEYS.LOGIN_BG_IMAGE]: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d',
+    'linear-gradient(to bottom right, rgba(92,51,23,0.85), rgba(120,72,34,0.75), rgba(78,44,18,0.85))',
+  [APP_SETTINGS_KEYS.LOGIN_BG_IMAGE]: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b',
 }
 
 export function AppSettingsForm() {
@@ -148,7 +148,7 @@ export function AppSettingsForm() {
           <Input
             value={settings[APP_SETTINGS_KEYS.APP_TITLE] ?? ''}
             onChange={(e) => update(APP_SETTINGS_KEYS.APP_TITLE, e.target.value)}
-            placeholder="Cita Sehat - Dashboard"
+            placeholder="SIDB - Dashboard"
           />
         </div>
 
@@ -289,7 +289,7 @@ export function AppSettingsForm() {
           <Input
             value={settings[APP_SETTINGS_KEYS.COMPANY_NAME] ?? ''}
             onChange={(e) => update(APP_SETTINGS_KEYS.COMPANY_NAME, e.target.value)}
-            placeholder="Cita Sehat Foundation"
+            placeholder="Rumah Zakat"
           />
         </div>
 

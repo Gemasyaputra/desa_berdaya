@@ -42,7 +42,7 @@ export async function getRekapPenyaluran() {
 
   const monthNames = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
-  const results = items.map(item => {
+  const results = items.map((item: any) => {
     let total_realisasi = 0;
     let total_pengembalian = 0;
 

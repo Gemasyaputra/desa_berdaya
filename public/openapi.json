@@ -1,0 +1,363 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "API SIDB (Sistem Monitoring Desa Berdaya)",
+    "description": "Dokumentasi API untuk pengelola operasional lapangan Relawan Rumah Zakat. Semua endpoint memerlukan sesi aktif (NextAuth) kecuali endpoint auth.",
+    "version": "2.0.0",
+    "contact": {
+      "name": "Tim SIDB",
+      "url": "https://desa-berdaya.vercel.app"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local Development Server"
+    },
+    {
+      "url": "https://desa-berdaya.vercel.app",
+      "description": "Production Server"
+    }
+  ],
+  "tags": [
+    { "name": "Auth", "description": "Autentikasi pengguna via NextAuth (Google OAuth)" },
+    { "name": "KTP Scanner", "description": "OCR Kartu Tanda Penduduk menggunakan Gemini AI Vision" },
+    { "name": "Upload", "description": "Upload file ke Vercel Blob Storage" },
+    { "name": "Daily Targets", "description": "Target harian dan template import" },
+    { "name": "Settings", "description": "Pengaturan aplikasi dan konfigurasi sistem" },
+    { "name": "Form Builder", "description": "Builder formulir monitoring dinamis berbasis JSONB" }
+  ],
+  "paths": {
+    "/api/auth/error": {
+      "get": {
+        "summary": "Handler Error Autentikasi",
+        "description": "Menangani error dari proses login OAuth. Secara otomatis me-redirect pengguna ke halaman login dengan parameter error yang sesuai (contoh: `AccessDenied`).",
+        "tags": ["Auth"],
+        "parameters": [
+          {
+            "name": "error",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Kode error dari NextAuth (contoh: AccessDenied, OAuthSignin)"
+          }
+        ],
+        "responses": {
+          "302": { "description": "Redirect ke halaman login dengan pesan error" }
+        }
+      }
+    },
+    "/api/auth/csrf": {
+      "get": {
+        "summary": "Mendapatkan CSRF Token",
+        "description": "Endpoint internal NextAuth untuk mengambil token CSRF yang diperlukan untuk operasi autentikasi.",
+        "tags": ["Auth"],
+        "responses": {
+          "200": {
+            "description": "CSRF token berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "csrfToken": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/session": {
+      "get": {
+        "summary": "Mendapatkan Sesi Aktif",
+        "description": "Mengembalikan data sesi pengguna yang sedang login termasuk role dan informasi profil.",
+        "tags": ["Auth"],
+        "responses": {
+          "200": {
+            "description": "Data sesi berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "name": { "type": "string" },
+                        "email": { "type": "string" },
+                        "role": { "type": "string", "enum": ["ADMIN", "MONEV", "RELAWAN", "OFFICE", "FINANCE", "PROG_HEAD"] },
+                        "image": { "type": "string" }
+                      }
+                    },
+                    "expires": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scan-ktp": {
+      "post": {
+        "summary": "Pindai KTP dengan AI OCR",
+        "description": "Menerima gambar KTP, mengirimnya ke Gemini 2.5 Flash Vision untuk diekstrak datanya (NIK, Nama, Alamat, dll), lalu meng-upload foto ke Vercel Blob secara bersamaan. Mengembalikan data terstruktur dalam JSON.",
+        "tags": ["KTP Scanner"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["image"],
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "File gambar KTP (JPEG/PNG/WebP)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "KTP berhasil dipindai",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "nik": { "type": "string", "description": "Nomor Induk Kependudukan (16 digit)" },
+                        "nama": { "type": "string" },
+                        "tempat_lahir": { "type": "string" },
+                        "tanggal_lahir": { "type": "string", "format": "date" },
+                        "jenis_kelamin": { "type": "string", "enum": ["LAKI-LAKI", "PEREMPUAN"] },
+                        "golongan_darah": { "type": "string" },
+                        "alamat": { "type": "string" },
+                        "rt_rw": { "type": "string" },
+                        "kel_desa": { "type": "string" },
+                        "kecamatan": { "type": "string" },
+                        "agama": { "type": "string" },
+                        "status_perkawinan": { "type": "string" },
+                        "pekerjaan": { "type": "string" },
+                        "kewarganegaraan": { "type": "string" },
+                        "foto_ktp_url": { "type": "string", "description": "URL foto KTP yang telah di-upload ke Vercel Blob" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Gambar tidak ditemukan dalam request" },
+          "500": { "description": "Gagal memproses OCR atau GEMINI_API_KEY tidak dikonfigurasi" }
+        }
+      }
+    },
+    "/api/upload": {
+      "post": {
+        "summary": "Inisiasi Client-Side Upload ke Vercel Blob",
+        "description": "Menginisiasi proses upload file (gambar/PDF bukti kegiatan) ke Vercel Blob menggunakan mekanisme client-side upload. Memverifikasi sesi aktif sebelum memberikan token upload.",
+        "tags": ["Upload"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Payload HandleUpload dari Vercel Blob client library"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Token upload berhasil dihasilkan atau upload selesai dikonfirmasi" },
+          "400": { "description": "Request tidak valid atau autentikasi gagal" },
+          "401": { "description": "Pengguna belum login" }
+        }
+      }
+    },
+    "/api/upload/blob": {
+      "post": {
+        "summary": "Upload Aset Aplikasi (Logo / Background / Favicon)",
+        "description": "Upload file gambar khusus untuk aset pengaturan aplikasi seperti logo, gambar latar halaman login, atau favicon. Hanya menerima format gambar (PNG, JPEG, WebP, SVG) dengan ukuran maksimal 4 MB. File disimpan ke Vercel Blob dengan path `app-settings/{type}-{timestamp}.{ext}`.",
+        "tags": ["Upload"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file", "type"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "File gambar (PNG, JPEG, WebP, SVG, ICO). Maks 4 MB."
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": ["logo", "login_bg", "favicon"],
+                    "description": "Jenis aset yang diupload"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File berhasil diupload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": { "type": "string", "description": "URL publik file di Vercel Blob" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "File/type tidak valid atau ukuran melebihi batas" },
+          "401": { "description": "Pengguna belum login" },
+          "503": { "description": "BLOB_READ_WRITE_TOKEN belum dikonfigurasi di environment" }
+        }
+      }
+    },
+    "/api/daily-targets/template": {
+      "get": {
+        "summary": "Unduh Template Target Harian",
+        "description": "Menghasilkan dan mengunduh file template Excel yang dapat diisi dengan data target harian Relawan untuk kemudian di-upload kembali.",
+        "tags": ["Daily Targets"],
+        "responses": {
+          "200": {
+            "description": "Template Excel berhasil diunduh",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/daily-targets/upload": {
+      "post": {
+        "summary": "Unggah Data Target Harian",
+        "description": "Mengunggah file Excel/CSV berisi data target harian Relawan (jumlah kunjungan, target anggaran, dll) untuk diproses dan disimpan ke database.",
+        "tags": ["Daily Targets"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "File Excel/CSV target harian"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "File target harian berhasil diproses" },
+          "400": { "description": "Format file tidak valid atau data kosong" },
+          "500": { "description": "Gagal memproses file" }
+        }
+      }
+    },
+    "/api/settings/app": {
+      "get": {
+        "summary": "Ambil Semua Pengaturan Aplikasi",
+        "description": "Mengambil semua pengaturan dinamis aplikasi (logo, warna sidebar, nama perusahaan, konten halaman login, dll). Memerlukan sesi aktif.",
+        "tags": ["Settings"],
+        "responses": {
+          "200": {
+            "description": "Pengaturan berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Key-value pairs semua app settings",
+                  "additionalProperties": { "type": "string" }
+                }
+              }
+            }
+          },
+          "401": { "description": "Pengguna belum login" },
+          "500": { "description": "Gagal membaca pengaturan" }
+        }
+      },
+      "patch": {
+        "summary": "Update Pengaturan Aplikasi",
+        "description": "Memperbarui satu atau beberapa pengaturan aplikasi secara dinamis. Hanya key yang terdaftar dalam whitelist yang akan diproses. Perubahan berlaku di seluruh aplikasi tanpa perlu deploy ulang.",
+        "tags": ["Settings"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Key-value pairs pengaturan yang ingin diperbarui",
+                "example": {
+                  "app_title": "SIDB - Dashboard",
+                  "app_company_name": "Rumah Zakat",
+                  "app_sidebar_bg_color": "#7a1200"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Pengaturan berhasil diperbarui, mengembalikan semua setting terbaru" },
+          "400": { "description": "Body bukan object yang valid" },
+          "401": { "description": "Pengguna belum login" },
+          "500": { "description": "Gagal menyimpan pengaturan" }
+        }
+      }
+    },
+    "/api/form-builder/categories": {
+      "get": {
+        "summary": "Daftar Kategori Formulir Monitoring",
+        "description": "Mengambil daftar kategori formulir monitoring yang tersedia (contoh: Kesehatan Lansia, Ibu Hamil, Balita, Ekonomi). Setiap kategori memiliki schema JSONB yang mendefinisikan field-field formulirnya secara dinamis.",
+        "tags": ["Form Builder"],
+        "responses": {
+          "200": {
+            "description": "Daftar kategori berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "integer" },
+                      "name": { "type": "string" },
+                      "slug": { "type": "string" },
+                      "schema": {
+                        "type": "object",
+                        "description": "Definisi field formulir dalam format JSONB — berisi nama field, tipe input, dan opsi pilihan"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

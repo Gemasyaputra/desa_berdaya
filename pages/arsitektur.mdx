@@ -1,0 +1,104 @@
+---
+title: Arsitektur API
+description: Penjelasan mengapa sebagian besar fitur SIDB tidak memiliki endpoint HTTP
+---
+
+# Arsitektur API SIDB
+
+## Kenapa Banyak Fitur Tidak Muncul di Sini?
+
+Jika kamu mencari endpoint untuk **Penerima Manfaat, Intervensi, Kelompok, Laporan Keuangan, atau Rekap Penyaluran** — mereka memang **tidak ada** di halaman API Reference ini. Ini bukan karena belum didokumentasikan, tapi karena fitur-fitur tersebut memang **tidak menggunakan HTTP API sama sekali**.
+
+Sistem SIDB dibangun di atas **Next.js App Router** dengan arsitektur *Server-First* menggunakan fitur **Server Actions**.
+
+---
+
+## Server Actions vs API Routes
+
+SIDB menggunakan dua cara berbeda untuk berkomunikasi dengan database:
+
+| | Server Actions | API Routes |
+|---|---|---|
+| **Lokasi kode** | `lib/actions/*.ts`, `app/dashboard/*/actions.ts` | `app/api/*/route.ts` |
+| **Cara dipanggil** | Langsung dari komponen: `await getDataList()` | Via HTTP: `fetch('/api/...')` |
+| **Punya URL publik?** | ❌ Tidak | ✅ Ya |
+| **Bisa di-test di sini?** | ❌ Tidak | ✅ Ya |
+| **Expose ke internet?** | ❌ Tidak | ✅ Ya |
+
+### Bagaimana Server Actions bekerja?
+
+```
+Browser (React Component)
+       ↓  panggil fungsi langsung
+  Server Action ('use server')
+       ↓  query langsung ke DB
+  Neon Postgres (Database)
+```
+
+Next.js menangani komunikasi antara browser dan server secara internal — tidak ada HTTP request publik yang bisa diintersep atau dipanggil dari luar aplikasi. Ini membuat sistem lebih aman dan lebih efisien.
+
+---
+
+## Fitur yang Menggunakan Server Actions
+
+Berikut adalah daftar fitur utama SIDB beserta Server Action yang menggerakkannya:
+
+### 👥 Penerima Manfaat
+| Operasi | Server Action |
+|---|---|
+| Ambil daftar PM | `getPenerimaManfaatList()` |
+| Tambah PM baru | `createPenerimaManfaat()` |
+| Edit data PM | `updatePenerimaManfaat()` |
+| Hapus PM | `deletePenerimaManfaat()` |
+| Import via Excel | `importPemerimaManfaatExcel()` |
+
+### 🏘️ Program & Intervensi
+| Operasi | Server Action |
+|---|---|
+| Daftar intervensi program | `getIntervensiList()` |
+| Tambah intervensi | `createIntervensiProgram()` |
+| Kelola anggaran & bukti | `updateIntervensiAnggaran()` |
+| Verifikasi laporan | `verifyIntervensiAnggaran()` |
+
+### 📊 Dashboard & Laporan
+| Operasi | Server Action |
+|---|---|
+| Statistik dashboard | `getDashboardStats()` |
+| Rangkuman dana | `getRangkumanDana()` |
+| Rekap penyaluran | `getRekapPenyaluran()` |
+
+### ⚙️ Konfigurasi
+| Operasi | Server Action |
+|---|---|
+| Daftar program & kategori | `getProgramList()` |
+| Kelola user & relawan | `getUserList()`, `createRelawan()` |
+| Target & source dana | `getTargetList()` |
+
+---
+
+## Kenapa Dipilih Server Actions?
+
+:::note Keuntungan Server Actions
+1. **Lebih aman** — Tidak ada URL publik yang bisa dipanggil dari luar. Logika bisnis tetap tersembunyi di server.
+2. **Lebih sederhana** — Tidak perlu membuat endpoint terpisah, tidak ada boilerplate `fetch()` + error handling HTTP.
+3. **Type-safe end-to-end** — TypeScript bekerja langsung dari UI sampai ke database tanpa konversi JSON manual.
+4. **Performa lebih baik** — Data bisa di-stream langsung ke komponen React tanpa round-trip HTTP tambahan.
+:::
+
+---
+
+## Kapan API Routes Digunakan?
+
+API Routes **hanya dipakai** ketika ada kebutuhan spesifik yang tidak bisa dipenuhi oleh Server Actions:
+
+| Alasan | Contoh di SIDB |
+|---|---|
+| Butuh URL callback dari pihak ketiga | `/api/auth/[...nextauth]` — Google OAuth membutuhkan redirect URL yang bisa diakses publik |
+| Handle file upload besar sebelum diproses ke AI | `/api/scan-ktp` — Gambar KTP perlu dikirim ke Gemini Vision API dari server |
+| Integrasi dengan layanan eksternal (Vercel Blob) | `/api/upload`, `/api/upload/blob` — Vercel Blob membutuhkan server-side token generation |
+| Pengaturan yang perlu bisa dipanggil dari script eksternal | `/api/settings/app` — Bisa dipanggil dari deployment script atau integrasi CI/CD |
+| Form Builder categories untuk konsumsi pihak ketiga | `/api/form-builder/categories` — Schema formulir bisa dikonsumsi aplikasi mobile |
+
+---
+
+*Untuk melihat semua endpoint HTTP yang tersedia, buka halaman [API Reference](/api).*

@@ -23,7 +23,7 @@
     { "name": "Auth", "description": "Autentikasi pengguna via NextAuth (Google OAuth)" },
     { "name": "KTP Scanner", "description": "OCR Kartu Tanda Penduduk menggunakan Gemini AI Vision" },
     { "name": "Upload", "description": "Upload file ke Vercel Blob Storage" },
-    { "name": "Daily Targets", "description": "Target harian dan template import" },
+
     { "name": "Settings", "description": "Pengaturan aplikasi dan konfigurasi sistem" },
     { "name": "Form Builder", "description": "Builder formulir monitoring dinamis berbasis JSONB" }
   ],
@@ -233,51 +233,7 @@
         }
       }
     },
-    "/api/daily-targets/template": {
-      "get": {
-        "summary": "Unduh Template Target Harian",
-        "description": "Menghasilkan dan mengunduh file template Excel yang dapat diisi dengan data target harian Relawan untuk kemudian di-upload kembali.",
-        "tags": ["Daily Targets"],
-        "responses": {
-          "200": {
-            "description": "Template Excel berhasil diunduh",
-            "content": {
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
-            }
-          }
-        }
-      }
-    },
-    "/api/daily-targets/upload": {
-      "post": {
-        "summary": "Unggah Data Target Harian",
-        "description": "Mengunggah file Excel/CSV berisi data target harian Relawan (jumlah kunjungan, target anggaran, dll) untuk diproses dan disimpan ke database.",
-        "tags": ["Daily Targets"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "required": ["file"],
-                "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary",
-                    "description": "File Excel/CSV target harian"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "File target harian berhasil diproses" },
-          "400": { "description": "Format file tidak valid atau data kosong" },
-          "500": { "description": "Gagal memproses file" }
-        }
-      }
-    },
+
     "/api/settings/app": {
       "get": {
         "summary": "Ambil Semua Pengaturan Aplikasi",

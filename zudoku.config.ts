@@ -43,6 +43,11 @@ const config: ZudokuConfig = {
           file: "context",
           label: "Konteks Proyek",
         },
+        {
+          type: "doc",
+          file: "arsitektur",
+          label: "Arsitektur API",
+        },
       ],
     },
     {

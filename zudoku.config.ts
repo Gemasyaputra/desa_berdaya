@@ -48,6 +48,11 @@ const config: ZudokuConfig = {
           file: "arsitektur",
           label: "Arsitektur API",
         },
+        {
+          type: "doc",
+          file: "roles",
+          label: "Flow & Roles",
+        },
       ],
     },
     {

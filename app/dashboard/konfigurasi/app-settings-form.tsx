@@ -14,7 +14,7 @@ import { APP_SETTINGS_KEYS } from '@/lib/app-settings-keys'
 const API = '/api/settings/app'
 const UPLOAD_API = '/api/upload/blob'
 
-const DEFAULT_LOGIN_CONTENT = `<h2>Sistem Monitoring Desa Berdaya</h2>
+const DEFAULT_LOGIN_CONTENT = `<h2>Sistem Informasi Desa Berdaya</h2>
 <p>Platform manajemen operasional lapangan untuk Relawan Rumah Zakat dalam mengelola program pembinaan desa secara aktif.</p>
 <ul>
 <li><strong>Pantau Desa Binaan</strong> — Kelola data Penerima Manfaat dan kegiatan desa dalam satu tampilan yang terstruktur.</li>

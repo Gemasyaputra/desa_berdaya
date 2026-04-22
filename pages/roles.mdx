@@ -1,0 +1,465 @@
+---
+title: Flow dan Hak Akses Peran (Roles)
+description: Panduan lengkap alur kerja (flow) dan hak akses untuk tiap-tiap role di sistem SIDB.
+---
+
+# Flow & Hak Akses Berdasarkan Role
+
+Sistem Informasi Desa Berdaya (SIDB) memiliki arsitektur akses berbasis peran (RBAC). Setiap pengguna yang login via Google akan diberikan akses spesifik berdasarkan role mereka di database.
+
+---
+
+## 1. ADMIN (Super Admin)
+
+Admin memiliki akses penuh ke seluruh sistem, baik pengaturan operasional lapangan maupun pengaturan teknis konfigurasi tabel relasional.
+
+**Menu yang dapat diakses:**
+- **Beranda (Summary Dashboard)**: Rekapitulasi penuh seluruh aktivitas.
+- **Desa Binaan & Penerima Manfaat**: Manajemen seluruh desa dan warganya.
+- **Update Ekonomi & Kesehatan**: Pemantauan semua update capaian.
+- **Daftar Kelompok & Laporan Kegiatan**: Akses ke seluruh laporan kegiatan dari lapangan.
+- **Laporan Keuangan & Rekap Penyaluran**: Memantau pergerakan anggaran di tingkat desa.
+- **Manajemen Tim & Struktur Tim**: Menambahkan / menghapus Relawan, Korwil, dan Monev.
+- **Master Program & Intervensi Program**: Mendefinisikan program pusat dan menyalurkannya ke masing-masing desa binaan.
+- **Konfigurasi & Form Builder**: Pengaturan nama aplikasi, logo, dan mendesain skema form secara dinamis.
+
+---
+
+### Flow Kerja Admin
+
+#### Tahap 1 — Login & Orientasi Dashboard
+
+1. Admin membuka aplikasi dan klik **"Login dengan Google"**.
+![Tahap 1 — Login & Orientasi Dashboard - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t1-1-1776823556516-rNU4luNKCls2skLwqhK00pb6TkZQtf.png)
+2. Setelah autentikasi berhasil, sistem mengarahkan ke halaman **`/dashboard`**.
+3. Di Beranda, Admin melihat ringkasan seluruh data:
+   - Total Desa Binaan aktif
+   - Total Penerima Manfaat (PM)
+   - Total Relawan aktif
+   - Rekapitulasi Laporan Kegiatan & Keuangan bulan berjalan
+![Tahap 1 — Login & Orientasi Dashboard - Screenshot 2](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t1-2-1776823894127-2CAJnAmja0tZy3zJ8co0fLZBtL2kNS.png)
+
+
+---
+
+#### Tahap 2 — Setup Master Data Program
+
+1. Buka menu **Master Program** di sidebar.
+![Tahap 2 — Setup Master Data Program - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t2-1-1776824354359-Q96grB6gcv9OP5qXevfwp5VnGPZlup.jpeg)
+2. Klik tombol **"Tambah Program"** untuk membuat definisi program baru.
+3. Isi form:
+   - **Kategori Program** (mis. Ekonomi, Kesehatan, Sosial)
+   - **Nama Program** (mis. "UMKM Berkah")
+   - **Form Builder**: Pilih atau buat skema custom field yang akan diisi oleh Relawan saat pelaporan.
+![Tahap 2 — Setup Master Data Program - Screenshot 2](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t2-2-1776824484704-rKY1JNRV6De03iM3a7j56ODnWqMSnx.png)
+4. Klik **Simpan**. Program kini tersedia sebagai referensi untuk Intervensi.
+5. *(Opsional)* Buka **Form Builder** untuk merancang field tambahan yang dinamis (teks, angka, dropdown, checkbox) yang akan muncul di form Laporan Kegiatan Relawan.
+![Tahap 2 — Setup Master Data Program - Screenshot 3](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t2-3-1776824597389-edS3QJO93eomt4LzddifsJyrFF3qHj.jpeg)
+---
+
+#### Tahap 3 — Setup Intervensi Program ke Desa
+
+1. Buka menu **Intervensi Program**.
+![Tahap 3 — Setup Intervensi Program ke Desa - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t3-1-1776825031419-wq78FsfYNMUZX6JQg6vvxHwzDx6ZMp.png)
+2. Klik **"Tambah Intervensi"**.
+3. Isi form intervensi:
+   - **Desa Berdaya** *(wajib)*: Pilih desa binaan yang akan menerima program ini.
+   - **Relawan PJ** *(wajib)*: Pilih Relawan yang bertanggung jawab atas intervensi di desa tersebut.
+   - **Kategori Program** *(wajib)*: Pilih kategori (mis. Ekonomi, Kesehatan, Sosial).
+   - **Program Spesifik** *(wajib)*: Pilih nama program spesifik dalam kategori yang dipilih.
+   - **Sumber Dana**: Pilih sumber dana yang digunakan untuk intervensi ini.
+   - **Fundraiser**: Isi nama fundraiser jika ada (opsional).
+   - **Deskripsi / Tujuan Intervensi**: Jelaskan secara singkat tujuan program ini untuk desa yang dipilih.
+![Tahap 3 — Setup Intervensi Program ke Desa - Screenshot 2](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t3-2-1776825100264-RTL8wkjpdVzF8VZArYq4P3ZINkA6u7.png)
+4. Klik **Simpan**. Intervensi ini kini akan muncul di akun Relawan yang memegang desa tersebut.
+
+
+---
+
+#### Tahap 4 — Manajemen Tim
+
+1. Buka menu **Manajemen Tim**.
+![Tahap 4 — Manajemen Tim - Screenshot 2](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t4-2-1776826389440-1idg60CzG3dnk8BOTLkKxeg9ob0W54.jpeg)
+2. Pilih **tab role** yang ingin dikelola di bagian atas tabel:
+   - **Admin** · **Monev** · **Korwil** · **Relawan** · **Office** · **Office User**
+3. Setelah tab dipilih, tabel akan menampilkan daftar anggota dengan role tersebut.
+4. Klik tombol **"+ Tambah Baru"** di pojok kanan atas tabel.
+5. Form penambahan anggota akan muncul — isi data yang diperlukan sesuai role yang dipilih, lalu klik **Simpan**. Akun langsung aktif saat pengguna tersebut login dengan email yang didaftarkan.
+![Tahap 4 — Manajemen Tim - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t4-1-1776826389438-Qm2iTpJz8ScxDizLuJPqe170lfjtYh.jpeg)
+6. Untuk **mengedit** anggota yang sudah ada, klik tombol **Edit** pada baris yang sesuai.
+7. Buka **Struktur Tim** untuk melihat hierarki visual: Monev → Korwil → Relawan → Desa Binaan.
+![Tahap 4 — Manajemen Tim - Screenshot 3](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t4-3-1776826488333-DTzMWYLfM1EML7NjKRvKiWFmdJICtR.png)
+---
+
+#### Tahap 5 — Monitoring & Evaluasi
+
+1. Buka **Laporan Kegiatan** untuk melihat semua log aktivitas yang dikirim Relawan.
+![Tahap 5 — Monitoring & Evaluasi - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t5-1-1776827533325-RwdokCvet40Zfqrc9DdvvEtmrvi9S0.png)
+   - Tabel menampilkan kolom: **Judul Kegiatan**, **Desa Binaan**, **Tanggal Aktivitas**, dan tombol **Aksi**.
+   - Gunakan kolom pencarian di atas tabel untuk mencari laporan berdasarkan kata kunci.
+   - Klik **"Lihat Detail"** pada baris laporan untuk membuka detail lengkap beserta foto dokumentasi, data kelompok, dan penerima manfaat yang hadir.
+![Tahap 5 — Monitoring & Evaluasi - Screenshot 2](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t5-2-1776827723056-w5CUWIHY0JfT6vLoz8Vzb1OWTsG6dF.png)
+2. Buka **Laporan Keuangan** untuk memantau Cash Advance (CA) yang diajukan Relawan.
+
+   - Tabel menampilkan semua daftar anggaran dan bukti CA per desa.
+![Tahap 5 — Monitoring & Evaluasi - Screenshot 4](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t5-4-1776827928375-Bk0eD3H5tUYiygqrlOxxzXtsNrXlG5.png)
+   - Klik baris CA untuk melihat detail — termasuk bukti transfer dan bukti pengembalian yang diunggah Relawan.
+   - Klik tombol **Verifikasi (✓)** untuk menyetujui CA → status berubah menjadi `DISETUJUI`.
+   - Klik tombol **Tolak (✗)** untuk menolak CA → status berubah menjadi `DITOLAK` dan Relawan perlu upload ulang.
+![Tahap 5 — Monitoring & Evaluasi - Screenshot 3](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t5-3-1776827928373-OGC38paoY6A7c2hsq8L4ODDwoWKp6M.png)
+3. Buka **Rekap Penyaluran** untuk melihat pivot rekapitulasi anggaran per Program, per Desa, per Bulan.
+![Tahap 5 — Monitoring & Evaluasi - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t5-1-1776832179766-JVAqrVbiICMD5IfqAAKkPFHI1zvgsK.png)
+
+---
+
+#### Tahap 6 — Konfigurasi Sistem
+
+1. Buka menu **Konfigurasi**.
+2. Edit:
+   - **Nama Aplikasi** dan **Tagline** yang tampil di sidebar.
+   - **Logo** (upload gambar baru).
+   - **Warna Brand** (hex color yang memengaruhi warna sidebar).
+3. Klik **Simpan** — perubahan langsung berlaku secara real-time.
+![Tahap 6 — Konfigurasi Sistem - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t6-1-1776828613353-Wa7lX2RhU4zvpjBT6pKMYN5uI63o6S.png)
+---
+
+## 2. MONEV (Monitoring Evaluasi Pusat)
+
+Peran ini berfungsi sebagai pengawas level pusat (Head Office). Hak aksesnya mirip Admin namun tanpa kewenangan mengubah Master Program atau Konfigurasi sistem.
+
+**Menu yang dapat diakses:**
+- **Semua menu pemantauan**: Dashboard, Desa Binaan, Penerima Manfaat, Update Ekonomi/Kesehatan, Laporan Kegiatan.
+- **Keuangan**: Laporan Keuangan Intervensi, Rekap Penyaluran.
+- **Tim**: Manajemen Tim (read-only atau terbatas), Struktur Tim.
+
+---
+
+### Flow Kerja Monev
+
+#### Tahap 1 — Login & Review Dashboard
+
+1. Login dengan Google → diarahkan ke **`/dashboard`**.
+2. Lihat ringkasan beranda:
+   - Jumlah Desa Binaan aktif di seluruh wilayah.
+   - Total PM terlayani.
+   - Progress laporan bulan berjalan.
+3. Identifikasi desa atau relawan yang belum menginput laporan bulan ini.
+
+---
+
+#### Tahap 2 — Review Laporan Kegiatan
+
+1. Buka menu **Laporan Kegiatan**.
+![Tahap 5 — Monitoring & Evaluasi - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t5-1-1776827533325-RwdokCvet40Zfqrc9DdvvEtmrvi9S0.png)
+2. Klik setiap baris laporan untuk membuka **detail laporan**:
+   - Lihat deskripsi kegiatan, tanggal, lokasi.
+   - Lihat daftar **Penerima Manfaat yang hadir** beserta gender breakdown.
+   - Lihat **foto dokumentasi** yang diunggah Relawan.
+![Tahap 5 — Monitoring & Evaluasi - Screenshot 2](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t5-2-1776827723056-w5CUWIHY0JfT6vLoz8Vzb1OWTsG6dF.png)
+3. Tandai temuan sebagai catatan evaluasi internal jika diperlukan.
+
+---
+
+#### Tahap 3 — Evaluasi Update Capaian
+
+1. Buka **Update Ekonomi** untuk melihat perkembangan UMKM/ekonomi per PM.
+![Tahap 3 — Evaluasi Update Capaian - Screenshot 2](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/monev-t3-2-1776831475371-1iGSroljwJQxBLaH5cTruRF2CyPv4w.png)
+2. Buka **Update Kesehatan** untuk melihat kondisi kesehatan warga yang dipantau.
+![Tahap 3 — Evaluasi Update Capaian - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/monev-t3-1-1776831475369-Wqalbtun27TMfDz9NAV8cyHaXHyn67.png)
+3. Catat PM yang tidak ada pembaruan untuk tindak lanjut ke Relawan.
+
+---
+
+#### Tahap 4 — Evaluasi Keuangan
+
+1. Buka **Laporan Keuangan **.
+2. Lihat daftar semua transaksi Cash Advance (CA) yang sudah diupload Relawan:
+   - **Status UPLOADED**: Bukti belum diverifikasi.
+   - **Status DISETUJUI**: Pencairan sudah dikonfirmasi.
+   - **Status DITOLAK**: Bukti bermasalah, perlu upload ulang.
+3. Klik tombol **Verifikasi** (✓) untuk menyetujui, atau **Tolak** (✗) untuk menolak beserta keterangan alasan.
+4. Buka **Rekap Penyaluran** untuk melihat akumulasi anggaran yang sudah tersalurkan per Program dan per Bulan.
+![Tahap 4 — Evaluasi Keuangan - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/monev-t4-1-1776831739136-pcNjdtNLNo5o7MPd7rgC3zKloVFsc6.png)
+---
+
+## 3. PROG_HEAD (Kepala Program)
+
+Sama seperti MONEV namun dengan fokus pada evaluasi capaian program. Memiliki akses untuk melihat semua laporan kegiatan dan update capaian, serta dapat mengakses Rekap Penyaluran.
+
+### Flow Kerja Prog_Head
+
+#### Tahap 1 — Login & Monitoring Program
+
+1. Login → diarahkan ke **`/dashboard`**.
+2. Identifikasi program-program yang berjalan di periode ini melalui ringkasan beranda.
+
+---
+
+#### Tahap 2 — Evaluasi Capaian Per Program
+
+1. Buka **Laporan Kegiatan**, filter berdasarkan **Jenis/Nama Program** yang menjadi tanggung jawabnya.
+2. Untuk setiap laporan, periksa:
+   - Apakah aktivitas sesuai dengan jenis program yang ditetapkan (mis. kegiatan UMKM untuk program ekonomi)?
+   - Berapa jumlah PM yang terlayani dibanding target intervensi?
+3. Buka **Rekap Penyaluran** untuk melihat efisiensi penggunaan anggaran per program.
+![Tahap 5 — Monitoring & Evaluasi - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/admin-t5-1-1776832179766-JVAqrVbiICMD5IfqAAKkPFHI1zvgsK.png)
+---
+
+#### Tahap 3 — Tindak Lanjut
+
+1. Jika suatu program di desa tertentu belum mencapai target PM, koordinasikan dengan Relawan atau Korwil terkait (di luar sistem, via komunikasi langsung).
+2. Dokumentasikan catatan evaluasi untuk pelaporan ke Admin / Manajemen.
+
+---
+
+## 4. FINANCE (Keuangan)
+
+Finance fokus pada aspek pencairan dan verifikasi keuangan lapangan.
+
+**Menu yang dapat diakses:**
+- **Dashboard**: Ringkasan keuangan.
+- **Laporan Keuangan Intervensi**: Menu utama untuk verifikasi.
+- **Rekap Penyaluran**: Rekapitulasi anggaran.
+- **Laporan Kegiatan** (read-only): Konteks aktivitas lapangan.
+
+---
+
+### Flow Kerja Finance
+
+#### Tahap 1 — Login & Identifikasi Transaksi Pending
+
+1. Login → diarahkan ke **`/dashboard`**.
+2. Buka menu **Laporan Keuangan**.
+3. Filter tampilan ke **Status: UPLOADED** untuk melihat semua transaksi yang perlu diverifikasi.
+![Tahap 1 — Identifikasi Transaksi Pending - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/finance-t1-1-1776833300940-9qt2pH32qvIrFK35uUdQLcSgZ0XWtn.png)---
+
+#### Tahap 2 — Verifikasi Bukti Cash Advance
+
+1. Klik baris transaksi untuk membuka **detail laporan keuangan**:
+   - Lihat **Jumlah CA** yang diajukan Relawan.
+   - Lihat **Bukti Transfer** (foto kwitansi / screenshot transfer bank).
+   - Lihat **Bukti Pengembalian** jika ada sisa CA yang dikembalikan.
+2. Validasi kesesuaian jumlah di bukti dengan jumlah yang tertera di sistem.
+3. Klik tombol **Verifikasi (✓)** jika bukti valid → status berubah menjadi `DISETUJUI`.
+![Tahap 2 — Verifikasi Bukti Cash Advance - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/finance-t2-1-1776833527303-HxZqp3MVkoeVFdE0vU27BAfLn2neWL.jpeg)
+4. Klik tombol **Tolak (✗)** jika bukti tidak valid atau tidak lengkap → status berubah menjadi `DITOLAK`. Relawan akan diminta upload ulang.
+![Tahap 2 — Verifikasi Bukti Cash Advance - Screenshot 2](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/finance-t2-2-1776833616742-q3VzoEDTbZLiuQdE1w0XLnZ9upZHsw.png)
+---
+
+#### Tahap 3 — Rekap Bulanan
+
+1. Buka **Rekap Penyaluran**.
+2. Filter berdasarkan **Bulan** dan **Program** untuk mendapatkan pivot rekapitulasi pengeluaran.
+3. Ekspor data jika dibutuhkan untuk laporan keuangan formal.
+![Tahap 3 — Rekap Bulanan - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/finance-t3-1-1776836832715-WIQFG7v2gSd06TQeWh90xafPO5FjbK.png)
+---
+
+## 5. OFFICE USER (Staf Kantor / Admin Lapangan)
+
+Office User adalah staf administrasi di tingkat kantor cabang/regional. Mereka membantu operasional administrasi data lapangan tanpa kewenangan konfigurasi sistem utama.
+
+**Menu yang dapat diakses:**
+- **Dashboard**: Ringkasan data wilayahnya.
+- **Desa Binaan**: Melihat dan mengelola desa di wilayah cakupan officenya.
+- **Penerima Manfaat**: Menambah/edit data PM.
+- **Laporan Kegiatan**: Melihat dan menginput laporan kegiatan.
+- **Daftar Kelompok**: Mengelola kelompok PM.
+- **Manajemen Tim**: Mengelola data relawan di bawah office-nya.
+
+---
+
+### Flow Kerja Office User
+
+#### Tahap 1 — Login & Orientasi
+
+1. Login dengan Google → diarahkan ke **`/dashboard`**.
+2. Dashboard hanya menampilkan data yang berada di bawah **cakupan office/cabang** yang ditetapkan oleh Admin.
+
+---
+
+#### Tahap 2 — Administrasi Data PM & Kelompok
+
+1. Buka **Penerima Manfaat** untuk melihat daftar PM di seluruh desa di bawah officenya.
+![Tahap 2 — Administrasi Data PM & Kelompok - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/office-t2-1-1776837103067-NWz54rpLiAGA50yqcfhidKinAg8FDl.jpeg)
+2. Untuk **menambah PM baru**:
+   - Klik **"Tambah Data"** → upload foto KTP.
+   - Sistem mengekstrak data KTP via AI dan mengisi form otomatis.
+   - Verifikasi data, pilih Desa Binaan dan Kelompok, lalu **Simpan**.
+![Tahap 2 — Administrasi Data PM & Kelompok - Screenshot 2](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/office-t2-2-1776837155472-CooW7HNftqtcN4l65uhckEnjsRxx0H.png)
+3. Buka **Daftar Kelompok** untuk mengelola kelompok-kelompok PM per program per desa.
+   - Tambah kelompok baru, edit anggota kelompok, atau nonaktifkan kelompok yang sudah tidak aktif.
+![Tahap 2 — Administrasi Data PM & Kelompok - Screenshot 3](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/office-t2-3-1776837281333-jvWpWCGDEuJTf8eRe2ObtHgcZHh8Dw.jpeg)
+
+---
+
+#### Tahap 3 — Input & Monitoring Laporan Kegiatan
+
+1. Buka **Laporan Kegiatan**.
+![Tahap 3 — Input & Monitoring Laporan Kegiatan - Screenshot 2](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/office-t3-2-1776837943970-tXC80DviDnZerDjVsT9NbDB6S8LS6G.jpeg)
+2. Jika ada kegiatan yang dilaksanakan namun belum terinput, klik **"Tambah Laporan"**:
+   - Pilih Desa, Program, dan Kelompok yang terlibat.
+   - Isi tanggal, deskripsi, sasaran, dan lokasi pelaksanaan.
+   - Upload foto dokumentasi.
+   - Pilih anggota kelompok yang hadir/tidak hadir.
+   - Klik **Simpan**.
+![Tahap 3 — Input & Monitoring Laporan Kegiatan - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/office-t3-1-1776837943969-363rY4kC8V8zOzVMTTtvEd7NMcUMDl.png)
+3. Pantau semua laporan dari Relawan di bawah officenya untuk memastikan tidak ada yang terlambat.
+
+---
+
+## 6. RELAWAN (Fasilitator Lapangan)
+
+Ini adalah peran paling krusial di garda terdepan. Relawan bertugas mengumpulkan data warga, melakukan pembinaan rutin, serta melaporkan kegiatan harian.
+
+**Menu yang dapat diakses:**
+- **Beranda**: Ringkasan dari desa yang _hanya_ ia pegang.
+- **Desa Binaan**: Mengelola profil dan progres desanya.
+- **Penerima Manfaat**: Menambah/edit identitas PM menggunakan integrasi **Scan KTP AI**.
+- **Daftar Kelompok**: Mengelola kelompok PM di desanya.
+- **Update Ekonomi & Kesehatan**: Mengunggah progress individu untuk PM.
+- **Laporan Kegiatan**: Mengupload log pembinaan (foto & bukti).
+- **Laporan Keuangan**: Upload bukti Cash Advance secara bertahap / bulanan.
+- **Profil Saya**: Memanajemen biodata pribadinya (akun bank, dsb).
+
+---
+
+### Flow Kerja Harian Relawan
+
+#### Tahap 1 — Onboarding Penerima Manfaat (PM) Baru
+
+1. Buka menu **Penerima Manfaat** → klik **"Tambah Data"**.
+![Tahap 2 — Administrasi Data PM & Kelompok - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/office-t2-1-1776837103067-NWz54rpLiAGA50yqcfhidKinAg8FDl.jpeg)
+2. Pada halaman form, klik tombol **"Upload KTP"** dan pilih foto KTP warga dari kamera atau galeri.
+![Tahap 2 — Administrasi Data PM & Kelompok - Screenshot 2](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/office-t2-2-1776837155472-CooW7HNftqtcN4l65uhckEnjsRxx0H.png)
+3. Sistem AI memproses gambar dan **mengisi otomatis** field: Nama, NIK, Tanggal Lahir, Jenis Kelamin, Alamat.
+![Tahap 1 — Onboarding Penerima Manfaat (PM) Baru - Screenshot 2](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/relawan-t1-2-1776838188427-DZrJGbxUP1WXWEORZbzolPFTPowbrR.png)
+4. Relawan memverifikasi dan melengkapi data yang belum terisi:
+   - Nomor HP
+   - Status (Aktif/Tidak Aktif)
+   - Foto profil (opsional)
+5. Pilih **Desa Binaan** (otomatis terisi dengan desa milik Relawan) dan **Kelompok** PM mana yang akan diikuti.
+![Tahap 1 — Onboarding Penerima Manfaat (PM) Baru - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/relawan-t1-1-1776838188425-bw3VFEgfplWp65f02dWo1Eer4kD6yj.png)
+6. Klik **Simpan** → PM berhasil terdaftar dan masuk ke daftar kelompok yang dipilih.
+
+
+
+---
+
+#### Tahap 2 — Mengelola Kelompok PM
+
+1. Buka **Daftar Kelompok** untuk melihat semua kelompok di desa binaannya.
+2. Untuk **membuat kelompok baru**:
+![Tahap 2 — Administrasi Data PM & Kelompok - Screenshot 3](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/office-t2-3-1776837281333-jvWpWCGDEuJTf8eRe2ObtHgcZHh8Dw.jpeg)
+   - Klik **"Tambah Kelompok"**.
+   - Isi nama kelompok, pilih program yang terkait, dan pilih Pembina Kelompok.
+   - Klik **Simpan**.
+3. Untuk **menambah anggota** ke kelompok yang ada: klik kelompok → klik **"Tambah Anggota"** → cari nama PM dari daftar.
+![Tahap 2 — Mengelola Kelompok PM - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/relawan-t2-1-1776838373390-kZsHFsPombROYIDRRf2a6k8d3qU5fF.png)
+---
+
+#### Tahap 3 — Input Laporan Kegiatan
+
+1. Setelah melakukan pembinaan atau kegiatan di lapangan, buka menu **Laporan Kegiatan**.
+2. Klik **"Tambah Laporan Baru"**.
+3. Isi form laporan:
+   - **Desa Binaan**: Otomatis terisi dengan desa milik Relawan.
+   - **Kategori & Nama Program**: Pilih program yang sedang berjalan.
+   - **Pilih Kelompok**: Centang kelompok yang mengikuti kegiatan ini.
+   - **Tanggal & Lokasi**: Isi tanggal pelaksanaan dan alamat lokasi.
+   - **Judul & Deskripsi**: Ringkasan singkat kegiatan yang dilakukan.
+   - **Anggota yang Hadir**: Sistem menampilkan seluruh anggota kelompok. Klik ikon (✗) pada anggota yang **tidak hadir** untuk mengecualikannya dari catatan kehadiran.
+   - **Custom Fields**: Jika program memiliki form spesifik (misal: modal awal, jenis usaha), isi field tambahan yang muncul.
+   - **Foto Dokumentasi**: Upload minimal 1 foto kegiatan.
+4. Klik **Simpan** → laporan terkirim dan dapat dilihat oleh Monev & Admin.
+![Tahap 3 — Input Laporan Kegiatan - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/relawan-t3-1-1776838451811-fasjG9EeeaBXweloxuhdQk9pBz8WSt.png)
+---
+
+#### Tahap 4 — Update Capaian Penerima Manfaat
+
+1. Untuk **Update Ekonomi**:
+   - Buka menu **Update Ekonomi** → klik **"Tambah Update"**.
+   - Pilih PM yang akan di-update.
+   - Isi data terkini: jenis usaha, omset, aset, catatan perkembangan.
+   - Klik **Simpan**.
+![Tahap 4 — Update Capaian PM - Screenshot 2](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/relawan-t4-2-1776838698732-CgDvPSV6dk7ANWEHvy6wBBBh2NFtRB.png)
+2. Untuk **Update Kesehatan**:
+   - Buka menu **Update Kesehatan** → klik **"Tambah Update"**.
+   - Pilih PM → isi kondisi kesehatan, diagnosa, atau catatan terkini.
+   - Klik **Simpan**.
+![Tahap 4 — Update Capaian PM - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/relawan-t4-1-1776838698729-6GWklfEWLDkU9v0USNUlW8dW6YcDhl.png)
+
+---
+
+#### Tahap 5 — Upload Laporan Keuangan (Cash Advance)
+
+1. Buka menu **Laporan Keuangan**.
+2. Klik detail desa **Intervensi Program** yang anggaran-nya akan dilaporkan — kamu akan masuk ke halaman detail program tersebut.
+![Tahap 5 — Upload Laporan Keuangan (CA) - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/relawan-t5-1-1776839169827-TLJcrCGMwCkX5d7yBFwyjFLwZyAXVY.png)
+3. Di tabel **"Daftar Anggaran & Bukti CA"**, cari baris **bulan** yang ingin diupload buktinya.
+
+4. Klik tombol **Upload** (ikon ↑) di kolom **Bukti CA** pada baris bulan tersebut.
+   - Dialog upload akan muncul.
+   - Isi **Deskripsi** (contoh: "Bukti transfer Dana Maret 2025").
+   - Isi **Nominal** Cash Advance yang diterima.
+   - Pilih file foto/dokumen bukti transfer dari kamera atau galeri.
+   - Klik **Simpan** → status baris berubah menjadi `UPLOADED`.
+![Tahap 5 — Upload Laporan Keuangan (CA) - Screenshot 3](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/relawan-t5-3-1776839393894-q7MAPIc2MRQ4D5FzlS4sgFkZ2JkB0G.png)
+5. Jika ada **sisa CA yang dikembalikan**, klik tombol Upload di kolom **Pengembalian** pada baris yang sama → isi nominal dan bukti pengembalian.
+![Tahap 5 — Upload Laporan Keuangan (CA) - Screenshot 2](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/relawan-t5-2-1776839393892-XM4nrSR5yC1mdS3QfiuDRjRgoCsM5U.png)
+6. Pantau kolom **Status** pada tabel — jika berubah menjadi `DITOLAK`, klik upload ulang dan unggah bukti yang benar sesuai catatan penolakan dari Finance/Admin.
+![Tahap 5 — Upload Laporan Keuangan (CA) - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/relawan-t5-1-1776839169827-TLJcrCGMwCkX5d7yBFwyjFLwZyAXVY.png)
+---
+
+#### Tahap 6 — Pembaruan Profil
+
+1. Buka menu **Profil Saya**.
+2. Edit informasi yang diperlukan:
+   - Nama lengkap, nomor HP.
+   - **Informasi Rekening Bank**: Nama bank, nomor rekening, nama pemilik rekening (untuk keperluan transfer Cash Advance oleh Finance).
+3. Klik **Simpan Perubahan**.
+![Tahap 6 — Pembaruan Profil - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/relawan-t6-1-1776839532072-TZAhKQjmmZVrynFlItc1WFGHByDO86.png)
+---
+
+## 7. KORWIL (Koordinator Wilayah)
+
+Korwil adalah Relawan senior dengan tugas tambahan mengkoordinasi relawan lain dalam satu wilayah. Role dasarnya `RELAWAN` namun dengan flag `is_korwil = true`.
+
+**Menu yang dapat diakses:**
+- Semua menu Relawan (poin 6 di atas).
+- **Menu Tambahan**: Manajemen Tim & Struktur Tim (hanya menampilkan relawan dalam subordinasinya).
+
+---
+
+### Flow Kerja Korwil
+
+#### Tahap 1 — Login & Overview Wilayah
+
+1. Login → diarahkan ke **`/dashboard`**.
+2. Dashboard menampilkan data gabungan dari seluruh desa di bawah koordinasinya.
+3. Identifikasi relawan mana yang belum menginput laporan bulan ini.
+
+---
+
+#### Tahap 2 — Koordinasi & Pengawasan Relawan
+
+1. Buka **Manajemen Tim** untuk melihat daftar Relawan yang berada di bawah koordinasinya.
+2. Periksa kolom **"Terakhir Input"** atau laporan terbaru tiap relawan.
+3. Buka **Struktur Tim** untuk melihat peta hierarki: Korwil → Relawan → Desa Binaan.
+4. Jika ada relawan yang belum aktif input, koordinasikan via komunikasi langsung (WA/telepon).
+![Tahap 2 — Koordinasi & Pengawasan Relawan - Screenshot 1](https://y9zry08kzigfovtt.public.blob.vercel-storage.com/docs-asset/korwil-t2-1-1776839637754-KjO21kG1rnFnssr9JeNimQ1V3FIscx.png)
+---
+
+#### Tahap 3 — Eksekusi Tugas Lapangan
+
+Korwil tetap menjalankan seluruh tugas Relawan untuk desanya sendiri:
+- Input PM baru, update kelompok, input laporan kegiatan, dan upload laporan keuangan (sama persis seperti **Flow Kerja Relawan** di atas).
+
+---
+
+#### Tahap 4 — Review Laporan Bawahan
+
+1. Buka **Laporan Kegiatan** dan filter berdasarkan **Relawan bawahannya**.
+2. Periksa kelengkapan dan kualitas laporan:
+   - Apakah foto dokumentasi jelas dan relevan?
+   - Apakah jumlah PM yang terlayani masuk akal?
+3. Berikan feedback langsung ke Relawan jika ada yang perlu diperbaiki.

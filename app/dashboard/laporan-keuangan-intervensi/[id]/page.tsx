@@ -42,6 +42,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
   const [detailAnggaran, setDetailAnggaran] = useState<any>(null)
   const [kegiatanList, setKegiatanList] = useState<any[]>([])
   const [filterTahun, setFilterTahun] = useState<string>('Semua')
+  const [filterStatus, setFilterStatus] = useState<string>('Semua')
   const [sortBulan, setSortBulan] = useState<'asc' | 'desc'>('asc')
   const [caUploadDialog, setCaUploadDialog] = useState<{ open: boolean, anggaranId: number | null }>({ open: false, anggaranId: null })
   const [caDeskripsi, setCaDeskripsi] = useState('')
@@ -887,6 +888,11 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
 
   const uniqueTahun = Array.from(new Set(anggaran.map((a: any) => a.tahun))).sort()
   let filteredAnggaran = filterTahun === 'Semua' ? anggaran : anggaran.filter((a: any) => a.tahun === filterTahun)
+
+  // Filter by status CA
+  if (filterStatus !== 'Semua') {
+    filteredAnggaran = filteredAnggaran.filter((a: any) => a.status_ca === filterStatus)
+  }
   
   const monthOrder: Record<string, number> = {
     'Januari': 1, 'Februari': 2, 'Maret': 3, 'April': 4, 'Mei': 5, 'Juni': 6,
@@ -984,32 +990,87 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
       </div>
 
       <Card className="border-none shadow-2xl shadow-slate-200/40 rounded-[2.5rem] overflow-hidden bg-white">
-        <CardHeader className="border-b border-slate-100 px-8 py-6 flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-[#7a1200]" />
-            Daftar Anggaran & Bukti CA
-          </CardTitle>
+        <CardHeader className="border-b border-slate-100 px-8 py-5 space-y-4">
+          {/* Row 1: Title */}
           <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-[#7a1200]/10 flex items-center justify-center">
+              <Receipt className="w-4 h-4 text-[#7a1200]" />
+            </div>
+            <CardTitle className="text-lg font-bold text-slate-800">Daftar Anggaran &amp; Bukti CA</CardTitle>
+          </div>
+
+          {/* Row 2: Filters */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Status Pill Group */}
+            <div className="flex items-center bg-slate-100 p-1 rounded-2xl gap-0.5">
+              {[
+                { key: 'Semua',        label: 'Semua',        dot: 'bg-slate-400' },
+                { key: 'BELUM',        label: 'Belum Upload', dot: 'bg-rose-400' },
+                { key: 'UPLOADED',     label: 'Uploaded',     dot: 'bg-amber-400' },
+                { key: 'DIVERIFIKASI', label: 'Diverifikasi', dot: 'bg-emerald-500' },
+              ].map(opt => (
+                <button
+                  key={opt.key}
+                  onClick={() => { setFilterStatus(opt.key); setCurrentPage(1) }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap ${
+                    filterStatus === opt.key
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${opt.dot}`} />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Divider */}
+            <div className="h-6 w-px bg-slate-200 hidden sm:block" />
+
+            {/* Tahun Select */}
             {uniqueTahun.length > 0 && (
-              <select
-                value={filterTahun}
-                onChange={(e) => setFilterTahun(e.target.value)}
-                className="px-3 py-1.5 text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7a1200] cursor-pointer"
-              >
-                <option value="Semua">Semua Tahun</option>
-                {uniqueTahun.map(t => (
-                  <option key={t as string} value={t as string}>{t as string}</option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={filterTahun}
+                  onChange={(e) => { setFilterTahun(e.target.value); setCurrentPage(1) }}
+                  className="appearance-none pl-3 pr-8 py-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#7a1200]/20 focus:border-[#7a1200]/40 cursor-pointer transition-all"
+                >
+                  <option value="Semua">Semua Tahun</option>
+                  {uniqueTahun.map(t => (
+                    <option key={t as string} value={t as string}>{t as string}</option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+              </div>
             )}
-            <select
-              value={sortBulan}
-              onChange={(e) => setSortBulan(e.target.value as 'asc' | 'desc')}
-              className="px-3 py-1.5 text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7a1200] cursor-pointer"
-            >
-              <option value="asc">Awal Tahun (Jan)</option>
-              <option value="desc">Akhir Tahun (Des)</option>
-            </select>
+
+            {/* Sort Select */}
+            <div className="relative">
+              <select
+                value={sortBulan}
+                onChange={(e) => setSortBulan(e.target.value as 'asc' | 'desc')}
+                className="appearance-none pl-3 pr-8 py-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#7a1200]/20 focus:border-[#7a1200]/40 cursor-pointer transition-all"
+              >
+                <option value="asc">↑ Jan → Des</option>
+                <option value="desc">↓ Des → Jan</option>
+              </select>
+              <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+            </div>
+
+            {/* Active filter count badge */}
+            {(filterStatus !== 'Semua' || filterTahun !== 'Semua') && (
+              <button
+                onClick={() => { setFilterStatus('Semua'); setFilterTahun('Semua'); setCurrentPage(1) }}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl hover:bg-rose-100 transition-colors"
+              >
+                <X className="w-3 h-3" />
+                Reset
+              </button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-0">

@@ -85,21 +85,21 @@ export default function RekapPenyaluranPage() {
     const relawanSet = new Set<string>()
 
     data.forEach(item => {
-      if (item.nama_desa && item.nama_desa !== '-') desaSet.add(item.nama_desa)
-      if (item.tahun && item.tahun !== '-') tahunSet.add(item.tahun)
-      if (item.bulan && item.bulan !== '-') bulanSet.add(item.bulan)
-      if (item.kategori_program && item.kategori_program !== '-') kategoriSet.add(item.kategori_program)
-      if (item.sumber_dana && item.sumber_dana !== '-') sumberDanaSet.add(item.sumber_dana)
-      if (item.relawan_nama && item.relawan_nama !== '-') relawanSet.add(item.relawan_nama)
+      if (item.nama_desa && item.nama_desa !== '-') desaSet.add(String(item.nama_desa))
+      if (item.tahun != null && item.tahun !== '-') tahunSet.add(String(item.tahun))
+      if (item.bulan != null && item.bulan !== '-') bulanSet.add(String(item.bulan))
+      if (item.kategori_program && item.kategori_program !== '-') kategoriSet.add(String(item.kategori_program))
+      if (item.sumber_dana && item.sumber_dana !== '-') sumberDanaSet.add(String(item.sumber_dana))
+      if (item.relawan_nama && item.relawan_nama !== '-') relawanSet.add(String(item.relawan_nama))
     })
 
     return {
-      desa: Array.from(desaSet).sort(),
-      tahun: Array.from(tahunSet).sort((a,b) => b.localeCompare(a)),
-      bulan: Array.from(bulanSet).sort(),
-      kategori: Array.from(kategoriSet).sort(),
-      sumberDana: Array.from(sumberDanaSet).sort(),
-      relawan: Array.from(relawanSet).sort()
+      desa: Array.from(desaSet).sort((a, b) => a.localeCompare(b)),
+      tahun: Array.from(tahunSet).sort((a, b) => b.localeCompare(a)), // descending
+      bulan: Array.from(bulanSet).sort((a, b) => Number(a) - Number(b)), // numeric sort
+      kategori: Array.from(kategoriSet).sort((a, b) => a.localeCompare(b)),
+      sumberDana: Array.from(sumberDanaSet).sort((a, b) => a.localeCompare(b)),
+      relawan: Array.from(relawanSet).sort((a, b) => a.localeCompare(b))
     }
   }, [data])
 
@@ -165,7 +165,7 @@ export default function RekapPenyaluranPage() {
       row.rowTotal.pengembalian += item.total_pengembalian || 0
       row.rowTotal.sisa += item.sisa_saldo || 0
     })
-    return Array.from(grouped.values()).sort((a,b) => a.nama_desa.localeCompare(b.nama_desa))
+    return Array.from(grouped.values()).sort((a, b) => (a.nama_desa ?? '').localeCompare(b.nama_desa ?? ''))
   }, [filteredData])
 
   const totalPages = Math.ceil(pivotData.length / itemsPerPage)

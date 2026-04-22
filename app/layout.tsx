@@ -19,11 +19,11 @@ export async function generateMetadata(): Promise<Metadata> {
     const faviconUrl = (s.app_favicon_url ?? '').trim() || '/favicon.png'
     return {
       title,
-      description: 'Sistem Monitoring Desa Berdaya',
+      description: 'Sistem Informasi Desa Berdaya',
       generator: 'v0.app',
       openGraph: {
         title,
-        description: 'Sistem Monitoring Desa Berdaya',
+        description: 'Sistem Informasi Desa Berdaya',
         url: 'https://desa-berdaya.vercel.app',
         siteName: 'SIDB',
         images: [
@@ -46,10 +46,10 @@ export async function generateMetadata(): Promise<Metadata> {
   } catch {
     return {
       title: 'SIDB - Dashboard',
-      description: 'Sistem Monitoring Desa Berdaya',
+      description: 'Sistem Informasi Desa Berdaya',
       openGraph: {
         title: 'SIDB - Dashboard',
-        description: 'Sistem Monitoring Desa Berdaya',
+        description: 'Sistem Informasi Desa Berdaya',
         url: 'https://desa-berdaya.vercel.app',
         siteName: 'SIDB',
         images: [

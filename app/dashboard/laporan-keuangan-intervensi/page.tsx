@@ -28,6 +28,7 @@ export default function LaporanKeuanganIntervensiPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+  const [filterStatus, setFilterStatus] = useState<string>('semua')
   const router = useRouter()
   const { data: session } = useSession()
   const role = (session?.user as any)?.role
@@ -47,11 +48,31 @@ export default function LaporanKeuanganIntervensiPage() {
     }
   }
 
-  const filtered = data.filter(item => 
-    (item.nama_desa || '').toLowerCase().includes(search.toLowerCase()) ||
-    (item.nama_program || '').toLowerCase().includes(search.toLowerCase()) ||
-    (item.nama_relawan || '').toLowerCase().includes(search.toLowerCase())
-  )
+  // Classify CA status per intervensi
+  const getCAStatus = (item: any): 'pending' | 'uploaded' | 'verified' | 'empty' => {
+    const uploaded = parseInt(item.uploaded_ca) || 0
+    const total = parseInt(item.total_bulan) || 0
+    if (total === 0 || uploaded === 0) return 'empty'
+    if (uploaded < total) return 'pending'
+    // uploaded === total: check if all diverifikasi (we don't have per-status count here,
+    // so treat full upload as 'uploaded'; Finance can filter to find these)
+    return 'uploaded'
+  }
+
+  const filtered = data.filter(item => {
+    const matchSearch =
+      (item.nama_desa || '').toLowerCase().includes(search.toLowerCase()) ||
+      (item.nama_program || '').toLowerCase().includes(search.toLowerCase()) ||
+      (item.nama_relawan || '').toLowerCase().includes(search.toLowerCase())
+
+    if (!matchSearch) return false
+
+    if (filterStatus === 'semua') return true
+    const caStatus = getCAStatus(item)
+    if (filterStatus === 'pending') return caStatus === 'pending' || caStatus === 'empty'
+    if (filterStatus === 'uploaded') return caStatus === 'uploaded'
+    return true
+  })
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -77,7 +98,7 @@ export default function LaporanKeuanganIntervensiPage() {
       </div>
 
       {/* Control Bar */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
         <div className="relative w-full md:w-96 group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#7a1200] transition-colors" />
           <Input
@@ -87,6 +108,28 @@ export default function LaporanKeuanganIntervensiPage() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
+
+        {/* Status Filter Pills */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: 'semua',    label: 'Semua',           cls: 'bg-slate-100 text-slate-700 hover:bg-slate-200' },
+            { key: 'pending',  label: '⏳ Belum / Partial', cls: 'bg-amber-100 text-amber-700 hover:bg-amber-200' },
+            { key: 'uploaded', label: '✅ Sudah Upload',  cls: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' },
+          ].map(opt => (
+            <button
+              key={opt.key}
+              onClick={() => setFilterStatus(opt.key)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border-2 ${
+                filterStatus === opt.key
+                  ? opt.cls + ' border-current shadow-sm'
+                  : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
           <div className="flex items-center flex-1 sm:flex-none bg-white border border-slate-200 p-1 rounded-2xl shadow-sm">
             <Button

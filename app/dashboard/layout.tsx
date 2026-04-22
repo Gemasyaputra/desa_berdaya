@@ -191,7 +191,7 @@ export default function DashboardLayout({
     if (href === '/dashboard') {
       return pathname === href
     }
-    return pathname === href || pathname.startsWith(`${href}/`)
+    return pathname === href || pathname?.startsWith(`${href}/`)
   }
 
   return (
@@ -263,9 +263,9 @@ export default function DashboardLayout({
                     <>
                       <button
                         onClick={() => setClinicsExpanded(!clinicsExpanded)}
-                        style={pathname.startsWith(item.href) ? { backgroundColor: 'rgba(255,255,255,0.2)' } : undefined}
+                        style={pathname?.startsWith(item.href) ? { backgroundColor: 'rgba(255,255,255,0.2)' } : undefined}
                         className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
-                          pathname.startsWith(item.href) ? 'border-l-3 border-white' : 'hover:opacity-80'
+                          pathname?.startsWith(item.href) ? 'border-l-3 border-white' : 'hover:opacity-80'
                         }`}
                       >
                         <div className="flex items-center gap-3">

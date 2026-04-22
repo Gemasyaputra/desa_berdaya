@@ -34,7 +34,7 @@ export function LoginClient({ settings }: { settings: LoginSettings }) {
   const bgImage = settings?.[APP_SETTINGS_KEYS.LOGIN_BG_IMAGE] || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b'
   const toneBg = settings?.[APP_SETTINGS_KEYS.LOGIN_TONE_BG] || 'linear-gradient(to bottom right, rgba(92,51,23,0.85), rgba(120,72,34,0.75), rgba(78,44,18,0.85))'
   const brandColor = settings?.['app_sidebar_bg_color'] || '#7a3a1a'
-  const defaultLoginContent = `<h2>Sistem Monitoring Desa Berdaya</h2>
+  const defaultLoginContent = `<h2>Sistem Informasi Desa Berdaya</h2>
 <p>Platform manajemen operasional lapangan untuk Relawan Rumah Zakat dalam mengelola program pembinaan desa secara aktif.</p>
 <ul>
 <li><strong>Pantau Desa Binaan</strong> — Kelola data Penerima Manfaat dan kegiatan desa dalam satu tampilan yang terstruktur.</li>

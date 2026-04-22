@@ -45,7 +45,7 @@ import { useParams } from 'next/navigation'
 export default function EditLaporanPage() {
   const router = useRouter()
   const params = useParams()
-  const idStr = params.id as string
+  const idStr = params?.id as string
   const idNum = idStr ? parseInt(idStr) : 0
 
   const [isPending, startTransition] = useTransition()

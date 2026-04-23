@@ -8,11 +8,14 @@ import { getLaporanKegiatan } from './actions'
 import DeleteLaporanButton from './DeleteLaporanButton'
 import { useSession } from 'next-auth/react'
 import { Badge } from '@/components/ui/badge'
+import { useSearchParams } from 'next/navigation'
+import { DynamicFilterManager } from '@/components/dynamic-filter-manager'
 
 export const dynamic = 'force-dynamic'
 
 export default function LaporanKegiatanListPage() {
   const { data: session } = useSession()
+  const searchParams = useSearchParams()
   const [laporanList, setLaporanList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -41,6 +44,23 @@ export default function LaporanKegiatanListPage() {
     return `/dashboard/laporan-kegiatan/${laporan.id}/edit`
   }
 
+  // Filter Data berdasarkan Search Params dari DynamicFilterManager
+  const filteredList = laporanList.filter((item) => {
+    for (const [key, val] of Array.from(searchParams?.entries() || [])) {
+      // Basic heuristic: check if any string field matches, or if date contains the year
+      if (key === 'tahun') {
+        const dateStr = item.tanggal_kegiatan || item.created_at
+        if (!dateStr || !new Date(dateStr).getFullYear().toString().includes(val)) return false
+      } else {
+        // generic column matching
+        if (item[key] !== undefined) {
+          if (String(item[key]).toLowerCase() !== val.toLowerCase()) return false
+        }
+      }
+    }
+    return true
+  })
+
   return (
     <div className="p-4 lg:p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-6">
@@ -59,14 +79,18 @@ export default function LaporanKegiatanListPage() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-4 items-center justify-between bg-slate-50/50">
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Cari laporan..." 
-              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-[#7a1200]"
-            />
+        <div className="p-4 border-b border-slate-100 flex flex-col gap-4 bg-slate-50/50">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
+            <div className="relative w-full sm:max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input 
+                type="text" 
+                placeholder="Cari laporan..." 
+                className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-[#7a1200]"
+              />
+            </div>
+            {/* Filter Dinamis dari Database */}
+            <DynamicFilterManager pageKey="laporan_kegiatan" />
           </div>
         </div>
 
@@ -75,7 +99,7 @@ export default function LaporanKegiatanListPage() {
           {loading ? (
             <div className="p-8 text-center text-slate-500">Memuat data...</div>
           ) : (
-            laporanList.map((laporan) => (
+            filteredList.map((laporan) => (
               <div key={laporan.id} className="p-4 space-y-4 hover:bg-slate-50/50 transition-colors">
                 <div className="flex justify-between items-start gap-2">
                   <div className="min-w-0">
@@ -133,7 +157,7 @@ export default function LaporanKegiatanListPage() {
                   <td colSpan={5} className="px-6 py-12 text-center text-slate-500">Memuat data...</td>
                 </tr>
               ) : (
-                laporanList.map((laporan) => (
+                filteredList.map((laporan) => (
                   <tr key={laporan.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="font-semibold text-slate-800">{laporan.judul_kegiatan}</div>
@@ -174,9 +198,9 @@ export default function LaporanKegiatanListPage() {
           </table>
         </div>
 
-        {!loading && laporanList.length === 0 && (
+        {!loading && filteredList.length === 0 && (
           <div className="p-12 text-center text-slate-500">
-            Belum ada data laporan kegiatan yang terdaftar.
+            Belum ada data laporan kegiatan yang terdaftar atau sesuai filter.
           </div>
         )}
       </div>

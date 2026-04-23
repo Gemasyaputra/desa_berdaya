@@ -46,7 +46,7 @@ export const authOptions: NextAuthOptions = {
       }
       return true
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger, session }) {
       // populate the token with DB user info upon first login callback
       if (user && account?.provider === 'google') {
         const email = user.email
@@ -111,6 +111,70 @@ export const authOptions: NextAuthOptions = {
           } catch(e) {
             console.error("JWT Callback error: ", e)
           }
+        }
+      }
+
+      // DEV MODE IMPERSONATION
+      if (process.env.NODE_ENV === 'development' && trigger === 'update' && session?.mockRole) {
+        try {
+          const users = await sql`
+            SELECT id, email, role
+            FROM users
+            WHERE role = ${session.mockRole}
+            LIMIT 1
+          `
+          const dbUser = (Array.isArray(users) ? users[0] : users) as any
+          
+          if (dbUser) {
+            token.sub = String(dbUser.id)
+            token.role = dbUser.role
+            token.is_korwil = false
+            token.operator_id = null
+            token.monev_id = null
+            token.korwil_id = null
+            token.name = dbUser.email
+
+            if (dbUser.role === 'MONEV') {
+              const monevs = await sql`SELECT id, nama FROM monev WHERE user_id = ${dbUser.id} LIMIT 1`
+              const monev = (Array.isArray(monevs) ? monevs[0] : monevs) as any
+              if (monev) {
+                token.operator_id = String(monev.id)
+                token.name = monev.nama
+                token.jabatan = 'Monev Pusat'
+                token.nama_office = 'Pusat'
+              }
+            } else if (dbUser.role === 'RELAWAN' || dbUser.role === 'ADMIN') {
+              const relawans = await sql`SELECT id, nama, is_korwil, monev_id, korwil_id FROM relawan WHERE user_id = ${dbUser.id} LIMIT 1`
+              const relawan = (Array.isArray(relawans) ? relawans[0] : relawans) as any
+              if (relawan) {
+                token.operator_id = String(relawan.id)
+                token.is_korwil = relawan.is_korwil
+                token.monev_id = relawan.monev_id ? String(relawan.monev_id) : null
+                token.korwil_id = relawan.korwil_id ? String(relawan.korwil_id) : null
+                token.name = relawan.nama
+                token.jabatan = relawan.is_korwil ? 'Korwil' : 'Relawan'
+                token.nama_office = '-' 
+              }
+            } else if (dbUser.role === 'OFFICE' || dbUser.role === 'FINANCE' || dbUser.role === 'PROG_HEAD') {
+              const officeUsers = await sql`
+                SELECT ou.id, ou.nama, ou.office_id, ou.jabatan, o.nama_office 
+                FROM office_user ou
+                LEFT JOIN office o ON ou.office_id = o.id
+                WHERE ou.user_id = ${dbUser.id} 
+                LIMIT 1
+              `
+              const ou = (Array.isArray(officeUsers) ? officeUsers[0] : officeUsers) as any
+              if (ou) {
+                token.operator_id = String(ou.id)
+                token.office_id = ou.office_id ? String(ou.office_id) : null
+                token.name = ou.nama
+                token.jabatan = ou.jabatan || 'Staf Office'
+                token.nama_office = ou.nama_office || '-'
+              }
+            }
+          }
+        } catch(e) {
+          console.error("Impersonation error: ", e)
         }
       }
 

@@ -14,7 +14,7 @@ import {
   type OfficeUserType
 } from '@/lib/actions/office-user'
 import { getOffices, type OfficeWithStats } from '@/lib/actions/office'
-import { resetPasswordMonev } from './actions' // We can reuse the same reset password logic since it just targets users.id
+import { resetPasswordMonev } from '../manajemen-tim/actions' // We can reuse the same reset password logic since it just targets users.id
 
 function emptyForm() {
   return { nama: '', hp: '', email: '', jabatan: '', office_id: '' }

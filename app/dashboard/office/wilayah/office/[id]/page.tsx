@@ -97,7 +97,7 @@ export default function WilayahOfficePage() {
       <header className="bg-white border-b border-slate-200 px-4 lg:px-6 py-4 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between gap-3 flex-wrap">
            <div className="flex items-center gap-3">
-             <Link href="/dashboard/manajemen-tim">
+             <Link href="/dashboard/office">
                <Button variant="outline" size="icon" className="h-10 w-10 border-slate-200">
                  <ArrowLeft className="w-5 h-5 text-slate-600" />
                </Button>

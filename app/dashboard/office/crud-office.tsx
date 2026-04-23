@@ -272,7 +272,7 @@ export function CRUDOffice() {
                           <Button size="sm" variant="outline" onClick={() => openEdit(row)} className="h-8 rounded-lg px-3 text-xs font-bold border-slate-200 text-slate-600 hover:bg-slate-100 shadow-sm">
                             <Edit className="w-3.5 h-3.5 mr-1.5" /> Edit
                           </Button>
-                          <Link href={`/dashboard/manajemen-tim/wilayah/office/${row.id}`}>
+                          <Link href={`/dashboard/office/wilayah/office/${row.id}`}>
                             <Button size="sm" variant="outline" className="h-8 rounded-lg px-3 text-xs font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-sm">
                               <MapPin className="w-3.5 h-3.5 mr-1.5" /> Wilayah
                             </Button>

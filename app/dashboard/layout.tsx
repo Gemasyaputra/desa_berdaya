@@ -16,6 +16,7 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { useSession, signOut } from 'next-auth/react'
 import { getMyProfile } from '@/app/dashboard/profil/actions'
+import { DevRoleSwitcher } from '@/components/dev-role-switcher'
 import {
   LayoutDashboard,
   Building2,
@@ -155,6 +156,7 @@ export default function DashboardLayout({
           { href: '/dashboard/laporan-keuangan-intervensi', label: 'Laporan Keuangan', icon: Receipt },
           { href: '/dashboard/rekap-penyaluran', label: 'Rekap Penyaluran', icon: Wallet },
           { href: '/dashboard/manajemen-tim', label: 'Manajemen Tim', icon: UsersRound },
+          { href: '/dashboard/office', label: 'Office', icon: Building2 },
           { href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch },
           { href: '/dashboard/konfigurasi', label: 'Konfigurasi', icon: Settings },
           ...(isAdminRole
@@ -168,6 +170,11 @@ export default function DashboardLayout({
                 {
                   href: '/dashboard/konfigurasi/form-builder',
                   label: 'Form Builder',
+                  icon: Settings,
+                },
+                {
+                  href: '/dashboard/konfigurasi/filter-builder',
+                  label: 'Filter Builder',
                   icon: Settings,
                 },
               ]
@@ -407,6 +414,7 @@ export default function DashboardLayout({
         </div>
 
         {children}
+        <DevRoleSwitcher />
       </main>
     </div>
   )

@@ -588,7 +588,7 @@ export function FormBuilderClient({
               <TableHeader>
                 <TableRow>
                   <TableHead>Nama Kategori</TableHead>
-                  <TableHead>Deskripsi</TableHead>
+                  <TableHead>Program</TableHead>
                   <TableHead>Jumlah Field</TableHead>
                   <TableHead>Dibuat</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>

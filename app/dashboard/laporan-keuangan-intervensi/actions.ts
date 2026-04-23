@@ -466,3 +466,42 @@ export async function tolakBuktiPengembalian(anggaranId: number, entryId: string
   revalidatePath('/dashboard/laporan-keuangan-intervensi')
   return { success: true }
 }
+
+export async function getAllLaporanKeuanganEntries() {
+  const user = await checkAuth()
+  const role = (user as any).role
+  const operatorId = (user as any).operator_id
+  const isKorwil = (user as any).is_korwil
+
+  const values: any[] = []
+  let queryText = `
+    SELECT 
+      ia.*,
+      ip.id as ip_id,
+      dc.nama_desa,
+      p.nama_program,
+      r.nama as nama_relawan,
+      ip.sumber_dana
+    FROM intervensi_anggaran ia
+    JOIN intervensi_program ip ON ia.intervensi_program_id = ip.id
+    JOIN desa_berdaya db ON ip.desa_berdaya_id = db.id
+    JOIN desa_config dc ON db.desa_id = dc.id
+    JOIN program p ON ip.program_id = p.id
+    JOIN relawan r ON ip.relawan_id = r.id
+  `
+
+  if (role === 'RELAWAN' || role === 'USER') {
+    values.push(operatorId)
+    queryText += ` WHERE ip.relawan_id = $${values.length}`
+  } else if (isKorwil && operatorId) {
+    values.push(operatorId)
+    queryText += ` WHERE r.korwil_id = $${values.length}`
+  }
+
+  queryText += ` ORDER BY ia.tahun DESC, ia.bulan DESC, ia.created_at DESC`
+
+  const client = getSqlClient()
+  const res = await client(queryText, values)
+
+  return Array.isArray(res) ? res : []
+}

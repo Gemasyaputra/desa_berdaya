@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
-import { Upload, Check, Copy, ImageIcon, Loader2, X, ExternalLink, ChevronDown, ChevronUp, Plus } from 'lucide-react'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { Upload, Check, Copy, ImageIcon, Loader2, X, ExternalLink, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 
@@ -83,22 +83,41 @@ const ROLE_BADGE: Record<string, string> = {
   Korwil:     'bg-rose-100 text-rose-700 border-rose-200',
 }
 
+const LS_KEY = 'docs-asset-uploads-v2'
+
 interface UploadedImage {
-  uid: string      // unique id per image
+  uid: string
   url: string
-  previewUrl: string
+  previewUrl: string  // sama dengan url (Vercel Blob) agar survive refresh
   filename: string
 }
 
+function loadFromStorage(): Record<string, UploadedImage[]> {
+  try {
+    const raw = localStorage.getItem(LS_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveToStorage(uploads: Record<string, UploadedImage[]>) {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(uploads))
+  } catch {}
+}
+
 export default function DocsAssetUploaderPage() {
-  // uploads[tahapId] = array of images
   const [uploads, setUploads] = useState<Record<string, UploadedImage[]>>({})
-  // uploading[tahapId] = true/false
   const [uploading, setUploading] = useState<Record<string, boolean>>({})
-  // collapsed roles
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [draggingOver, setDraggingOver] = useState<string | null>(null)
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
+
+  // Hydrate dari localStorage sekali saat mount
+  useEffect(() => {
+    setUploads(loadFromStorage())
+  }, [])
 
   const toggleRole = (role: string) =>
     setCollapsed(prev => ({ ...prev, [role]: !prev[role] }))
@@ -107,37 +126,53 @@ export default function DocsAssetUploaderPage() {
     if (!files.length) return
     setUploading(prev => ({ ...prev, [tahapId]: true }))
     try {
+      const current = loadFromStorage()
+      const existing = current[tahapId]?.length ?? 0
       const results = await Promise.all(
         files.map(async (file, i) => {
-          const existing = uploads[tahapId]?.length ?? 0
           const slug = `${tahapId}-${existing + i + 1}-${Date.now()}`
-          const previewUrl = URL.createObjectURL(file)
           const form = new FormData()
           form.append('file', file)
           form.append('slug', slug)
           const res = await fetch('/api/upload/docs-asset', { method: 'POST', body: form })
           const data = await res.json()
           if (!res.ok) throw new Error(data?.error || 'Gagal upload')
-          return { uid: slug, url: data.url, previewUrl, filename: file.name } as UploadedImage
+          // Gunakan url Vercel Blob sebagai preview agar tidak hilang saat refresh
+          return { uid: slug, url: data.url, previewUrl: data.url, filename: file.name } as UploadedImage
         })
       )
-      setUploads(prev => ({
-        ...prev,
-        [tahapId]: [...(prev[tahapId] ?? []), ...results],
-      }))
+      setUploads(prev => {
+        const next = {
+          ...prev,
+          [tahapId]: [...(prev[tahapId] ?? []), ...results],
+        }
+        saveToStorage(next)
+        return next
+      })
       toast.success(`✅ ${results.length} gambar berhasil diupload`)
     } catch (e: any) {
       toast.error(e?.message || 'Gagal upload')
     } finally {
       setUploading(prev => ({ ...prev, [tahapId]: false }))
     }
-  }, [uploads])
+  }, [])
 
   const removeImage = (tahapId: string, uid: string) => {
-    setUploads(prev => ({
-      ...prev,
-      [tahapId]: (prev[tahapId] ?? []).filter(img => img.uid !== uid),
-    }))
+    setUploads(prev => {
+      const next = {
+        ...prev,
+        [tahapId]: (prev[tahapId] ?? []).filter(img => img.uid !== uid),
+      }
+      saveToStorage(next)
+      return next
+    })
+  }
+
+  const clearAll = () => {
+    if (!confirm('Hapus semua data upload yang tersimpan?')) return
+    localStorage.removeItem(LS_KEY)
+    setUploads({})
+    toast.success('Semua data upload dihapus')
   }
 
   const copyText = (text: string, label: string) => {
@@ -163,11 +198,24 @@ export default function DocsAssetUploaderPage() {
   return (
     <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-8">
       {/* Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Upload Screenshot Dokumentasi</h1>
-        <p className="text-slate-500 text-sm">
-          Upload <strong>beberapa gambar</strong> per tahap untuk setiap role. Setelah upload, salin tag MDX dan paste ke <code className="bg-slate-100 px-1 rounded">pages/roles.mdx</code>.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Upload Screenshot Dokumentasi</h1>
+          <p className="text-slate-500 text-sm">
+            Upload <strong>beberapa gambar</strong> per tahap untuk setiap role. Setelah upload, salin tag MDX dan paste ke <code className="bg-slate-100 px-1 rounded">pages/roles.mdx</code>.
+          </p>
+          <div className="flex items-center gap-1.5 pt-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[11px] text-emerald-600 font-semibold">Gambar tersimpan otomatis — aman di-refresh</span>
+          </div>
+        </div>
+        <button
+          onClick={clearAll}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl hover:bg-rose-100 transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          Reset Semua
+        </button>
       </div>
 
       {/* Role sections */}

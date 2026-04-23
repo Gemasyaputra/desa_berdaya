@@ -95,6 +95,13 @@ export default function LaporanKeuanganIntervensiPage() {
             <p className="text-sm font-medium text-slate-500 mt-1">Kelola bukti CA (Cash Advance) untuk setiap program</p>
           </div>
         </div>
+        <Button 
+          onClick={() => router.push('/dashboard/laporan-keuangan-intervensi/semua')}
+          className="bg-[#7a1200] hover:bg-[#5a0d00] text-white font-bold rounded-xl h-11 px-6 shadow-sm flex items-center gap-2"
+        >
+          <List className="w-4 h-4" />
+          Lihat Semua Detail Laporan
+        </Button>
       </div>
 
       {/* Control Bar */}

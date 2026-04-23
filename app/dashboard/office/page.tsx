@@ -2,17 +2,15 @@
 
 import { useSession } from 'next-auth/react'
 import { useState } from 'react'
-import { Shield, UserCheck, Users, UsersRound, Building2, BriefcaseBusiness, UserCog } from 'lucide-react'
-import { CRUDAdmin } from './crud-admin'
-import { CRUDMonev } from './crud-monev'
-import { CRUDKorwil } from './crud-korwil'
-import { CRUDRelawan } from './crud-relawan'
+import { Building2, BriefcaseBusiness, UsersRound } from 'lucide-react'
+import { CRUDOffice } from './crud-office'
+import { CRUDOfficeUser } from './crud-office-user'
 
-type Tab = 'admin' | 'monev' | 'korwil' | 'relawan'
+type Tab = 'office' | 'officeuser'
 
-export default function ManajemenTimPage() {
+export default function OfficePage() {
   const { data: session, status } = useSession()
-  const [activeTab, setActiveTab] = useState<Tab>('monev')
+  const [activeTab, setActiveTab] = useState<Tab>('office')
 
   if (status === 'loading') {
     return (
@@ -25,12 +23,9 @@ export default function ManajemenTimPage() {
   const user = session?.user as any
   const role = user?.role as string
   const isAdmin = role === 'ADMIN'
-  const isMonev = role === 'MONEV'
-  const isKorwil = !!user?.is_korwil
-  const monevId = user?.operator_id ? Number(user.operator_id) : null
 
   // Akses check
-  if (!isAdmin && !isMonev && !isKorwil) {
+  if (!isAdmin) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
@@ -41,19 +36,10 @@ export default function ManajemenTimPage() {
     )
   }
 
-  // Tentukan tab yang tersedia
-  const tabs: { key: Tab; label: string; icon: React.ElementType; show: boolean }[] = [
-    { key: 'admin', label: 'Admin', icon: UserCog, show: isAdmin },
-    { key: 'monev', label: 'Monev', icon: Shield, show: isAdmin },
-    { key: 'korwil', label: 'Korwil', icon: UserCheck, show: isAdmin || isMonev },
-    { key: 'relawan', label: 'Relawan', icon: Users, show: isAdmin || isMonev || isKorwil },
-  ]
-  const visibleTabs = tabs.filter((t) => t.show)
-
-  // Default active tab ke yang paling relevan
-  const validActive = visibleTabs.some((t) => t.key === activeTab)
-    ? activeTab
-    : visibleTabs[0]?.key ?? 'relawan'
+  const tabs = [
+    { key: 'office', label: 'Office', icon: Building2 },
+    { key: 'officeuser', label: 'Office User', icon: BriefcaseBusiness },
+  ] as const
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
@@ -62,10 +48,10 @@ export default function ManajemenTimPage() {
         <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
           <div className="space-y-0.5">
             <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-              Manajemen Tim
+              Office
               <span className="px-2.5 py-0.5 bg-[#7a1200]/5 text-[#7a1200] text-[10px] font-bold rounded-full uppercase tracking-widest border border-red-100">Management</span>
             </h1>
-            <p className="text-slate-400 text-xs font-medium">Pengaturan Akses & Keanggotaan <span className="text-slate-500 font-bold">Admin, Monev, Korwil, dan Relawan</span></p>
+            <p className="text-slate-400 text-xs font-medium">Pengaturan Akses & Keanggotaan <span className="text-slate-500 font-bold">Office dan Office User</span></p>
           </div>
         </div>
       </header>
@@ -73,9 +59,9 @@ export default function ManajemenTimPage() {
       <div className="max-w-[1600px] mx-auto p-8 py-10 space-y-10">
         {/* Tabs */}
         <div className="flex gap-2 bg-slate-100/80 p-1.5 rounded-2xl mb-8 w-fit border border-slate-200/50 shadow-inner overflow-x-auto max-w-full">
-          {visibleTabs.map((tab) => {
+          {tabs.map((tab) => {
             const Icon = tab.icon
-            const isActive = validActive === tab.key
+            const isActive = activeTab === tab.key
             return (
               <button
                 key={tab.key}
@@ -95,19 +81,8 @@ export default function ManajemenTimPage() {
 
         {/* Content */}
         <div>
-          {validActive === 'admin' && isAdmin && <CRUDAdmin />}
-          {validActive === 'monev' && isAdmin && <CRUDMonev />}
-          {validActive === 'korwil' && (isAdmin || isMonev) && (
-            <CRUDKorwil isAdmin={isAdmin} isMonev={isMonev} />
-          )}
-          {validActive === 'relawan' && (
-            <CRUDRelawan
-              isAdmin={isAdmin}
-              isMonev={isMonev}
-              isKorwil={isKorwil}
-              monevId={monevId}
-            />
-          )}
+          {activeTab === 'office' && <CRUDOffice />}
+          {activeTab === 'officeuser' && <CRUDOfficeUser />}
         </div>
       </div>
     </div>

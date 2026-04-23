@@ -1104,7 +1104,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                   <div className="flex justify-between items-start">
                     <div className="text-left outline-none">
                       <div className="font-black text-slate-800 transition-colors flex items-center gap-2 group-hover/card:text-[#7a1200]">
-                        {a.bulan}
+                        {isNaN(Number(a.bulan)) ? a.bulan : (['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][Number(a.bulan) - 1] || a.bulan)}
                         <ExternalLink className="w-3 h-3 opacity-0 group-hover/card:opacity-100 transition-opacity" />
                       </div>
                       <div className="text-[10px] font-bold text-slate-400 transition-colors group-hover/card:text-[#7a1200]/60">{a.tahun}</div>
@@ -1219,7 +1219,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
           </div>
 
           {/* DESKTOP VIEW */}
-          <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[70vh] rounded-b-[2rem] custom-scrollbar relative">
+          <div className="hidden md:block overflow-x-auto rounded-b-[2rem] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] relative">
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-50 text-[11px] font-black text-slate-500 uppercase tracking-widest sticky top-0 z-30 shadow-sm">
                 <tr>
@@ -1273,7 +1273,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                     <td className={`px-4 py-3 sticky left-0 z-10 ${rowBg} ${rowHoverBg} ${statusShadow}`}>
                       <div className="text-left outline-none">
                         <div className="font-black text-slate-800 transition-colors flex items-center gap-2 group-hover/row:text-[#7a1200]">
-                          {a.bulan}
+                          {isNaN(Number(a.bulan)) ? a.bulan : (['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][Number(a.bulan) - 1] || a.bulan)}
                           <ExternalLink className="w-3 h-3 opacity-0 group-hover/row:opacity-100 transition-opacity" />
                         </div>
                         <div className="text-[10px] font-bold text-slate-400 transition-colors group-hover/row:text-[#7a1200]/60">{a.tahun}</div>

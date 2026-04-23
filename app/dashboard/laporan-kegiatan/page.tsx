@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { PlusCircle, Search, MapPin, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,7 @@ import { DynamicFilterManager } from '@/components/dynamic-filter-manager'
 
 export const dynamic = 'force-dynamic'
 
-export default function LaporanKegiatanListPage() {
+function LaporanKegiatanListContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
   const [laporanList, setLaporanList] = useState<any[]>([])
@@ -205,5 +205,13 @@ export default function LaporanKegiatanListPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function LaporanKegiatanListPage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-slate-500">Memuat halaman...</div>}>
+      <LaporanKegiatanListContent />
+    </Suspense>
   )
 }

@@ -13,7 +13,7 @@ import {
   getDesaBerdayaOptions,
   getProgramOptions,
   getKategoriProgramOptions,
-  importIntervensiProgram
+  importIntervensiProgramUniversal
 } from '@/app/dashboard/intervensi/actions'
 
 interface ImportExcelModalProps {
@@ -37,6 +37,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [importMode, setImportMode] = useState<'banyak-bulan' | 'banyak-desa'>('banyak-bulan')
 
   // Options data
   const [desaOptions, setDesaOptions] = useState<any[]>([])
@@ -52,9 +53,20 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
   const [selectedProgramId, setSelectedProgramId] = useState('')
   const [selectedSumberDana, setSelectedSumberDana] = useState('')
   const [selectedFundraiser, setSelectedFundraiser] = useState('')
+  
+  // For Banyak Desa mode
+  const [selectedBulan, setSelectedBulan] = useState(BULAN_OPTIONS[new Date().getMonth()])
+  const [selectedTahun, setSelectedTahun] = useState(new Date().getFullYear().toString())
+  const [targetDesaMode, setTargetDesaMode] = useState<'semua' | 'pilih'>('semua')
+  const [targetDesaIds, setTargetDesaIds] = useState<Set<number>>(new Set())
+
   const filteredPrograms = programOptions.filter(p => String(p.kategori_id) === selectedKategoriId)
   const selectedProgram = programOptions.find(p => String(p.id) === selectedProgramId)
   const selectedKategori = kategoriOptions.find(k => String(k.id) === selectedKategoriId)
+
+  const activeTargetDesas = targetDesaMode === 'semua' 
+    ? desaOptions 
+    : desaOptions.filter(d => targetDesaIds.has(d.id))
 
   // Step 3: Upload
   const [uploadError, setUploadError] = useState('')
@@ -83,54 +95,76 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
       setUploadError('')
       setParsedMeta(null)
       setPreviewRows([])
+      setTargetDesaMode('semua')
+      setTargetDesaIds(new Set())
     }
   }, [isOpen])
 
   // ── TEMPLATE DOWNLOAD ──────────────────────────────────────────────
   const handleDownloadTemplate = async () => {
-    if (!selectedDesa || !selectedProgram || !selectedKategori) return
+    if (importMode === 'banyak-bulan' && (!selectedDesa || !selectedProgram || !selectedKategori)) return
+    if (importMode === 'banyak-desa' && (!selectedProgram || !selectedKategori || !selectedBulan || !selectedTahun)) return
+
     const XLSX = await import('xlsx')
+    const tahun = importMode === 'banyak-bulan' ? new Date().getFullYear() : Number(selectedTahun)
+    let wsData: any[][] = []
 
-    const tahun = new Date().getFullYear()
-
-    // Build sheet data as array-of-arrays
-    const wsData: any[][] = [
-      // Row 1: Instructions
-      ['⚠ JANGAN UBAH BARIS 1-8. Isi data mulai baris 9 ke bawah.'],
-      // Row 2: Blank
-      [],
-      // Row 3: Metadata header
-      ['[METADATA] desa_berdaya_id', 'program_id', 'kategori_program_id', 'relawan_id', 'nama_desa', 'nama_program'],
-      // Row 4: Metadata values (pre-filled, locked)
-      [selectedDesa.id, selectedProgram.id, Number(selectedKategoriId), selectedDesa.relawan_id, selectedDesa.nama, selectedProgram.nama_program],
-      // Row 5: Blank
-      [],
-      // Row 6: Header data labels
-      ['[HEADER] sumber_dana', 'fundraiser', 'deskripsi'],
-      // Row 7: Header data values (pre-filled from wizard selection)
-      [selectedSumberDana || '', selectedFundraiser || '', ''],
-      // Row 8: Anggaran column headers
-      ['tahun', 'bulan', 'ajuan_ri', 'anggaran_disetujui', 'anggaran_dicairkan', 'status_pencairan', 'id_stp', 'catatan', 'is_dbf', 'is_rz'],
-      // Row 9-20: 12 months sample (all with 0 values)
-      ...BULAN_OPTIONS.map(bulan => [tahun, bulan, 0, 0, 0, 'Dialokasikan', '', '', 'FALSE', 'FALSE'])
-    ]
+    if (importMode === 'banyak-bulan') {
+      wsData = [
+        ['⚠ JANGAN UBAH BARIS 1-2. Isi data mulai baris 3 ke bawah.'],
+        [
+          '[METADATA] kategori_program_id', '[METADATA] program_id', '[METADATA] desa_berdaya_id', '[METADATA] relawan_id',
+          '[READONLY] nama_program', '[READONLY] nama_desa', '[READONLY] nama_relawan',
+          'tahun', 'bulan', 'sumber_dana', 'fundraiser', 'deskripsi',
+          'ajuan_ri', 'anggaran_disetujui', 'anggaran_dicairkan', 'status_pencairan',
+          'id_stp', 'catatan', 'is_dbf', 'is_rz'
+        ],
+        ...BULAN_OPTIONS.map(bulan => [
+          Number(selectedKategoriId), selectedProgram?.id, selectedDesa?.id, selectedDesa?.relawan_id,
+          selectedProgram?.nama_program, selectedDesa?.nama, selectedDesa?.relawan_nama || '',
+          tahun, bulan, selectedSumberDana || '', selectedFundraiser || '', '',
+          0, 0, 0, 'Dialokasikan',
+          '', '', 'FALSE', 'FALSE'
+        ])
+      ]
+    } else {
+      wsData = [
+        ['⚠ JANGAN UBAH BARIS 1-2. Isi data mulai baris 3 ke bawah.'],
+        [
+          '[METADATA] kategori_program_id', '[METADATA] program_id', '[METADATA] desa_berdaya_id', '[METADATA] relawan_id',
+          '[READONLY] nama_program', '[READONLY] nama_desa', '[READONLY] nama_relawan',
+          'tahun', 'bulan', 'sumber_dana', 'fundraiser', 'deskripsi',
+          'ajuan_ri', 'anggaran_disetujui', 'anggaran_dicairkan', 'status_pencairan',
+          'id_stp', 'catatan', 'is_dbf', 'is_rz'
+        ],
+        ...activeTargetDesas.map(d => [
+          Number(selectedKategoriId), selectedProgram?.id, d.id, d.relawan_id,
+          selectedProgram?.nama_program, d.nama, d.relawan_nama || '',
+          tahun, selectedBulan, '', '', '',
+          0, 0, 0, 'Dialokasikan',
+          '', '', 'FALSE', 'FALSE'
+        ])
+      ]
+    }
 
     const ws = XLSX.utils.aoa_to_sheet(wsData)
 
-    // Column widths
     ws['!cols'] = [
-      { wch: 30 }, { wch: 15 }, { wch: 18 }, { wch: 18 },
-      { wch: 18 }, { wch: 15 }, { wch: 15 }, { wch: 25 },
-      { wch: 10 }, { wch: 10 }
+      { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 },
+      { wch: 20 }, { wch: 25 }, { wch: 20 },
+      { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 25 },
+      { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+      { wch: 20 }, { wch: 10 }, { wch: 10 }, { wch: 10 }
     ]
-
-    // Style instruction row (merge A1 across all columns)
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }]
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 19 } }]
 
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Intervensi Import')
 
-    const safeName = `${selectedDesa.nama}_${selectedProgram.nama_program}`.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 40)
+    const safeName = importMode === 'banyak-bulan' 
+      ? `${selectedDesa?.nama}_${selectedProgram?.nama_program}`.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 40)
+      : `BanyakDesa_${selectedProgram?.nama_program}_${selectedBulan}`.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 40)
+    
     XLSX.writeFile(wb, `template_intervensi_${safeName}.xlsx`)
   }
 
@@ -152,57 +186,70 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
       const sheet = workbook.Sheets[workbook.SheetNames[0]]
       const aoa = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, defval: '' })
 
-      // Row 4 (index 3): metadata values
-      const metaRow = aoa[3] || []
-      const desaId = Number(metaRow[0])
-      const programId = Number(metaRow[1])
-      const kategoriId = Number(metaRow[2])
-      const relawanId = Number(metaRow[3])
-      const namaDesa = String(metaRow[4] || '')
-      const namaProgram = String(metaRow[5] || '')
-
-      if (!desaId || !programId || !relawanId) {
-        setUploadError('File tidak valid: metadata desa/program tidak ditemukan. Gunakan template yang sudah disediakan.')
-        return
-      }
-
-      // Row 7 (index 6): header data values
-      const headerRow = aoa[6] || []
-      const sumber_dana = String(headerRow[0] || '')
-      const fundraiser = String(headerRow[1] || '')
-      const deskripsi = String(headerRow[2] || '')
-
-      setParsedMeta({ desaId, programId, kategoriId, relawanId, namaDesa, namaProgram, sumber_dana, fundraiser, deskripsi })
-
-      // From Row 9 (index 8): anggaran data rows
+      // Unified parse for ALL modes because format is now exactly the same
       const dataRows: any[] = []
-      for (let i = DATA_START_ROW; i < aoa.length; i++) {
+      let parsedKategoriId = 0
+      let parsedProgramId = 0
+      let parsedTahun = 0
+      let parsedBulan = ''
+      let parsedNamaProgram = ''
+      let parsedNamaDesa = ''
+      
+      for (let i = 2; i < aoa.length; i++) {
         const r = aoa[i]
-        if (!r || !r[0] || !r[1]) continue // skip empty rows
-        const tahun = Number(r[0])
-        const bulan = String(r[1]).trim()
-        if (!tahun || !BULAN_OPTIONS.includes(bulan)) continue
+        if (!r || !r[0]) continue
+        const kId = Number(r[0])
+        const pId = Number(r[1])
+        const dId = Number(r[2])
+        if (!kId || !pId || !dId) continue
+
+        if (!parsedKategoriId) parsedKategoriId = kId
+        if (!parsedProgramId) parsedProgramId = pId
+        if (!parsedNamaProgram) parsedNamaProgram = String(r[4] || '')
+        if (!parsedTahun) parsedTahun = Number(r[7])
+        if (!parsedBulan) parsedBulan = String(r[8] || '')
+        if (!parsedNamaDesa) parsedNamaDesa = String(r[5] || '')
 
         dataRows.push({
-          tahun,
-          bulan,
-          ajuan_ri: Number(r[2]) || 0,
-          anggaran_disetujui: Number(r[3]) || 0,
-          anggaran_dicairkan: Number(r[4]) || 0,
-          status_pencairan: String(r[5] || 'Dialokasikan').trim(),
-          id_stp: String(r[6] || '').trim(),
-          catatan: String(r[7] || '').trim(),
-          is_dbf: String(r[8]).toUpperCase() === 'TRUE',
-          is_rz: String(r[9]).toUpperCase() === 'TRUE',
+          kategori_program_id: kId,
+          program_id: pId,
+          desa_berdaya_id: dId,
+          relawan_id: Number(r[3]) || 0,
+          namaDesa: String(r[5] || ''),
+          namaRelawan: String(r[6] || ''),
+          tahun: Number(r[7]),
+          bulan: String(r[8] || ''),
+          sumber_dana: String(r[9] || ''),
+          fundraiser: String(r[10] || ''),
+          deskripsi: String(r[11] || ''),
+          ajuan_ri: Number(r[12]) || 0,
+          anggaran_disetujui: Number(r[13]) || 0,
+          anggaran_dicairkan: Number(r[14]) || 0,
+          status_pencairan: String(r[15] || 'Dialokasikan').trim(),
+          id_stp: String(r[16] || '').trim(),
+          catatan: String(r[17] || '').trim(),
+          is_dbf: String(r[18]).toUpperCase() === 'TRUE',
+          is_rz: String(r[19]).toUpperCase() === 'TRUE',
         })
       }
 
       if (dataRows.length === 0) {
-        setUploadError('Tidak ada baris data anggaran yang valid ditemukan (mulai baris 9).')
+        setUploadError('Tidak ada baris data yang valid ditemukan (mulai baris 3). Pastikan kolom ID diisi.')
         return
       }
 
+      setParsedMeta({
+        mode: importMode,
+        kategoriId: parsedKategoriId,
+        programId: parsedProgramId,
+        tahun: parsedTahun,
+        bulan: parsedBulan,
+        namaProgram: parsedNamaProgram,
+        namaDesa: parsedNamaDesa
+      })
+
       setPreviewRows(dataRows)
+
     } catch (err) {
       setUploadError('Gagal membaca file. Pastikan format file valid.')
       console.error(err)
@@ -226,21 +273,11 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
     if (!parsedMeta || previewRows.length === 0) return
     setImporting(true)
     try {
-      const res = await importIntervensiProgram({
-        desa_berdaya_id: parsedMeta.desaId,
-        kategori_program_id: parsedMeta.kategoriId,
-        program_id: parsedMeta.programId,
-        relawan_id: parsedMeta.relawanId,
-        sumber_dana: selectedSumberDana || parsedMeta.sumber_dana || undefined,
-        fundraiser: selectedFundraiser || parsedMeta.fundraiser || undefined,
-        deskripsi: parsedMeta.deskripsi || undefined,
-        rows: previewRows,
-      })
+      const res = await importIntervensiProgramUniversal(previewRows)
+
       if (res.success) {
         const { toast } = await import('sonner')
-        toast.success(`Import berhasil! ${res.inserted} baris anggaran ditambahkan.`, {
-          description: `ID Intervensi Baru: #${res.id}`
-        })
+        toast.success(`Import berhasil! ${res.inserted} baris anggaran ditambahkan.`)
         onImported()
         onClose()
       }
@@ -274,11 +311,27 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
           </DialogDescription>
         </DialogHeader>
 
+        {/* Mode Toggle */}
+        <div className="flex gap-2 bg-slate-100 p-1 rounded-xl mt-4 mb-4">
+          <button 
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${importMode === 'banyak-bulan' ? 'bg-white text-[#008784] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            onClick={() => { setImportMode('banyak-bulan'); setStep(1); setParsedMeta(null); setPreviewRows([]); }}
+          >
+            1 Program, 1 Desa (Banyak Bulan)
+          </button>
+          <button 
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${importMode === 'banyak-desa' ? 'bg-white text-[#008784] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            onClick={() => { setImportMode('banyak-desa'); setStep(1); setParsedMeta(null); setPreviewRows([]); }}
+          >
+            1 Program, Banyak Desa (1 Bulan)
+          </button>
+        </div>
+
         {/* Step indicator */}
         <div className="flex items-center gap-2 mt-2 mb-4">
           {[
-            { n: 1, label: 'Pilih Desa' },
-            { n: 2, label: 'Pilih Program' },
+            { n: 1, label: importMode === 'banyak-bulan' ? 'Pilih Desa' : 'Pilih Program' },
+            { n: 2, label: importMode === 'banyak-bulan' ? 'Pilih Program' : 'Pilih Waktu' },
             { n: 3, label: 'Upload & Import' },
           ].map((s, i) => (
             <React.Fragment key={s.n}>
@@ -302,8 +355,8 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
         ) : (
           <div className="space-y-6">
 
-            {/* ── STEP 1: PILIH DESA ─────────────────────── */}
-            {step === 1 && (
+            {/* ── STEP 1: PILIH DESA / PROGRAM ─────────────────────── */}
+            {step === 1 && importMode === 'banyak-bulan' && (
               <div className="space-y-5">
                 <div className="bg-[#008784]/5 border border-[#008784]/15 rounded-xl p-4 text-sm text-[#008784] font-medium flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -334,8 +387,46 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
               </div>
             )}
 
-            {/* ── STEP 2: PILIH PROGRAM ──────────────────── */}
-            {step === 2 && (
+            {step === 1 && importMode === 'banyak-desa' && (
+              <div className="space-y-5">
+                <div className="bg-[#008784]/5 border border-[#008784]/15 rounded-xl p-4 text-sm text-[#008784] font-medium flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  Pilih Program yang akan didistribusikan ke banyak desa sekaligus.
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="font-bold text-slate-700">Kategori Program <span className="text-rose-500">*</span></Label>
+                    <select
+                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#008784]/40 cursor-pointer shadow-sm"
+                      value={selectedKategoriId}
+                      onChange={e => { setSelectedKategoriId(e.target.value); setSelectedProgramId('') }}
+                    >
+                      <option value="">— Pilih Kategori —</option>
+                      {kategoriOptions.map(k => (
+                        <option key={k.id} value={k.id}>{k.nama}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-bold text-slate-700">Program <span className="text-rose-500">*</span></Label>
+                    <select
+                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-[#008784] focus:outline-none focus:ring-2 focus:ring-[#008784]/40 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      value={selectedProgramId}
+                      onChange={e => setSelectedProgramId(e.target.value)}
+                      disabled={!selectedKategoriId}
+                    >
+                      <option value="">— Pilih Program —</option>
+                      {filteredPrograms.map(p => (
+                        <option key={p.id} value={p.id}>{p.nama_program}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 2: PILIH PROGRAM / WAKTU ──────────────────── */}
+            {step === 2 && importMode === 'banyak-bulan' && (
               <div className="space-y-5">
                 <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-3">
                   <CheckCircle2 className="w-4 h-4 text-[#008784] flex-shrink-0" />
@@ -420,23 +511,138 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
               </div>
             )}
 
+            {step === 2 && importMode === 'banyak-desa' && (
+              <div className="space-y-5">
+                <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-3">
+                  <CheckCircle2 className="w-4 h-4 text-[#008784] flex-shrink-0" />
+                  <div>
+                    <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Program terpilih:</span>
+                    <span className="ml-2 font-bold text-[#008784]">{selectedProgram?.nama_program}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-3 border border-slate-100 bg-white rounded-xl p-4">
+                  <Label className="font-bold text-slate-700">Pilihan Desa Binaan <span className="text-rose-500">*</span></Label>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 p-2 rounded-lg border border-slate-100">
+                      <input 
+                        type="radio" 
+                        name="targetDesa"
+                        checked={targetDesaMode === 'semua'} 
+                        onChange={() => setTargetDesaMode('semua')}
+                        className="text-[#008784] focus:ring-[#008784] w-4 h-4"
+                      />
+                      <span className="font-medium text-slate-700">Semua Desa Binaan ({desaOptions.length} Desa)</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 p-2 rounded-lg border border-slate-100">
+                      <input 
+                        type="radio" 
+                        name="targetDesa"
+                        checked={targetDesaMode === 'pilih'} 
+                        onChange={() => setTargetDesaMode('pilih')}
+                        className="text-[#008784] focus:ring-[#008784] w-4 h-4"
+                      />
+                      <span className="font-medium text-slate-700">Pilih Desa Tertentu</span>
+                    </label>
+                  </div>
+
+                  {targetDesaMode === 'pilih' && (
+                    <div className="mt-3 border border-slate-200 rounded-xl overflow-hidden">
+                      <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 text-xs font-bold text-slate-500 flex justify-between items-center">
+                        <span>Pilih Desa (terpilih: {targetDesaIds.size})</span>
+                        <div className="flex gap-2">
+                          <button 
+                            className="text-[#008784] hover:underline"
+                            onClick={() => setTargetDesaIds(new Set(desaOptions.map(d => d.id)))}
+                          >
+                            Pilih Semua
+                          </button>
+                          <span className="text-slate-300">|</span>
+                          <button 
+                            className="text-slate-500 hover:underline"
+                            onClick={() => setTargetDesaIds(new Set())}
+                          >
+                            Reset
+                          </button>
+                        </div>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto p-2 grid grid-cols-1 sm:grid-cols-2 gap-1 bg-white">
+                        {desaOptions.map(d => (
+                          <label key={d.id} className="flex items-center gap-2 text-xs p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={targetDesaIds.has(d.id)}
+                              onChange={(e) => {
+                                const newSet = new Set(targetDesaIds)
+                                if (e.target.checked) newSet.add(d.id)
+                                else newSet.delete(d.id)
+                                setTargetDesaIds(newSet)
+                              }}
+                              className="text-[#008784] focus:ring-[#008784] rounded-sm"
+                            />
+                            <span className="truncate">{d.nama}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="font-bold text-slate-700">Tahun <span className="text-rose-500">*</span></Label>
+                    <select
+                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#008784]/40 cursor-pointer shadow-sm"
+                      value={selectedTahun}
+                      onChange={e => setSelectedTahun(e.target.value)}
+                    >
+                      {Array.from({ length: 5 }).map((_, i) => {
+                        const year = new Date().getFullYear() - 1 + i
+                        return <option key={year} value={year}>{year}</option>
+                      })}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-bold text-slate-700">Bulan <span className="text-rose-500">*</span></Label>
+                    <select
+                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#008784]/40 cursor-pointer shadow-sm"
+                      value={selectedBulan}
+                      onChange={e => setSelectedBulan(e.target.value)}
+                    >
+                      {BULAN_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* ── STEP 3: DOWNLOAD TEMPLATE & UPLOAD ────── */}
             {step === 3 && (
               <div className="space-y-5">
                 {/* Info summary */}
                 <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-400">Desa:</span>
-                    <span className="font-bold text-slate-800">{selectedDesa?.nama}</span>
-                  </div>
+                  {importMode === 'banyak-bulan' && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400">Desa:</span>
+                      <span className="font-bold text-slate-800">{selectedDesa?.nama}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <span className="text-slate-400">Program:</span>
                     <span className="font-bold text-[#008784]">{selectedProgram?.nama_program}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-400">Kategori:</span>
-                    <span className="font-semibold text-slate-700">{selectedKategori?.nama}</span>
-                  </div>
+                  {importMode === 'banyak-desa' && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400">Target Desa:</span>
+                      <span className="font-bold text-slate-800">{activeTargetDesas.length} Desa</span>
+                    </div>
+                  )}
+                  {importMode === 'banyak-desa' && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400">Waktu:</span>
+                      <span className="font-bold text-slate-800">{selectedBulan} {selectedTahun}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* 1. Download template */}
@@ -446,7 +652,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                     <h4 className="font-bold text-slate-800 text-sm">Download Template Excel</h4>
                   </div>
                   <p className="text-xs text-slate-500 ml-9">
-                    Template sudah berisi ID Desa, ID Program, dan 12 baris bulan (Januari–Desember). Isi kolom <strong>sumber_dana</strong>, <strong>fundraiser</strong>, dan data <strong>anggaran</strong>, lalu upload kembali.
+                    Template sudah berisi format yang tepat. {importMode === 'banyak-bulan' ? 'Isi data anggaran per bulan.' : 'Isi kolom data untuk setiap desa yang dituju.'}
                   </p>
                   <div className="ml-9">
                     <Button
@@ -501,13 +707,20 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                     {/* Header meta preview */}
                     <div className="ml-9 bg-[#008784]/5 border border-[#008784]/15 rounded-xl p-3 text-xs space-y-1">
                       <div className="text-[#008784] font-bold uppercase tracking-wider text-[10px] mb-1.5">Header Intervensi</div>
-                      <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 text-slate-600">
-                        <span><b className="text-slate-500">Desa:</b> {parsedMeta.namaDesa}</span>
-                        <span><b className="text-slate-500">Program:</b> {parsedMeta.namaProgram}</span>
-                        <span><b className="text-slate-500">Sumber Dana:</b> {parsedMeta.sumber_dana || '-'}</span>
-                        <span><b className="text-slate-500">Fundraiser:</b> {parsedMeta.fundraiser || '-'}</span>
-                        <span className="col-span-2"><b className="text-slate-500">Deskripsi:</b> {parsedMeta.deskripsi || '-'}</span>
-                      </div>
+                      {parsedMeta.mode === 'banyak-bulan' ? (
+                        <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 text-slate-600">
+                          <span><b className="text-slate-500">Desa:</b> {parsedMeta.namaDesa}</span>
+                          <span><b className="text-slate-500">Program:</b> {parsedMeta.namaProgram}</span>
+                          <span><b className="text-slate-500">Sumber Dana:</b> {parsedMeta.sumber_dana || '-'}</span>
+                          <span><b className="text-slate-500">Fundraiser:</b> {parsedMeta.fundraiser || '-'}</span>
+                          <span className="col-span-2"><b className="text-slate-500">Deskripsi:</b> {parsedMeta.deskripsi || '-'}</span>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-slate-600">
+                          <span><b className="text-slate-500">Program:</b> {parsedMeta.namaProgram}</span>
+                          <span><b className="text-slate-500">Bulan/Tahun:</b> {parsedMeta.bulan} {parsedMeta.tahun}</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Rows preview table */}
@@ -516,8 +729,14 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                         <table className="w-full text-xs text-left">
                           <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-500 tracking-wider sticky top-0">
                             <tr>
-                              <th className="px-3 py-2">Tahun</th>
-                              <th className="px-3 py-2">Bulan</th>
+                              {parsedMeta.mode === 'banyak-bulan' ? (
+                                <>
+                                  <th className="px-3 py-2">Tahun</th>
+                                  <th className="px-3 py-2">Bulan</th>
+                                </>
+                              ) : (
+                                <th className="px-3 py-2">Desa Tujuan</th>
+                              )}
                               <th className="px-3 py-2 text-right">Ajuan RI</th>
                               <th className="px-3 py-2 text-right">Disetujui</th>
                               <th className="px-3 py-2 text-right">Dicairkan</th>
@@ -528,8 +747,14 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                           <tbody className="divide-y divide-slate-50">
                             {previewRows.map((row, i) => (
                               <tr key={i} className="hover:bg-slate-50">
-                                <td className="px-3 py-2 font-semibold text-slate-700">{row.tahun}</td>
-                                <td className="px-3 py-2 text-slate-600">{row.bulan}</td>
+                                {parsedMeta.mode === 'banyak-bulan' ? (
+                                  <>
+                                    <td className="px-3 py-2 font-semibold text-slate-700">{row.tahun}</td>
+                                    <td className="px-3 py-2 text-slate-600">{row.bulan}</td>
+                                  </>
+                                ) : (
+                                  <td className="px-3 py-2 font-semibold text-slate-700">{row.namaDesa}</td>
+                                )}
                                 <td className="px-3 py-2 text-right tabular-nums">{fmt(row.ajuan_ri)}</td>
                                 <td className="px-3 py-2 text-right tabular-nums font-bold">{fmt(row.anggaran_disetujui)}</td>
                                 <td className="px-3 py-2 text-right tabular-nums text-[#008784] font-bold">{fmt(row.anggaran_dicairkan)}</td>
@@ -546,40 +771,44 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
               </div>
             )}
 
-            {/* Navigation buttons */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-xl text-slate-500 font-semibold"
-                onClick={() => step > 1 ? setStep(s => s - 1) : onClose()}
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                {step > 1 ? 'Kembali' : 'Batal'}
-              </Button>
+              {/* Navigation buttons */}
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-xl text-slate-500 font-semibold"
+                  onClick={() => step > 1 ? setStep(s => s - 1) : onClose()}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  {step > 1 ? 'Kembali' : 'Batal'}
+                </Button>
 
-              <div className="flex gap-2">
-                {step < 3 && (
-                  <Button
-                    className="bg-[#008784] hover:bg-[#006e6b] text-white rounded-xl font-bold px-6 gap-2 shadow-md shadow-[#008784]/20"
-                    disabled={(step === 1 && !canGoStep2) || (step === 2 && !canGoStep3)}
-                    onClick={() => setStep(s => s + 1)}
-                  >
-                    Selanjutnya <ChevronRight className="w-4 h-4" />
-                  </Button>
-                )}
-                {step === 3 && (
-                  <Button
-                    className="bg-[#008784] hover:bg-[#006e6b] text-white rounded-xl font-bold px-6 gap-2 shadow-md shadow-[#008784]/20 disabled:opacity-50"
-                    disabled={!canImport || importing}
-                    onClick={handleImport}
-                  >
-                    {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                    {importing ? 'Mengimport...' : `Import ${previewRows.length} Baris`}
-                  </Button>
-                )}
+                <div className="flex gap-2">
+                  {step < 3 && (
+                    <Button
+                      className="bg-[#008784] hover:bg-[#006e6b] text-white rounded-xl font-bold px-6 gap-2 shadow-md shadow-[#008784]/20"
+                      disabled={
+                        importMode === 'banyak-bulan' 
+                          ? ((step === 1 && !canGoStep2) || (step === 2 && !canGoStep3)) 
+                          : ((step === 1 && !canGoStep3) || (step === 2 && (!selectedBulan || !selectedTahun || (targetDesaMode === 'pilih' && targetDesaIds.size === 0))))
+                      }
+                      onClick={() => setStep(s => s + 1)}
+                    >
+                      Selanjutnya <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  )}
+                  {step === 3 && (
+                    <Button
+                      className="bg-[#008784] hover:bg-[#006e6b] text-white rounded-xl font-bold px-6 gap-2 shadow-md shadow-[#008784]/20 disabled:opacity-50"
+                      disabled={!canImport || importing}
+                      onClick={handleImport}
+                    >
+                      {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      {importing ? 'Mengimport...' : `Import ${previewRows.length} Baris`}
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
           </div>
         )}
       </DialogContent>

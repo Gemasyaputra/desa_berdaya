@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -23,6 +23,7 @@ import {
   X,
   Link2
 } from 'lucide-react'
+import { MultiSelectFilter } from '@/components/multi-select-filter'
 import { 
   getAllLaporanKeuanganEntries,
   verifyCA,
@@ -39,9 +40,16 @@ export default function SemuaLaporanKeuanganPage() {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [filterTahun, setFilterTahun] = useState<string>('Semua')
   const [filterStatus, setFilterStatus] = useState<string>('Semua')
   const [sortBulan, setSortBulan] = useState<'asc' | 'desc'>('asc')
+  
+  const [filters, setFilters] = useState({
+    desa: [] as string[],
+    program: [] as string[],
+    relawan: [] as string[],
+    sumber_dana: [] as string[],
+    tahun: [] as string[],
+  })
   
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(12)
@@ -166,9 +174,41 @@ export default function SemuaLaporanKeuanganPage() {
     return { realisasi, sisa, pengembalian };
   }
 
+  const filterOptions = useMemo(() => {
+    const getOptions = (excludeKey: keyof typeof filters) => {
+      return data.filter(item => {
+        const term = search.toLowerCase()
+        const matchSearch = !term || (
+          (item.nama_desa || '').toLowerCase().includes(term) ||
+          (item.nama_program || '').toLowerCase().includes(term) ||
+          (item.nama_relawan || '').toLowerCase().includes(term) ||
+          (item.sumber_dana || '').toLowerCase().includes(term)
+        )
+
+        const matchStatus = filterStatus === 'Semua' || item.status_ca === filterStatus
+
+        const matchDesa = excludeKey === 'desa' || filters.desa.length === 0 || filters.desa.includes(item.nama_desa || 'Tanpa Desa')
+        const matchProgram = excludeKey === 'program' || filters.program.length === 0 || filters.program.includes(item.nama_program || 'Tanpa Program')
+        const matchRelawan = excludeKey === 'relawan' || filters.relawan.length === 0 || filters.relawan.includes(item.nama_relawan || 'Tanpa Relawan')
+        const matchSumber = excludeKey === 'sumber_dana' || filters.sumber_dana.length === 0 || filters.sumber_dana.includes(item.sumber_dana || 'Tidak Ada')
+        const matchTahun = excludeKey === 'tahun' || filters.tahun.length === 0 || filters.tahun.includes((item.tahun || '').toString())
+
+        return matchSearch && matchStatus && matchDesa && matchProgram && matchRelawan && matchSumber && matchTahun
+      })
+    }
+
+    return {
+      desa: Array.from(new Set(getOptions('desa').map(i => i.nama_desa || 'Tanpa Desa'))).sort() as string[],
+      program: Array.from(new Set(getOptions('program').map(i => i.nama_program || 'Tanpa Program'))).sort() as string[],
+      relawan: Array.from(new Set(getOptions('relawan').map(i => i.nama_relawan || 'Tanpa Relawan'))).sort() as string[],
+      sumber_dana: Array.from(new Set(getOptions('sumber_dana').map(i => i.sumber_dana || 'Tidak Ada'))).sort() as string[],
+      tahun: Array.from(new Set(getOptions('tahun').map(i => (i.tahun || '').toString()))).sort((a,b) => Number(b) - Number(a)) as string[],
+    }
+  }, [data, search, filterStatus, filters])
+
   let filtered = data.filter(item => {
     const term = search.toLowerCase()
-    const matchSearch = (
+    const matchSearch = !term || (
       (item.nama_desa || '').toLowerCase().includes(term) ||
       (item.nama_program || '').toLowerCase().includes(term) ||
       (item.nama_relawan || '').toLowerCase().includes(term) ||
@@ -176,11 +216,28 @@ export default function SemuaLaporanKeuanganPage() {
     )
     if (!matchSearch) return false
 
-    if (filterTahun !== 'Semua' && item.tahun?.toString() !== filterTahun) return false
     if (filterStatus !== 'Semua' && item.status_ca !== filterStatus) return false
     
-    return true
+    const matchDesa = filters.desa.length === 0 || filters.desa.includes(item.nama_desa || 'Tanpa Desa')
+    const matchProgram = filters.program.length === 0 || filters.program.includes(item.nama_program || 'Tanpa Program')
+    const matchRelawan = filters.relawan.length === 0 || filters.relawan.includes(item.nama_relawan || 'Tanpa Relawan')
+    const matchSumber = filters.sumber_dana.length === 0 || filters.sumber_dana.includes(item.sumber_dana || 'Tidak Ada')
+    const matchTahun = filters.tahun.length === 0 || filters.tahun.includes((item.tahun || '').toString())
+
+    return matchDesa && matchProgram && matchRelawan && matchSumber && matchTahun
   })
+
+  const toggleFilter = (type: keyof typeof filters, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [type]: prev[type].includes(value)
+        ? prev[type].filter(v => v !== value)
+        : [...prev[type], value]
+    }))
+    setCurrentPage(1)
+  }
+
+  const hasAnyFilter = search !== '' || filterStatus !== 'Semua' || Object.values(filters).some(arr => arr.length > 0)
 
   const uniqueTahun = Array.from(new Set(data.map((a: any) => a.tahun))).sort()
   
@@ -220,15 +277,72 @@ export default function SemuaLaporanKeuanganPage() {
           </div>
         </div>
         
-        <div className="relative w-full md:w-96 group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#7a1200] transition-colors" />
-          <Input
-            placeholder="Cari desa, program, relawan..."
-            className="pl-11 h-12 w-full rounded-2xl border-slate-200 bg-white text-sm shadow-sm focus:border-[#7a1200]/40 focus:ring-4 focus:ring-[#7a1200]/5 transition-all"
-            value={search}
-            onChange={e => { setSearch(e.target.value); setCurrentPage(1) }}
-          />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative w-full md:w-64 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#7a1200] transition-colors" />
+            <Input
+              placeholder="Cari desa, program, relawan..."
+              className="pl-11 h-10 w-full rounded-2xl border-slate-200 bg-white text-sm shadow-sm focus:border-[#7a1200]/40 focus:ring-4 focus:ring-[#7a1200]/5 transition-all"
+              value={search}
+              onChange={e => { setSearch(e.target.value); setCurrentPage(1) }}
+            />
+          </div>
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <MultiSelectFilter 
+          label="Desa" 
+          options={filterOptions.desa} 
+          selected={filters.desa}
+          onSelect={(val) => toggleFilter('desa', val)}
+          onClear={() => { setFilters(f => ({ ...f, desa: [] })); setCurrentPage(1) }}
+        />
+        <MultiSelectFilter 
+          label="Program" 
+          options={filterOptions.program} 
+          selected={filters.program}
+          onSelect={(val) => toggleFilter('program', val)}
+          onClear={() => { setFilters(f => ({ ...f, program: [] })); setCurrentPage(1) }}
+        />
+        <MultiSelectFilter 
+          label="Relawan" 
+          options={filterOptions.relawan} 
+          selected={filters.relawan}
+          onSelect={(val) => toggleFilter('relawan', val)}
+          onClear={() => { setFilters(f => ({ ...f, relawan: [] })); setCurrentPage(1) }}
+        />
+        <MultiSelectFilter 
+          label="Sumber Dana" 
+          options={filterOptions.sumber_dana} 
+          selected={filters.sumber_dana}
+          onSelect={(val) => toggleFilter('sumber_dana', val)}
+          onClear={() => { setFilters(f => ({ ...f, sumber_dana: [] })); setCurrentPage(1) }}
+        />
+        <MultiSelectFilter 
+          label="Tahun" 
+          options={filterOptions.tahun} 
+          selected={filters.tahun}
+          onSelect={(val) => toggleFilter('tahun', val)}
+          onClear={() => { setFilters(f => ({ ...f, tahun: [] })); setCurrentPage(1) }}
+        />
+        
+        {hasAnyFilter && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-[36px] px-3 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-bold gap-1 transition-colors"
+            onClick={() => {
+              setSearch('')
+              setFilterStatus('Semua')
+              setFilters({ desa: [], program: [], relawan: [], sumber_dana: [], tahun: [] })
+              setCurrentPage(1)
+            }}
+          >
+            <X className="w-4 h-4" />
+            Reset
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -272,24 +386,7 @@ export default function SemuaLaporanKeuanganPage() {
 
               <div className="h-6 w-px bg-slate-200 hidden sm:block" />
 
-              {/* Tahun Select */}
-              {uniqueTahun.length > 0 && (
-                <div className="relative">
-                  <select
-                    value={filterTahun}
-                    onChange={(e) => { setFilterTahun(e.target.value); setCurrentPage(1) }}
-                    className="appearance-none pl-3 pr-8 py-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#7a1200]/20 focus:border-[#7a1200]/40 cursor-pointer transition-all"
-                  >
-                    <option value="Semua">Semua Tahun</option>
-                    {uniqueTahun.map(t => (
-                      <option key={t as string} value={t as string}>{t as string}</option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
-                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </div>
-                </div>
-              )}
+
 
               {/* Sort Select */}
               <div className="relative">
@@ -306,15 +403,7 @@ export default function SemuaLaporanKeuanganPage() {
                 </div>
               </div>
 
-              {(filterStatus !== 'Semua' || filterTahun !== 'Semua' || search) && (
-                <button
-                  onClick={() => { setFilterStatus('Semua'); setFilterTahun('Semua'); setSearch(''); setCurrentPage(1) }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl hover:bg-rose-100 transition-colors"
-                >
-                  <X className="w-3 h-3" />
-                  Reset
-                </button>
-              )}
+
             </div>
           </CardHeader>
           

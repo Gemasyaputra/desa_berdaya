@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, Users, LayoutGrid, List, Download } from 'lucide-react'
+import { Plus, Edit, Trash2, Users, LayoutGrid, List, Download, Search, X } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { Button } from '@/components/ui/button'
 import {
@@ -22,6 +22,7 @@ import {
   createKelompok, updateKelompok, deleteKelompok 
 } from '@/lib/actions/kelompok'
 import { getPenerimaManfaatByDesaId } from '@/app/dashboard/pm/actions'
+import { MultiSelectFilter } from '@/components/multi-select-filter'
 
 export default function ClientKelompokMainPanel({ 
   initialKelompok, 
@@ -63,9 +64,83 @@ export default function ClientKelompokMainPanel({
   const [filterGender, setFilterGender] = useState<string[]>([])
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+  
+  // Kelompok list filters
+  const [searchKelompok, setSearchKelompok] = useState('')
+  const [kelompokFilters, setKelompokFilters] = useState({
+    desa: [] as string[],
+    program: [] as string[],
+    tahun: [] as string[],
+    pembina: [] as string[],
+    relawan: [] as string[]
+  })
+
+  const filterOptions = React.useMemo(() => {
+    const getOptions = (excludeKey: keyof typeof kelompokFilters) => {
+      return initialKelompok.filter(kel => {
+        const q = searchKelompok.toLowerCase()
+        const matchesSearch = !q || (
+          kel.nama_kelompok?.toLowerCase().includes(q) ||
+          kel.nama_pembina?.toLowerCase().includes(q) ||
+          kel.nama_relawan?.toLowerCase().includes(q)
+        )
+
+        const matchDesa = excludeKey === 'desa' || kelompokFilters.desa.length === 0 || kelompokFilters.desa.includes(kel.nama_desa || 'Tanpa Desa')
+        const matchProgram = excludeKey === 'program' || kelompokFilters.program.length === 0 || kelompokFilters.program.includes(kel.nama_program || 'Tanpa Program')
+        const matchTahun = excludeKey === 'tahun' || kelompokFilters.tahun.length === 0 || kelompokFilters.tahun.includes((kel.tahun || '').toString())
+        const matchPembina = excludeKey === 'pembina' || kelompokFilters.pembina.length === 0 || kelompokFilters.pembina.includes(kel.nama_pembina || 'Tanpa Pembina')
+        const matchRelawan = excludeKey === 'relawan' || kelompokFilters.relawan.length === 0 || kelompokFilters.relawan.includes(kel.nama_relawan || 'Tanpa Relawan')
+
+        return matchesSearch && matchDesa && matchProgram && matchTahun && matchPembina && matchRelawan
+      })
+    }
+
+    return {
+      desa: Array.from(new Set(getOptions('desa').map(k => k.nama_desa || 'Tanpa Desa'))).sort() as string[],
+      program: Array.from(new Set(getOptions('program').map(k => k.nama_program || 'Tanpa Program'))).sort() as string[],
+      tahun: Array.from(new Set(getOptions('tahun').map(k => (k.tahun || '').toString()))).sort((a,b) => Number(b) - Number(a)) as string[],
+      pembina: Array.from(new Set(getOptions('pembina').map(k => k.nama_pembina || 'Tanpa Pembina'))).sort() as string[],
+      relawan: Array.from(new Set(getOptions('relawan').map(k => k.nama_relawan || 'Tanpa Relawan'))).sort() as string[],
+    }
+  }, [initialKelompok, searchKelompok, kelompokFilters])
+
+  const filteredKelompok = React.useMemo(() => {
+    return initialKelompok.filter(kel => {
+      const q = searchKelompok.toLowerCase()
+      const matchesSearch = !q || (
+        kel.nama_kelompok?.toLowerCase().includes(q) ||
+        kel.nama_pembina?.toLowerCase().includes(q) ||
+        kel.nama_relawan?.toLowerCase().includes(q)
+      )
+
+      const matchDesa = kelompokFilters.desa.length === 0 || kelompokFilters.desa.includes(kel.nama_desa || 'Tanpa Desa')
+      const matchProgram = kelompokFilters.program.length === 0 || kelompokFilters.program.includes(kel.nama_program || 'Tanpa Program')
+      const matchTahun = kelompokFilters.tahun.length === 0 || kelompokFilters.tahun.includes((kel.tahun || '').toString())
+      const matchPembina = kelompokFilters.pembina.length === 0 || kelompokFilters.pembina.includes(kel.nama_pembina || 'Tanpa Pembina')
+      const matchRelawan = kelompokFilters.relawan.length === 0 || kelompokFilters.relawan.includes(kel.nama_relawan || 'Tanpa Relawan')
+
+      return matchesSearch && matchDesa && matchProgram && matchTahun && matchPembina && matchRelawan
+    })
+  }, [initialKelompok, searchKelompok, kelompokFilters])
+
+  const toggleFilter = (type: keyof typeof kelompokFilters, value: string) => {
+    setKelompokFilters(prev => ({
+      ...prev,
+      [type]: prev[type].includes(value)
+        ? prev[type].filter(v => v !== value)
+        : [...prev[type], value]
+    }))
+  }
+
+  const clearFilters = () => {
+    setSearchKelompok('')
+    setKelompokFilters({ desa: [], program: [], tahun: [], pembina: [], relawan: [] })
+  }
+
+  const hasAnyFilter = searchKelompok !== '' || Object.values(kelompokFilters).some(arr => arr.length > 0)
 
   const exportToExcel = () => {
-    const dataToExport = initialKelompok.map((kel: any) => ({
+    const dataToExport = filteredKelompok.map((kel: any) => ({
       'Nama Kelompok': kel.nama_kelompok,
       'Desa Binaan': kel.nama_desa,
       'Program': kel.nama_program,
@@ -297,6 +372,67 @@ export default function ClientKelompokMainPanel({
         </div>
       </div>
 
+      <div className="flex flex-col md:flex-row flex-wrap gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Cari kelompok, pembina..."
+            value={searchKelompok}
+            onChange={(e) => setSearchKelompok(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 h-[42px] border border-slate-200 rounded-xl text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#7a1200]/20 focus:border-[#7a1200] focus:bg-white transition-all"
+          />
+        </div>
+
+        <MultiSelectFilter 
+          label="Desa Binaan" 
+          options={filterOptions.desa} 
+          selected={kelompokFilters.desa}
+          onSelect={(val) => toggleFilter('desa', val)}
+          onClear={() => setKelompokFilters(f => ({ ...f, desa: [] }))}
+        />
+        <MultiSelectFilter 
+          label="Program" 
+          options={filterOptions.program} 
+          selected={kelompokFilters.program}
+          onSelect={(val) => toggleFilter('program', val)}
+          onClear={() => setKelompokFilters(f => ({ ...f, program: [] }))}
+        />
+        <MultiSelectFilter 
+          label="Tahun" 
+          options={filterOptions.tahun} 
+          selected={kelompokFilters.tahun}
+          onSelect={(val) => toggleFilter('tahun', val)}
+          onClear={() => setKelompokFilters(f => ({ ...f, tahun: [] }))}
+        />
+        <MultiSelectFilter 
+          label="Pembina" 
+          options={filterOptions.pembina} 
+          selected={kelompokFilters.pembina}
+          onSelect={(val) => toggleFilter('pembina', val)}
+          onClear={() => setKelompokFilters(f => ({ ...f, pembina: [] }))}
+        />
+        <MultiSelectFilter 
+          label="Relawan" 
+          options={filterOptions.relawan} 
+          selected={kelompokFilters.relawan}
+          onSelect={(val) => toggleFilter('relawan', val)}
+          onClear={() => setKelompokFilters(f => ({ ...f, relawan: [] }))}
+        />
+
+        {hasAnyFilter && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-[42px] px-3 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-bold gap-1 transition-colors"
+            onClick={clearFilters}
+          >
+            <X className="w-4 h-4" />
+            Reset
+          </Button>
+        )}
+      </div>
+
       {viewMode === 'table' ? (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -311,12 +447,14 @@ export default function ClientKelompokMainPanel({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {initialKelompok.length === 0 ? (
+                {filteredKelompok.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">Belum Ada Kelompok</td>
+                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                      {initialKelompok.length === 0 ? 'Belum Ada Kelompok' : 'Tidak ada kelompok yang cocok dengan filter'}
+                    </td>
                   </tr>
                 ) : (
-                  initialKelompok.map(kel => (
+                  filteredKelompok.map(kel => (
                     <tr key={kel.id} className="hover:bg-slate-50/50 group/row transition-colors">
                       <td className="px-4 py-3 sticky left-0 bg-white group-hover/row:bg-slate-50 z-10 border-r border-slate-100/50 align-top">
                         <div className="font-bold text-slate-800">{kel.nama_kelompok}</div>
@@ -378,14 +516,18 @@ export default function ClientKelompokMainPanel({
         </div>
       ) : (
       <div className="grid grid-cols-1 gap-4">
-        {initialKelompok.length === 0 ? (
+        {filteredKelompok.length === 0 ? (
           <div className="text-center py-12 px-6 border border-dashed border-slate-300 rounded-xl bg-white">
             <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h4 className="text-slate-700 font-medium mb-1">Belum Ada Kelompok</h4>
-            <p className="text-sm text-slate-500 max-w-sm mx-auto">Silahkan klik tombol &quot;Tambah Kelompok&quot; untuk membuat kelompok baru.</p>
+            <h4 className="text-slate-700 font-medium mb-1">
+              {initialKelompok.length === 0 ? 'Belum Ada Kelompok' : 'Tidak ada hasil'}
+            </h4>
+            <p className="text-sm text-slate-500 max-w-sm mx-auto">
+              {initialKelompok.length === 0 ? 'Silahkan klik tombol "Tambah Kelompok" untuk membuat kelompok baru.' : 'Tidak ada kelompok yang cocok dengan kriteria filter.'}
+            </p>
           </div>
         ) : (
-          initialKelompok.map(kel => (
+          filteredKelompok.map(kel => (
             <div key={kel.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:border-slate-300 transition-colors">
                <div className="flex justify-between items-start mb-4">
                   <div>

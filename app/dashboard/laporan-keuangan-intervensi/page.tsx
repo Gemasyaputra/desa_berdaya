@@ -22,6 +22,9 @@ import {
 import { getLaporanKeuanganIntervensi } from './actions'
 import { Input } from '@/components/ui/input'
 import { useSession } from 'next-auth/react'
+import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { X } from 'lucide-react'
+import React, { useMemo } from 'react'
 
 export default function LaporanKeuanganIntervensiPage() {
   const [data, setData] = useState<any[]>([])
@@ -29,6 +32,14 @@ export default function LaporanKeuanganIntervensiPage() {
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
   const [filterStatus, setFilterStatus] = useState<string>('semua')
+  
+  const [filters, setFilters] = useState({
+    desa: [] as string[],
+    program: [] as string[],
+    relawan: [] as string[],
+    sumber_dana: [] as string[]
+  })
+
   const router = useRouter()
   const { data: session } = useSession()
   const role = (session?.user as any)?.role
@@ -59,6 +70,38 @@ export default function LaporanKeuanganIntervensiPage() {
     return 'uploaded'
   }
 
+  const filterOptions = useMemo(() => {
+    const getOptions = (excludeKey: keyof typeof filters) => {
+      return data.filter(item => {
+        const matchSearch =
+          (item.nama_desa || '').toLowerCase().includes(search.toLowerCase()) ||
+          (item.nama_program || '').toLowerCase().includes(search.toLowerCase()) ||
+          (item.nama_relawan || '').toLowerCase().includes(search.toLowerCase())
+
+        let matchStatus = true
+        if (filterStatus !== 'semua') {
+          const caStatus = getCAStatus(item)
+          if (filterStatus === 'pending') matchStatus = caStatus === 'pending' || caStatus === 'empty'
+          else if (filterStatus === 'uploaded') matchStatus = caStatus === 'uploaded'
+        }
+
+        const matchDesa = excludeKey === 'desa' || filters.desa.length === 0 || filters.desa.includes(item.nama_desa || 'Tanpa Desa')
+        const matchProgram = excludeKey === 'program' || filters.program.length === 0 || filters.program.includes(item.nama_program || 'Tanpa Program')
+        const matchRelawan = excludeKey === 'relawan' || filters.relawan.length === 0 || filters.relawan.includes(item.nama_relawan || 'Tanpa Relawan')
+        const matchSumber = excludeKey === 'sumber_dana' || filters.sumber_dana.length === 0 || filters.sumber_dana.includes(item.sumber_dana || 'Tidak Ada')
+
+        return matchSearch && matchStatus && matchDesa && matchProgram && matchRelawan && matchSumber
+      })
+    }
+
+    return {
+      desa: Array.from(new Set(getOptions('desa').map(i => i.nama_desa || 'Tanpa Desa'))).sort() as string[],
+      program: Array.from(new Set(getOptions('program').map(i => i.nama_program || 'Tanpa Program'))).sort() as string[],
+      relawan: Array.from(new Set(getOptions('relawan').map(i => i.nama_relawan || 'Tanpa Relawan'))).sort() as string[],
+      sumber_dana: Array.from(new Set(getOptions('sumber_dana').map(i => i.sumber_dana || 'Tidak Ada'))).sort() as string[],
+    }
+  }, [data, search, filterStatus, filters])
+
   const filtered = data.filter(item => {
     const matchSearch =
       (item.nama_desa || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -67,12 +110,30 @@ export default function LaporanKeuanganIntervensiPage() {
 
     if (!matchSearch) return false
 
-    if (filterStatus === 'semua') return true
-    const caStatus = getCAStatus(item)
-    if (filterStatus === 'pending') return caStatus === 'pending' || caStatus === 'empty'
-    if (filterStatus === 'uploaded') return caStatus === 'uploaded'
-    return true
+    if (filterStatus !== 'semua') {
+      const caStatus = getCAStatus(item)
+      if (filterStatus === 'pending' && !(caStatus === 'pending' || caStatus === 'empty')) return false
+      if (filterStatus === 'uploaded' && caStatus !== 'uploaded') return false
+    }
+
+    const matchDesa = filters.desa.length === 0 || filters.desa.includes(item.nama_desa || 'Tanpa Desa')
+    const matchProgram = filters.program.length === 0 || filters.program.includes(item.nama_program || 'Tanpa Program')
+    const matchRelawan = filters.relawan.length === 0 || filters.relawan.includes(item.nama_relawan || 'Tanpa Relawan')
+    const matchSumber = filters.sumber_dana.length === 0 || filters.sumber_dana.includes(item.sumber_dana || 'Tidak Ada')
+
+    return matchDesa && matchProgram && matchRelawan && matchSumber
   })
+
+  const toggleFilter = (type: keyof typeof filters, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [type]: prev[type].includes(value)
+        ? prev[type].filter(v => v !== value)
+        : [...prev[type], value]
+    }))
+  }
+
+  const hasAnyFilter = search !== '' || filterStatus !== 'semua' || Object.values(filters).some(arr => arr.length > 0)
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -106,11 +167,11 @@ export default function LaporanKeuanganIntervensiPage() {
 
       {/* Control Bar */}
       <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-        <div className="relative w-full md:w-96 group">
+        <div className="relative w-full md:w-64 group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#7a1200] transition-colors" />
           <Input
             placeholder="Cari desa, program, atau relawan..."
-            className="pl-11 h-12 w-full rounded-2xl border-slate-200 bg-white text-sm shadow-sm focus:border-[#7a1200]/40 focus:ring-4 focus:ring-[#7a1200]/5 transition-all"
+            className="pl-11 h-10 w-full rounded-2xl border-slate-200 bg-white text-sm shadow-sm focus:border-[#7a1200]/40 focus:ring-4 focus:ring-[#7a1200]/5 transition-all"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -158,11 +219,58 @@ export default function LaporanKeuanganIntervensiPage() {
               Table
             </Button>
           </div>
-          <div className="flex items-center justify-center gap-2 px-5 h-12 min-w-full sm:min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm whitespace-nowrap">
+          <div className="flex items-center justify-center gap-2 px-5 h-10 min-w-full sm:min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm whitespace-nowrap">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total:</span>
             <span className="text-sm font-black text-[#7a1200]">{filtered.length}</span>
           </div>
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <MultiSelectFilter 
+          label="Desa" 
+          options={filterOptions.desa} 
+          selected={filters.desa}
+          onSelect={(val) => toggleFilter('desa', val)}
+          onClear={() => setFilters(f => ({ ...f, desa: [] }))}
+        />
+        <MultiSelectFilter 
+          label="Program" 
+          options={filterOptions.program} 
+          selected={filters.program}
+          onSelect={(val) => toggleFilter('program', val)}
+          onClear={() => setFilters(f => ({ ...f, program: [] }))}
+        />
+        <MultiSelectFilter 
+          label="Relawan" 
+          options={filterOptions.relawan} 
+          selected={filters.relawan}
+          onSelect={(val) => toggleFilter('relawan', val)}
+          onClear={() => setFilters(f => ({ ...f, relawan: [] }))}
+        />
+        <MultiSelectFilter 
+          label="Sumber Dana" 
+          options={filterOptions.sumber_dana} 
+          selected={filters.sumber_dana}
+          onSelect={(val) => toggleFilter('sumber_dana', val)}
+          onClear={() => setFilters(f => ({ ...f, sumber_dana: [] }))}
+        />
+        
+        {hasAnyFilter && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-[36px] px-3 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-bold gap-1 transition-colors"
+            onClick={() => {
+              setSearch('')
+              setFilterStatus('semua')
+              setFilters({ desa: [], program: [], relawan: [], sumber_dana: [] })
+            }}
+          >
+            <X className="w-4 h-4" />
+            Reset
+          </Button>
+        )}
       </div>
 
       {/* Grid List */}

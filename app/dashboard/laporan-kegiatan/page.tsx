@@ -9,14 +9,21 @@ import DeleteLaporanButton from './DeleteLaporanButton'
 import { useSession } from 'next-auth/react'
 import { Badge } from '@/components/ui/badge'
 import { useSearchParams } from 'next/navigation'
-import { DynamicFilterManager } from '@/components/dynamic-filter-manager'
-
+import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { X } from 'lucide-react'
 
 function LaporanKegiatanListContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
   const [laporanList, setLaporanList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  
+  const [filters, setFilters] = useState({
+    desa: [] as string[],
+    jenis: [] as string[],
+    tahun: [] as string[]
+  })
 
   const role = (session?.user as any)?.role
   const canMod = role === 'RELAWAN' || role === 'PROG_HEAD' || role === 'ADMIN' || role === 'KORWIL'
@@ -43,22 +50,65 @@ function LaporanKegiatanListContent() {
     return `/dashboard/laporan-kegiatan/${laporan.id}/edit`
   }
 
-  // Filter Data berdasarkan Search Params dari DynamicFilterManager
-  const filteredList = laporanList.filter((item) => {
-    for (const [key, val] of Array.from(searchParams?.entries() || [])) {
-      // Basic heuristic: check if any string field matches, or if date contains the year
-      if (key === 'tahun') {
+  const filterOptions = React.useMemo(() => {
+    const getOptions = (excludeKey: keyof typeof filters) => {
+      return laporanList.filter(item => {
+        const q = searchQuery.toLowerCase()
+        const matchesSearch = !q || (
+          (item.judul_kegiatan || '').toLowerCase().includes(q) ||
+          (item.nama_desa || '').toLowerCase().includes(q)
+        )
+
+        const matchDesa = excludeKey === 'desa' || filters.desa.length === 0 || filters.desa.includes(item.nama_desa || 'Tanpa Desa')
+        const matchJenis = excludeKey === 'jenis' || filters.jenis.length === 0 || filters.jenis.includes(item.jenis_kegiatan || 'Tidak Ada')
         const dateStr = item.tanggal_kegiatan || item.created_at
-        if (!dateStr || !new Date(dateStr).getFullYear().toString().includes(val)) return false
-      } else {
-        // generic column matching
-        if (item[key] !== undefined) {
-          if (String(item[key]).toLowerCase() !== val.toLowerCase()) return false
-        }
-      }
+        const tahunItem = dateStr ? new Date(dateStr).getFullYear().toString() : 'Tanpa Tahun'
+        const matchTahun = excludeKey === 'tahun' || filters.tahun.length === 0 || filters.tahun.includes(tahunItem)
+
+        return matchesSearch && matchDesa && matchJenis && matchTahun
+      })
     }
-    return true
-  })
+
+    return {
+      desa: Array.from(new Set(getOptions('desa').map(i => i.nama_desa || 'Tanpa Desa'))).sort() as string[],
+      jenis: Array.from(new Set(getOptions('jenis').map(i => i.jenis_kegiatan || 'Tidak Ada'))).sort() as string[],
+      tahun: Array.from(new Set(getOptions('tahun').map(i => {
+        const dateStr = i.tanggal_kegiatan || i.created_at
+        return dateStr ? new Date(dateStr).getFullYear().toString() : 'Tanpa Tahun'
+      }))).sort((a,b) => Number(b) - Number(a)) as string[],
+    }
+  }, [laporanList, searchQuery, filters])
+
+  const filteredList = React.useMemo(() => {
+    return laporanList.filter(item => {
+      const q = searchQuery.toLowerCase()
+      const matchesSearch = !q || (
+        (item.judul_kegiatan || '').toLowerCase().includes(q) ||
+        (item.nama_desa || '').toLowerCase().includes(q)
+      )
+
+      if (!matchesSearch) return false
+
+      const matchDesa = filters.desa.length === 0 || filters.desa.includes(item.nama_desa || 'Tanpa Desa')
+      const matchJenis = filters.jenis.length === 0 || filters.jenis.includes(item.jenis_kegiatan || 'Tidak Ada')
+      const dateStr = item.tanggal_kegiatan || item.created_at
+      const tahunItem = dateStr ? new Date(dateStr).getFullYear().toString() : 'Tanpa Tahun'
+      const matchTahun = filters.tahun.length === 0 || filters.tahun.includes(tahunItem)
+
+      return matchDesa && matchJenis && matchTahun
+    })
+  }, [laporanList, searchQuery, filters])
+
+  const toggleFilter = (type: keyof typeof filters, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [type]: prev[type].includes(value)
+        ? prev[type].filter(v => v !== value)
+        : [...prev[type], value]
+    }))
+  }
+
+  const hasAnyFilter = searchQuery !== '' || Object.values(filters).some(arr => arr.length > 0)
 
   return (
     <div className="p-4 lg:p-6 max-w-6xl mx-auto space-y-6">
@@ -78,19 +128,53 @@ function LaporanKegiatanListContent() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex flex-col gap-4 bg-slate-50/50">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
-            <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="Cari laporan..." 
-                className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-[#7a1200]"
-              />
-            </div>
-            {/* Filter Dinamis dari Database */}
-            <DynamicFilterManager pageKey="laporan_kegiatan" />
+        <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row flex-wrap gap-4 bg-slate-50/50">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Cari kegiatan, desa..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl h-[42px] text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+            />
           </div>
+          <MultiSelectFilter 
+            label="Desa Binaan" 
+            options={filterOptions.desa} 
+            selected={filters.desa}
+            onSelect={(val) => toggleFilter('desa', val)}
+            onClear={() => setFilters(f => ({ ...f, desa: [] }))}
+          />
+          <MultiSelectFilter 
+            label="Jenis Kegiatan" 
+            options={filterOptions.jenis} 
+            selected={filters.jenis}
+            onSelect={(val) => toggleFilter('jenis', val)}
+            onClear={() => setFilters(f => ({ ...f, jenis: [] }))}
+          />
+          <MultiSelectFilter 
+            label="Tahun" 
+            options={filterOptions.tahun} 
+            selected={filters.tahun}
+            onSelect={(val) => toggleFilter('tahun', val)}
+            onClear={() => setFilters(f => ({ ...f, tahun: [] }))}
+          />
+          
+          {hasAnyFilter && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-[42px] px-3 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-bold gap-1 transition-colors"
+              onClick={() => {
+                setSearchQuery('')
+                setFilters({ desa: [], jenis: [], tahun: [] })
+              }}
+            >
+              <X className="w-4 h-4" />
+              Reset
+            </Button>
+          )}
         </div>
 
         {/* Mobile View: Card Layout */}

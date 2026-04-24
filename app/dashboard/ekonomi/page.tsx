@@ -24,6 +24,8 @@ import {
 import { getEkonomiUpdates, deleteEkonomiUpdate } from './actions'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { X } from 'lucide-react'
 import { toast } from 'sonner'
 import * as XLSX from 'xlsx'
 
@@ -35,14 +37,19 @@ export default function EkonomiPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'selesai'>('all')
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
-  const [kelompokFilter, setKelompokFilter] = useState<string>('all')
-  const [bulanFilter, setBulanFilter] = useState<string>('all')
+  const [filters, setFilters] = useState({
+    kelompok: [] as string[],
+    bulan: [] as string[],
+    kategori: [] as string[],
+    tipe: [] as string[],
+    program: [] as string[]
+  })
   const [itemsPerPage, setItemsPerPage] = useState<number>(50)
   const [currentPage, setCurrentPage] = useState<number>(1)
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, statusFilter, kelompokFilter, bulanFilter, itemsPerPage])
+  }, [searchQuery, statusFilter, filters, itemsPerPage])
 
   useEffect(() => {
     loadData()
@@ -71,13 +78,87 @@ export default function EkonomiPage() {
     }
   }
 
+  const getBulanName = (month: number) => {
+    const names = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ]
+    return names[month - 1] || '-'
+  }
+
+  const filterOptions = React.useMemo(() => {
+    const getOptions = (excludeKey: keyof typeof filters) => {
+      return updates.filter(u => {
+        const matchSearch = u.nama_pm.toLowerCase().includes(searchQuery.toLowerCase()) || u.nik_pm.includes(searchQuery)
+        const matchStatus = statusFilter === 'all' ? true : (statusFilter === 'pending' ? !u.checked : u.checked)
+        
+        const kelompokStr = u.nama_kelompok || 'Tanpa Kelompok'
+        const matchKelompok = excludeKey === 'kelompok' || filters.kelompok.length === 0 || filters.kelompok.includes(kelompokStr)
+        
+        const bulanStr = getBulanName(u.bulan)
+        const matchBulan = excludeKey === 'bulan' || filters.bulan.length === 0 || filters.bulan.includes(bulanStr)
+        
+        const kategoriStr = u.kategori || 'Tidak Ada'
+        const matchKategori = excludeKey === 'kategori' || filters.kategori.length === 0 || filters.kategori.includes(kategoriStr)
+        
+        const tipeStr = u.tipe || 'Tidak Ada'
+        const matchTipe = excludeKey === 'tipe' || filters.tipe.length === 0 || filters.tipe.includes(tipeStr)
+
+        const progStr = u.program || 'Tidak Ada'
+        const matchProgram = excludeKey === 'program' || filters.program.length === 0 || filters.program.includes(progStr)
+
+        return matchSearch && matchStatus && matchKelompok && matchBulan && matchKategori && matchTipe && matchProgram
+      })
+    }
+
+    return {
+      kelompok: Array.from(new Set(getOptions('kelompok').map(u => u.nama_kelompok || 'Tanpa Kelompok'))).sort() as string[],
+      bulan: Array.from(new Set(getOptions('bulan').map(u => getBulanName(u.bulan)))).sort((a,b) => {
+         const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+         return months.indexOf(a) - months.indexOf(b)
+      }) as string[],
+      kategori: Array.from(new Set(getOptions('kategori').map(u => u.kategori || 'Tidak Ada'))).sort() as string[],
+      tipe: Array.from(new Set(getOptions('tipe').map(u => u.tipe || 'Tidak Ada'))).sort() as string[],
+      program: Array.from(new Set(getOptions('program').map(u => u.program || 'Tidak Ada'))).sort() as string[],
+    }
+  }, [updates, searchQuery, statusFilter, filters])
+
   const filteredUpdates = updates.filter(u => {
     const matchSearch = u.nama_pm.toLowerCase().includes(searchQuery.toLowerCase()) || u.nik_pm.includes(searchQuery)
     const matchStatus = statusFilter === 'all' ? true : (statusFilter === 'pending' ? !u.checked : u.checked)
-    const matchKelompok = kelompokFilter === 'all' ? true : (u.nama_kelompok || 'Tanpa Kelompok') === kelompokFilter
-    const matchBulan = bulanFilter === 'all' ? true : u.bulan === parseInt(bulanFilter)
-    return matchSearch && matchStatus && matchKelompok && matchBulan
+    
+    const kelompokStr = u.nama_kelompok || 'Tanpa Kelompok'
+    const matchKelompok = filters.kelompok.length === 0 || filters.kelompok.includes(kelompokStr)
+    
+    const bulanStr = getBulanName(u.bulan)
+    const matchBulan = filters.bulan.length === 0 || filters.bulan.includes(bulanStr)
+    
+    const kategoriStr = u.kategori || 'Tidak Ada'
+    const matchKategori = filters.kategori.length === 0 || filters.kategori.includes(kategoriStr)
+    
+    const tipeStr = u.tipe || 'Tidak Ada'
+    const matchTipe = filters.tipe.length === 0 || filters.tipe.includes(tipeStr)
+
+    const progStr = u.program || 'Tidak Ada'
+    const matchProgram = filters.program.length === 0 || filters.program.includes(progStr)
+
+    return matchSearch && matchStatus && matchKelompok && matchBulan && matchKategori && matchTipe && matchProgram
   })
+
+  const toggleFilter = (type: keyof typeof filters, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [type]: prev[type].includes(value)
+        ? prev[type].filter(v => v !== value)
+        : [...prev[type], value]
+    }))
+  }
+
+  const clearFilters = () => {
+    setFilters({ kelompok: [], bulan: [], kategori: [], tipe: [], program: [] })
+  }
+
+  const hasAnyFilter = Object.values(filters).some(arr => arr.length > 0)
 
   // Pagination for table mode
   const totalPages = Math.max(1, Math.ceil(filteredUpdates.length / itemsPerPage))
@@ -119,13 +200,7 @@ export default function EkonomiPage() {
     setExpandedGroups(prev => ({ ...prev, [kId]: !prev[kId] }))
   }
 
-  const getBulanName = (month: number) => {
-    const names = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ]
-    return names[month - 1] || '-'
-  }
+
 
   const exportToExcel = () => {
     const dataToExport = filteredUpdates.map((u: any) => ({
@@ -190,39 +265,68 @@ export default function EkonomiPage() {
       </div>
 
       <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 overflow-hidden border-none p-6">
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-6">
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-4 w-5 h-5 text-slate-400 pointer-events-none top-1/2 -translate-y-1/2" />
                 <input 
                   type="text" 
                   placeholder="Cari nama atau NIK..."
-                  className="w-full bg-slate-50 rounded-2xl pl-12 pr-4 h-12 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all text-sm font-medium text-slate-800 placeholder:text-slate-400"
+                  className="w-full bg-slate-50 rounded-xl pl-12 pr-4 h-[42px] border border-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all text-sm font-medium text-slate-800 placeholder:text-slate-400"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
+              
+              <MultiSelectFilter 
+                label="Kelompok" 
+                options={filterOptions.kelompok} 
+                selected={filters.kelompok}
+                onSelect={(val) => toggleFilter('kelompok', val)}
+                onClear={() => setFilters(f => ({ ...f, kelompok: [] }))}
+              />
+              <MultiSelectFilter 
+                label="Bulan" 
+                options={filterOptions.bulan} 
+                selected={filters.bulan}
+                onSelect={(val) => toggleFilter('bulan', val)}
+                onClear={() => setFilters(f => ({ ...f, bulan: [] }))}
+              />
+              <MultiSelectFilter 
+                label="Kategori" 
+                options={filterOptions.kategori} 
+                selected={filters.kategori}
+                onSelect={(val) => toggleFilter('kategori', val)}
+                onClear={() => setFilters(f => ({ ...f, kategori: [] }))}
+              />
+              <MultiSelectFilter 
+                label="Tipe Usaha" 
+                options={filterOptions.tipe} 
+                selected={filters.tipe}
+                onSelect={(val) => toggleFilter('tipe', val)}
+                onClear={() => setFilters(f => ({ ...f, tipe: [] }))}
+              />
+              <MultiSelectFilter 
+                label="Program" 
+                options={filterOptions.program} 
+                selected={filters.program}
+                onSelect={(val) => toggleFilter('program', val)}
+                onClear={() => setFilters(f => ({ ...f, program: [] }))}
+              />
+
+              {hasAnyFilter && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-[42px] px-3 rounded-xl text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 font-bold gap-1 transition-colors"
+                  onClick={clearFilters}
+                >
+                  <X className="w-4 h-4" />
+                  Reset
+                </Button>
+              )}
+
               <select 
-                className="bg-slate-50 rounded-2xl px-4 h-12 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium text-slate-800 capitalize"
-                value={kelompokFilter}
-                onChange={(e) => setKelompokFilter(e.target.value)}
-              >
-                <option value="all">Semua Kelompok</option>
-                {Array.from(new Set(updates.map(u => u.nama_kelompok || 'Tanpa Kelompok'))).sort().map(k => (
-                  <option key={k as string} value={k as string}>{k as string}</option>
-                ))}
-              </select>
-              <select 
-                className="bg-slate-50 rounded-2xl px-4 h-12 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium text-slate-800"
-                value={bulanFilter}
-                onChange={(e) => setBulanFilter(e.target.value)}
-              >
-                <option value="all">Semua Bulan</option>
-                {Array.from({length: 12}).map((_, i) => (
-                  <option key={i+1} value={(i+1).toString()}>{getBulanName(i+1)}</option>
-                ))}
-              </select>
-              <select 
-                className="bg-slate-50 rounded-2xl px-4 h-12 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium text-slate-800"
+                className="bg-slate-50 rounded-xl px-4 h-[42px] border border-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium text-slate-800"
                 value={itemsPerPage}
                 onChange={(e) => setItemsPerPage(Number(e.target.value))}
               >

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Edit, Trash2 } from 'lucide-react'
+import React, { useState, useMemo } from 'react'
+import { Plus, Edit, Trash2, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -20,6 +20,7 @@ import {
   createKategoriProgram, updateKategoriProgram, deleteKategoriProgram,
   createProgram, updateProgram, deleteProgram
 } from '@/lib/actions/program'
+import { MultiSelectFilter } from '@/components/multi-select-filter'
 
 export default function ClientProgramPanel({ 
   initialKategori, 
@@ -48,9 +49,54 @@ export default function ClientProgramPanel({
   const [formCategoryId, setFormCategoryId] = useState<string>('')
   const [isSubmittingProgram, setIsSubmittingProgram] = useState(false)
 
+  const [searchProg, setSearchProg] = useState('')
+  const [filterProg, setFilterProg] = useState({
+    kategori: [] as string[],
+    tipeForm: [] as string[]
+  })
 
+  const progOptions = useMemo(() => {
+    const getOptions = (excludeKey: keyof typeof filterProg) => {
+      return initialPrograms.filter(prog => {
+        const q = searchProg.toLowerCase()
+        const matchSearch = !q || (prog.nama_program || '').toLowerCase().includes(q)
+        
+        const matchKategori = excludeKey === 'kategori' || filterProg.kategori.length === 0 || filterProg.kategori.includes(prog.nama_kategori || 'Tanpa Kategori')
+        const tipeFormVal = prog.form_category_name || 'Default'
+        const matchTipeForm = excludeKey === 'tipeForm' || filterProg.tipeForm.length === 0 || filterProg.tipeForm.includes(tipeFormVal)
 
-  // Handlers Kategori
+        return matchSearch && matchKategori && matchTipeForm
+      })
+    }
+
+    return {
+      kategori: Array.from(new Set(getOptions('kategori').map(p => p.nama_kategori || 'Tanpa Kategori'))).sort() as string[],
+      tipeForm: Array.from(new Set(getOptions('tipeForm').map(p => p.form_category_name || 'Default'))).sort() as string[],
+    }
+  }, [initialPrograms, searchProg, filterProg])
+
+  const filteredPrograms = useMemo(() => {
+    return initialPrograms.filter(prog => {
+      const q = searchProg.toLowerCase()
+      const matchSearch = !q || (prog.nama_program || '').toLowerCase().includes(q)
+      if (!matchSearch) return false
+      
+      const matchKategori = filterProg.kategori.length === 0 || filterProg.kategori.includes(prog.nama_kategori || 'Tanpa Kategori')
+      const tipeFormVal = prog.form_category_name || 'Default'
+      const matchTipeForm = filterProg.tipeForm.length === 0 || filterProg.tipeForm.includes(tipeFormVal)
+
+      return matchKategori && matchTipeForm
+    })
+  }, [initialPrograms, searchProg, filterProg])
+
+  const toggleFilterProg = (type: keyof typeof filterProg, value: string) => {
+    setFilterProg(prev => ({
+      ...prev,
+      [type]: prev[type].includes(value) ? prev[type].filter(v => v !== value) : [...prev[type], value]
+    }))
+  }
+
+  const hasAnyFilterProg = searchProg !== '' || Object.values(filterProg).some(arr => arr.length > 0)  // Handlers Kategori
   const handleOpenAddKategori = () => {
     setIsEditKategori(false)
     setActiveKategori(null)
@@ -193,6 +239,47 @@ export default function ClientProgramPanel({
           </Button>
         </div>
 
+        <div className="flex flex-col md:flex-row flex-wrap gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Cari nama program..." 
+              value={searchProg}
+              onChange={(e) => setSearchProg(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl h-[42px] text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+            />
+          </div>
+          <MultiSelectFilter 
+            label="Kategori Program" 
+            options={progOptions.kategori} 
+            selected={filterProg.kategori}
+            onSelect={(val) => toggleFilterProg('kategori', val)}
+            onClear={() => setFilterProg(f => ({ ...f, kategori: [] }))}
+          />
+          <MultiSelectFilter 
+            label="Tipe Form" 
+            options={progOptions.tipeForm} 
+            selected={filterProg.tipeForm}
+            onSelect={(val) => toggleFilterProg('tipeForm', val)}
+            onClear={() => setFilterProg(f => ({ ...f, tipeForm: [] }))}
+          />
+          {hasAnyFilterProg && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-[42px] px-3 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-bold gap-1 transition-colors"
+              onClick={() => {
+                setSearchProg('')
+                setFilterProg({ kategori: [], tipeForm: [] })
+              }}
+            >
+              <X className="w-4 h-4" />
+              Reset
+            </Button>
+          )}
+        </div>
+
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -205,14 +292,14 @@ export default function ClientProgramPanel({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {initialPrograms.length === 0 ? (
+                {filteredPrograms.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-6 py-8 text-center text-slate-500">
-                      Belum ada data Program yang ditambahkan.
+                    <td colSpan={4} className="px-6 py-8 text-center text-slate-500">
+                      Belum ada data Program yang ditambahkan atau cocok dengan filter.
                     </td>
                   </tr>
                 ) : (
-                  initialPrograms.map((prog) => (
+                  filteredPrograms.map((prog) => (
                     <tr key={prog.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-6 py-4 font-medium text-slate-800">{prog.nama_kategori}</td>
                       <td className="px-6 py-4 text-slate-600">{prog.nama_program}</td>

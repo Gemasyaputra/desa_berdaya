@@ -172,11 +172,6 @@ export default function DashboardLayout({
                   label: 'Form Builder',
                   icon: Settings,
                 },
-                {
-                  href: '/dashboard/konfigurasi/filter-builder',
-                  label: 'Filter Builder',
-                  icon: Settings,
-                },
               ]
             : []),
         ]

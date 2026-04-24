@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { getDesaBinaanList } from './actions'
 import DeleteDesaButton from './DeleteDesaButton'
 import { useSession } from 'next-auth/react'
+import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { X } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +18,18 @@ export default function DesaBinaanPage() {
   const [filtered, setFiltered] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [filters, setFilters] = useState({
+    provinsi: [] as string[],
+    kota: [] as string[],
+    kecamatan: [] as string[],
+    relawan: [] as string[],
+    status: [] as string[]
+  })
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const isKorwil = !!(session?.user as any)?.is_korwil
   const isAdmin = (session?.user as any)?.role === 'ADMIN'
@@ -30,17 +44,77 @@ export default function DesaBinaanPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  const filterOptions = React.useMemo(() => {
+    const getOptions = (excludeKey: keyof typeof filters) => {
+      return desaList.filter(d => {
+        const q = search.toLowerCase()
+        const matchesSearch = !q || (
+          d.nama_desa?.toLowerCase().includes(q) ||
+          d.nama_kecamatan?.toLowerCase().includes(q) ||
+          d.nama_kota?.toLowerCase().includes(q) ||
+          d.nama_relawan?.toLowerCase().includes(q)
+        )
+
+        const matchesProvinsi = excludeKey === 'provinsi' || filters.provinsi.length === 0 || filters.provinsi.includes(d.nama_provinsi)
+        const matchesKota = excludeKey === 'kota' || filters.kota.length === 0 || filters.kota.includes(d.nama_kota)
+        const matchesKecamatan = excludeKey === 'kecamatan' || filters.kecamatan.length === 0 || filters.kecamatan.includes(d.nama_kecamatan)
+        const matchesRelawan = excludeKey === 'relawan' || filters.relawan.length === 0 || filters.relawan.includes(d.nama_relawan)
+        
+        const statusStr = d.status_aktif ? 'Aktif' : 'Nonaktif'
+        const matchesStatus = excludeKey === 'status' || filters.status.length === 0 || filters.status.includes(statusStr)
+
+        return matchesSearch && matchesProvinsi && matchesKota && matchesKecamatan && matchesRelawan && matchesStatus
+      })
+    }
+
+    return {
+      provinsi: Array.from(new Set(getOptions('provinsi').map(d => d.nama_provinsi).filter(Boolean))) as string[],
+      kota: Array.from(new Set(getOptions('kota').map(d => d.nama_kota).filter(Boolean))) as string[],
+      kecamatan: Array.from(new Set(getOptions('kecamatan').map(d => d.nama_kecamatan).filter(Boolean))) as string[],
+      relawan: Array.from(new Set(getOptions('relawan').map(d => d.nama_relawan).filter(Boolean))) as string[],
+      status: ['Aktif', 'Nonaktif']
+    }
+  }, [desaList, search, filters])
+
   useEffect(() => {
     const q = search.toLowerCase()
     setFiltered(
-      desaList.filter((d) =>
-        d.nama_desa?.toLowerCase().includes(q) ||
-        d.nama_kecamatan?.toLowerCase().includes(q) ||
-        d.nama_kota?.toLowerCase().includes(q) ||
-        d.nama_relawan?.toLowerCase().includes(q)
-      )
+      desaList.filter((d) => {
+        const matchesSearch = !q || (
+          d.nama_desa?.toLowerCase().includes(q) ||
+          d.nama_kecamatan?.toLowerCase().includes(q) ||
+          d.nama_kota?.toLowerCase().includes(q) ||
+          d.nama_relawan?.toLowerCase().includes(q)
+        )
+
+        const matchesProvinsi = filters.provinsi.length === 0 || filters.provinsi.includes(d.nama_provinsi)
+        const matchesKota = filters.kota.length === 0 || filters.kota.includes(d.nama_kota)
+        const matchesKecamatan = filters.kecamatan.length === 0 || filters.kecamatan.includes(d.nama_kecamatan)
+        const matchesRelawan = filters.relawan.length === 0 || filters.relawan.includes(d.nama_relawan)
+        
+        const statusStr = d.status_aktif ? 'Aktif' : 'Nonaktif'
+        const matchesStatus = filters.status.length === 0 || filters.status.includes(statusStr)
+
+        return matchesSearch && matchesProvinsi && matchesKota && matchesKecamatan && matchesRelawan && matchesStatus
+      })
     )
-  }, [search, desaList])
+  }, [search, filters, desaList])
+
+  const toggleFilter = (type: keyof typeof filters, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [type]: prev[type].includes(value)
+        ? prev[type].filter(v => v !== value)
+        : [...prev[type], value]
+    }))
+  }
+
+  const clearFilters = () => {
+    setSearch('')
+    setFilters({ provinsi: [], kota: [], kecamatan: [], relawan: [], status: [] })
+  }
+
+  const hasAnyFilter = search !== '' || Object.values(filters).some(arr => arr.length > 0)
 
   const formatDate = (dateString: string) =>
     new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(dateString))
@@ -53,10 +127,10 @@ export default function DesaBinaanPage() {
           <div>
             <h1 className="text-xl font-bold text-slate-800">Desa Binaan</h1>
             <p className="text-slate-500 text-xs mt-0.5">
-              {isAdminOrKorwil ? 'Kelola wilayah desa binaan' : 'Desa binaan yang Anda kelola'}
+              {mounted && isAdminOrKorwil ? 'Kelola wilayah desa binaan' : 'Desa binaan yang Anda kelola'}
             </p>
           </div>
-          {isPrivilegedUI && (
+          {mounted && isPrivilegedUI && (
             <Link href="/dashboard/desa/tambah">
               <Button size="sm" style={{ backgroundColor: '#7a1200' }} className="text-white gap-1 shrink-0">
                 <PlusCircle className="w-4 h-4" />
@@ -69,15 +143,65 @@ export default function DesaBinaanPage() {
 
       <div className="p-4 lg:p-6 max-w-7xl mx-auto space-y-3">
         {/* Search */}
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Cari desa, kecamatan, relawan..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#7a1200]/20 focus:border-[#7a1200]"
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Cari desa, kecamatan, relawan..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 h-[42px] border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#7a1200]/20 focus:border-[#7a1200]"
+            />
+          </div>
+
+          <MultiSelectFilter 
+            label="Provinsi" 
+            options={filterOptions.provinsi} 
+            selected={filters.provinsi}
+            onSelect={(val) => toggleFilter('provinsi', val)}
+            onClear={() => setFilters(f => ({ ...f, provinsi: [] }))}
           />
+          <MultiSelectFilter 
+            label="Kota/Kab" 
+            options={filterOptions.kota} 
+            selected={filters.kota}
+            onSelect={(val) => toggleFilter('kota', val)}
+            onClear={() => setFilters(f => ({ ...f, kota: [] }))}
+          />
+          <MultiSelectFilter 
+            label="Kecamatan" 
+            options={filterOptions.kecamatan} 
+            selected={filters.kecamatan}
+            onSelect={(val) => toggleFilter('kecamatan', val)}
+            onClear={() => setFilters(f => ({ ...f, kecamatan: [] }))}
+          />
+          <MultiSelectFilter 
+            label="Relawan" 
+            options={filterOptions.relawan} 
+            selected={filters.relawan}
+            onSelect={(val) => toggleFilter('relawan', val)}
+            onClear={() => setFilters(f => ({ ...f, relawan: [] }))}
+          />
+          <MultiSelectFilter 
+            label="Status" 
+            options={filterOptions.status} 
+            selected={filters.status}
+            onSelect={(val) => toggleFilter('status', val)}
+            onClear={() => setFilters(f => ({ ...f, status: [] }))}
+          />
+
+          {hasAnyFilter && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-[42px] px-3 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-bold gap-1 transition-colors"
+              onClick={clearFilters}
+            >
+              <X className="w-4 h-4" />
+              Reset
+            </Button>
+          )}
         </div>
 
         {!loading && (

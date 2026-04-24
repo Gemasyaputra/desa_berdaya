@@ -509,6 +509,69 @@ export async function importIntervensiProgram(data: {
   return { success: true, id: headerId, inserted }
 }
 
+export async function importIntervensiProgramUniversal(rows: Array<{
+  desa_berdaya_id: number
+  kategori_program_id: number
+  program_id: number
+  relawan_id: number
+  tahun: number
+  bulan: string
+  sumber_dana?: string
+  fundraiser?: string
+  deskripsi?: string
+  ajuan_ri: number
+  anggaran_disetujui: number
+  anggaran_dicairkan: number
+  status_pencairan: string
+  id_stp?: string
+  catatan?: string
+  is_dbf: boolean
+  is_rz: boolean
+}>) {
+  await checkAdmin()
+  let inserted = 0
+  
+  // Group rows by unique header key
+  const groups: Record<string, typeof rows> = {}
+  for (const r of rows) {
+    const key = `${r.desa_berdaya_id}_${r.program_id}_${r.kategori_program_id}_${r.sumber_dana || ''}_${r.fundraiser || ''}`
+    if (!groups[key]) groups[key] = []
+    groups[key].push(r)
+  }
+
+  for (const key in groups) {
+    const groupRows = groups[key]
+    const first = groupRows[0]
+
+    // Create header
+    const headerResult = await sql`
+      INSERT INTO intervensi_program (
+        desa_berdaya_id, kategori_program_id, program_id, deskripsi, sumber_dana, fundraiser, relawan_id, status
+      ) VALUES (
+        ${first.desa_berdaya_id}, ${first.kategori_program_id}, ${first.program_id}, 
+        ${first.deskripsi || null}, ${first.sumber_dana || null}, ${first.fundraiser || null}, 
+        ${first.relawan_id}, 'DRAFT'
+      ) RETURNING id
+    `
+    const headerId = (headerResult as any[])[0].id
+
+    for (const r of groupRows) {
+      await sql`
+        INSERT INTO intervensi_anggaran (
+          intervensi_program_id, tahun, bulan, ajuan_ri, anggaran_disetujui, anggaran_dicairkan, status_pencairan, id_stp, catatan, is_dbf, is_rz
+        ) VALUES (
+          ${headerId}, ${r.tahun}, ${r.bulan}, ${r.ajuan_ri || 0}, ${r.anggaran_disetujui || 0}, ${r.anggaran_dicairkan || 0},
+          ${r.status_pencairan || 'Dialokasikan'}, ${r.id_stp || null}, ${r.catatan || null}, ${r.is_dbf || false}, ${r.is_rz || false}
+        )
+      `
+      inserted++
+    }
+  }
+
+  revalidatePath('/dashboard/intervensi')
+  return { success: true, inserted }
+}
+
 export async function duplicateIntervensiProgram(originalId: number, data: {
   desa_berdaya_id: number;
   program_id: number;

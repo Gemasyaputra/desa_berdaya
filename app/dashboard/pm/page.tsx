@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { PlusCircle, Search, MapPin, UserSquare2, Users, ChevronRight, Upload, Download, FileSpreadsheet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getPenerimaManfaatList, getDesaBerdayaOptions, importPemerimaManfaatExcel } from './actions'
 import { useSession } from 'next-auth/react'
 import * as xlsx from 'xlsx'
+import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { X } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,6 +30,15 @@ export default function PenerimaManfaatPage() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [filterKtpStatus, setFilterKtpStatus] = useState('all')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [filters, setFilters] = useState({
+    desa: [] as string[],
+    kategori: [] as string[]
+  })
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const role = (session?.user as any)?.role
   const canAdd = role === 'RELAWAN' || role === 'PROG_HEAD'
@@ -53,6 +64,38 @@ export default function PenerimaManfaatPage() {
     fetchData()
   }, [session])
 
+  const filterOptions = useMemo(() => {
+    const getOptions = (excludeKey: keyof typeof filters) => {
+      return list.filter(pm => {
+        const q = search.toLowerCase()
+        const matchesSearch = !q || (
+          pm.nama?.toLowerCase().includes(q) ||
+          pm.nik?.toLowerCase().includes(q) ||
+          pm.nama_desa?.toLowerCase().includes(q) ||
+          pm.kategori_pm?.toLowerCase().includes(q)
+        )
+        
+        const hasKtp = !!pm.foto_ktp_url
+        const matchesKtp = filterKtpStatus === 'all' 
+          ? true 
+          : filterKtpStatus === 'uploaded' ? hasKtp : !hasKtp
+
+        const matchesDesa = excludeKey === 'desa' || filters.desa.length === 0 || filters.desa.includes(pm.nama_desa)
+        const matchesKategori = excludeKey === 'kategori' || filters.kategori.length === 0 || filters.kategori.includes(pm.kategori_pm)
+
+        return matchesSearch && matchesKtp && matchesDesa && matchesKategori
+      })
+    }
+
+    const desas = Array.from(new Set(getOptions('desa').map(row => row.nama_desa).filter(Boolean))) as string[]
+    const kategoris = Array.from(new Set(getOptions('kategori').map(row => row.kategori_pm).filter(Boolean))) as string[]
+
+    return {
+      desa: desas.sort(),
+      kategori: kategoris.sort()
+    }
+  }, [list, search, filterKtpStatus, filters])
+
   useEffect(() => {
     const q = search.toLowerCase()
     setFiltered(
@@ -67,10 +110,33 @@ export default function PenerimaManfaatPage() {
           ? true 
           : filterKtpStatus === 'uploaded' ? hasKtp : !hasKtp
 
-        return matchesSearch && matchesKtp
+        const matchesDesa = filters.desa.length === 0 || filters.desa.includes(pm.nama_desa)
+        const matchesKategori = filters.kategori.length === 0 || filters.kategori.includes(pm.kategori_pm)
+
+        return matchesSearch && matchesKtp && matchesDesa && matchesKategori
       })
     )
-  }, [search, filterKtpStatus, list])
+  }, [search, filterKtpStatus, filters, list])
+
+  const toggleFilter = (type: keyof typeof filters, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [type]: prev[type].includes(value)
+        ? prev[type].filter(v => v !== value)
+        : [...prev[type], value]
+    }))
+  }
+
+  const clearFilters = () => {
+    setSearch('')
+    setFilterKtpStatus('all')
+    setFilters({
+      desa: [],
+      kategori: []
+    })
+  }
+
+  const hasAnyFilter = search !== '' || filterKtpStatus !== 'all' || filters.desa.length > 0 || filters.kategori.length > 0
 
   const handleDownloadTemplate = (desa: any) => {
     const wsData = [
@@ -162,7 +228,7 @@ export default function PenerimaManfaatPage() {
             <h1 className="text-xl font-bold text-slate-800">Penerima Manfaat</h1>
             <p className="text-slate-500 text-xs mt-0.5">Kelola data penerima manfaat per desa binaan</p>
           </div>
-          {canAdd && (
+          {mounted && canAdd && (
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => setIsImportModalOpen(true)} className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 gap-1 shrink-0">
                 <Upload className="w-4 h-4" /> Import Excel
@@ -180,15 +246,15 @@ export default function PenerimaManfaatPage() {
 
       <div className="p-4 lg:p-6 max-w-7xl mx-auto space-y-3">
         {/* Search & Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               placeholder="Cari nama, NIK, desa, kategori..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#7a1200]/20 focus:border-[#7a1200]"
+              className="w-full pl-9 pr-4 h-[42px] py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#7a1200]/20 focus:border-[#7a1200]"
             />
           </div>
           
@@ -202,7 +268,36 @@ export default function PenerimaManfaatPage() {
               <SelectItem value="missing" className="rounded-lg text-red-600 focus:text-red-700">Belum Upload KTP</SelectItem>
             </SelectContent>
           </Select>
+
+          <MultiSelectFilter 
+            label="Desa" 
+            options={filterOptions.desa} 
+            selected={filters.desa}
+            onSelect={(val) => toggleFilter('desa', val)}
+            onClear={() => setFilters(f => ({ ...f, desa: [] }))}
+          />
+
+          <MultiSelectFilter 
+            label="Kategori" 
+            options={filterOptions.kategori} 
+            selected={filters.kategori}
+            onSelect={(val) => toggleFilter('kategori', val)}
+            onClear={() => setFilters(f => ({ ...f, kategori: [] }))}
+          />
+
+          {hasAnyFilter && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-[42px] px-3 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-bold gap-1 transition-colors"
+              onClick={clearFilters}
+            >
+              <X className="w-4 h-4" />
+              Reset
+            </Button>
+          )}
         </div>
+
 
         {!loading && (
           <p className="text-xs text-slate-400">{filtered.length} penerima manfaat ditemukan</p>

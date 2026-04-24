@@ -23,7 +23,7 @@ export function DynamicFilterManager({ pageKey }: { pageKey: string }) {
   }, [pageKey])
 
   const handleFilterChange = (key: string, value: string) => {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(searchParams?.toString() || '')
     if (value && value !== 'Semua') {
       params.set(key, value)
     } else {
@@ -32,10 +32,10 @@ export function DynamicFilterManager({ pageKey }: { pageKey: string }) {
     router.push(`${pathname}?${params.toString()}`)
   }
 
-  const hasAnyFilterActive = filters.some(f => searchParams.get(f.filter_key) && searchParams.get(f.filter_key) !== 'Semua')
+  const hasAnyFilterActive = filters.some(f => searchParams?.get(f.filter_key) && searchParams?.get(f.filter_key) !== 'Semua')
 
   const resetFilters = () => {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(searchParams?.toString() || '')
     filters.forEach(f => params.delete(f.filter_key))
     router.push(`${pathname}?${params.toString()}`)
   }
@@ -46,8 +46,7 @@ export function DynamicFilterManager({ pageKey }: { pageKey: string }) {
   return (
     <div className="flex flex-wrap items-end gap-3 pt-2">
       {filters.map(f => {
-        const currentValue = searchParams.get(f.filter_key) || 'Semua'
-        
+        const currentValue = searchParams?.get(f.filter_key) || 'Semua'        
         if (f.filter_type === 'select') {
           return (
             <div key={f.id} className="relative">

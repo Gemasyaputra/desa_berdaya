@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge'
 import { useSearchParams } from 'next/navigation'
 import { DynamicFilterManager } from '@/components/dynamic-filter-manager'
 
-export const dynamic = 'force-dynamic'
 
 function LaporanKegiatanListContent() {
   const { data: session } = useSession()

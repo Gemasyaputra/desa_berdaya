@@ -62,11 +62,16 @@ export const authOptions: NextAuthOptions = {
             
             if (dbUser) {
               token.sub = String(dbUser.id)
+              token.original_sub = String(dbUser.id)
               token.role = dbUser.role
+              token.original_role = dbUser.role
               token.is_korwil = false
               token.operator_id = null
               token.monev_id = null
               token.korwil_id = null
+              token.office_id = null
+              token.jabatan = dbUser.role === 'ADMIN' ? 'Administrator' : '-'
+              token.nama_office = '-'
               token.name = dbUser.email
 
               if (dbUser.role === 'MONEV') {
@@ -117,12 +122,26 @@ export const authOptions: NextAuthOptions = {
       // DEV MODE IMPERSONATION
       if (process.env.NODE_ENV === 'development' && trigger === 'update' && session?.mockRole) {
         try {
-          const users = await sql`
-            SELECT id, email, role
-            FROM users
-            WHERE role = ${session.mockRole}
-            LIMIT 1
-          `
+          let users: any;
+          
+          if (session.mockRole === token.original_role && token.original_sub) {
+            // Restore back to original account
+            users = await sql`
+              SELECT id, email, role
+              FROM users
+              WHERE id = ${token.original_sub}
+              LIMIT 1
+            `
+          } else {
+            // Impersonate random account of the selected role
+            users = await sql`
+              SELECT id, email, role
+              FROM users
+              WHERE role = ${session.mockRole}
+              LIMIT 1
+            `
+          }
+          
           const dbUser = (Array.isArray(users) ? users[0] : users) as any
           
           if (dbUser) {
@@ -132,6 +151,9 @@ export const authOptions: NextAuthOptions = {
             token.operator_id = null
             token.monev_id = null
             token.korwil_id = null
+            token.office_id = null
+            token.jabatan = dbUser.role === 'ADMIN' ? 'Administrator' : '-'
+            token.nama_office = '-'
             token.name = dbUser.email
 
             if (dbUser.role === 'MONEV') {
@@ -183,7 +205,9 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user && token) {
         session.user.id = token.sub as string
+        ;(session.user as any).original_sub = token.original_sub as string
         session.user.role = token.role as string
+        ;(session.user as any).original_role = token.original_role as string
         session.user.is_korwil = token.is_korwil as boolean
         session.user.operator_id = token.operator_id as string
         session.user.monev_id = token.monev_id as string

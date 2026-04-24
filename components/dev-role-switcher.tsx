@@ -9,8 +9,10 @@ export function DevRoleSwitcher() {
   const [loading, setLoading] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
 
-  // Hanya tampil di mode development
-  if (process.env.NODE_ENV !== 'development') return null
+  const originalRole = (session?.user as any)?.original_role
+
+  // Hanya tampil di mode development dan jika akun aslinya (saat login Google) adalah ADMIN
+  if (process.env.NODE_ENV !== 'development' || originalRole !== 'ADMIN') return null
 
   const roles = [
     { id: 'ADMIN', label: 'Admin', icon: Shield },

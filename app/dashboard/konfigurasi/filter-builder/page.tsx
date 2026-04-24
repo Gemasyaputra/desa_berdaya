@@ -33,7 +33,7 @@ export default function FilterBuilderPage() {
     ])
     
     if (resFilters.success) {
-      setFilters(resFilters.data)
+      setFilters(resFilters.data || [])
     } else {
       toast.error('Gagal memuat filter')
     }
@@ -290,69 +290,27 @@ export default function FilterBuilderPage() {
                               </div>
                             </div>
                             
-                            {/* Konfigurasi Khusus Dropdown */}
+                            {/* Konfigurasi Khusus Dropdown (Bulk Input) */}
                             {conf.filter_type === 'select' && (
                               <div className="pt-3 border-t border-slate-100">
-                                <div className="flex justify-between items-center mb-3">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Opsi Pilihan</label>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    onClick={() => {
-                                      const newOpts = [...(conf.optionsList || []), {label: '', value: ''}]
-                                      updateColumnConfig(col, 'optionsList', newOpts)
-                                    }} 
-                                    className="h-7 text-[10px] rounded-lg"
-                                  >
-                                    <Plus className="w-3 h-3 mr-1" /> Tambah Opsi
-                                  </Button>
-                                </div>
-                                
-                                {(!conf.optionsList || conf.optionsList.length === 0) ? (
-                                  <div className="text-center p-3 border border-dashed border-slate-200 rounded-xl bg-slate-50 text-[10px] text-slate-400">
-                                    Tambahkan opsi untuk dropdown ini
-                                  </div>
-                                ) : (
-                                  <div className="space-y-2">
-                                    {conf.optionsList.map((opt: any, i: number) => (
-                                      <div key={i} className="flex gap-2 items-center">
-                                        <Input 
-                                          placeholder="Label UI" 
-                                          value={opt.label}
-                                          onChange={e => {
-                                            const newOpts = [...conf.optionsList]
-                                            newOpts[i].label = e.target.value
-                                            if (!newOpts[i].value) newOpts[i].value = e.target.value
-                                            updateColumnConfig(col, 'optionsList', newOpts)
-                                          }}
-                                          className="h-8 text-xs rounded-lg" 
-                                        />
-                                        <Input 
-                                          placeholder="Value DB" 
-                                          value={opt.value}
-                                          onChange={e => {
-                                            const newOpts = [...conf.optionsList]
-                                            newOpts[i].value = e.target.value
-                                            updateColumnConfig(col, 'optionsList', newOpts)
-                                          }}
-                                          className="h-8 text-xs rounded-lg font-mono" 
-                                        />
-                                        <Button 
-                                          variant="ghost" 
-                                          size="icon"
-                                          onClick={() => {
-                                            const newOpts = [...conf.optionsList]
-                                            newOpts.splice(i, 1)
-                                            updateColumnConfig(col, 'optionsList', newOpts)
-                                          }}
-                                          className="h-8 w-8 shrink-0 text-slate-400 hover:text-rose-500"
-                                        >
-                                          <X className="w-4 h-4" />
-                                        </Button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Opsi Pilihan (Bulk Input)</label>
+                                <textarea
+                                  className="w-full min-h-[80px] p-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#7a1200] bg-white resize-none"
+                                  placeholder="Ketik opsi pilihan, pisahkan dengan baris baru (enter)"
+                                  defaultValue={(conf.optionsList || []).map((o: any) => o.label).join('\n')}
+                                  onChange={(e) => {
+                                    const raw = e.target.value;
+                                    const options = raw.split(/\n/).map(o => o.trim()).filter(o => o !== '');
+                                    const mappedOptions = options.map(opt => ({ label: opt, value: opt }));
+                                    updateColumnConfig(col, 'optionsList', mappedOptions);
+                                  }}
+                                />
+                                <p className="text-[10px] text-slate-400 mt-1 font-medium">
+                                  Contoh: <br />
+                                  Sudah Selesai<br />
+                                  Sedang Berjalan<br />
+                                  Belum Mulai
+                                </p>
                               </div>
                             )}
                           </div>

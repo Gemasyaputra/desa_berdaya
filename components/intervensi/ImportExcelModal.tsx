@@ -59,10 +59,16 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
   const [selectedTahun, setSelectedTahun] = useState(new Date().getFullYear().toString())
   const [targetDesaMode, setTargetDesaMode] = useState<'semua' | 'pilih'>('semua')
   const [targetDesaIds, setTargetDesaIds] = useState<Set<number>>(new Set())
+  const [desaSearchQuery, setDesaSearchQuery] = useState('')
 
   const filteredPrograms = programOptions.filter(p => String(p.kategori_id) === selectedKategoriId)
   const selectedProgram = programOptions.find(p => String(p.id) === selectedProgramId)
   const selectedKategori = kategoriOptions.find(k => String(k.id) === selectedKategoriId)
+
+  const searchedDesas = desaOptions.filter(d => 
+    d.nama.toLowerCase().includes(desaSearchQuery.toLowerCase()) || 
+    (d.relawan_nama && d.relawan_nama.toLowerCase().includes(desaSearchQuery.toLowerCase()))
+  )
 
   const activeTargetDesas = targetDesaMode === 'semua' 
     ? desaOptions 
@@ -97,6 +103,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
       setPreviewRows([])
       setTargetDesaMode('semua')
       setTargetDesaIds(new Set())
+      setDesaSearchQuery('')
     }
   }, [isOpen])
 
@@ -523,66 +530,106 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
 
                 <div className="space-y-3 border border-slate-100 bg-white rounded-xl p-4">
                   <Label className="font-bold text-slate-700">Pilihan Desa Binaan <span className="text-rose-500">*</span></Label>
-                  <div className="flex flex-col gap-2">
-                    <label className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 p-2 rounded-lg border border-slate-100">
-                      <input 
-                        type="radio" 
-                        name="targetDesa"
-                        checked={targetDesaMode === 'semua'} 
-                        onChange={() => setTargetDesaMode('semua')}
-                        className="text-[#008784] focus:ring-[#008784] w-4 h-4"
-                      />
-                      <span className="font-medium text-slate-700">Semua Desa Binaan ({desaOptions.length} Desa)</span>
-                    </label>
-                    <label className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 p-2 rounded-lg border border-slate-100">
-                      <input 
-                        type="radio" 
-                        name="targetDesa"
-                        checked={targetDesaMode === 'pilih'} 
-                        onChange={() => setTargetDesaMode('pilih')}
-                        className="text-[#008784] focus:ring-[#008784] w-4 h-4"
-                      />
-                      <span className="font-medium text-slate-700">Pilih Desa Tertentu</span>
-                    </label>
+                  
+                  {/* Mode Toggle Pills */}
+                  <div className="flex gap-2 bg-slate-50 p-1.5 rounded-xl w-fit border border-slate-100">
+                    <button
+                      className={cn(
+                        "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
+                        targetDesaMode === 'semua'
+                          ? "bg-white text-[#008784] shadow-sm ring-1 ring-slate-200"
+                          : "text-slate-500 hover:text-slate-700 hover:bg-slate-100/50"
+                      )}
+                      onClick={() => setTargetDesaMode('semua')}
+                    >
+                      <CheckCircle2 className={cn("w-4 h-4", targetDesaMode === 'semua' ? "text-[#008784]" : "text-transparent")} />
+                      Semua Desa ({desaOptions.length})
+                    </button>
+                    <button
+                      className={cn(
+                        "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
+                        targetDesaMode === 'pilih'
+                          ? "bg-white text-orange-600 shadow-sm ring-1 ring-orange-200"
+                          : "text-slate-500 hover:text-slate-700 hover:bg-slate-100/50"
+                      )}
+                      onClick={() => setTargetDesaMode('pilih')}
+                    >
+                      Pilih Desa Tertentu
+                      {targetDesaMode === 'pilih' && targetDesaIds.size > 0 && (
+                        <Badge className="ml-1 bg-orange-100 text-orange-700 border-none px-1.5 py-0 h-5 font-bold text-xs">{targetDesaIds.size}</Badge>
+                      )}
+                    </button>
                   </div>
 
                   {targetDesaMode === 'pilih' && (
-                    <div className="mt-3 border border-slate-200 rounded-xl overflow-hidden">
-                      <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 text-xs font-bold text-slate-500 flex justify-between items-center">
-                        <span>Pilih Desa (terpilih: {targetDesaIds.size})</span>
-                        <div className="flex gap-2">
-                          <button 
-                            className="text-[#008784] hover:underline"
+                    <div className="mt-4 border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm flex flex-col h-72">
+                      <div className="p-2 border-b border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
+                        <div className="relative flex-1">
+                          <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <input 
+                            type="text" 
+                            placeholder="Cari desa atau relawan..." 
+                            value={desaSearchQuery}
+                            onChange={(e) => setDesaSearchQuery(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#008784]/40"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2 text-xs shrink-0">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-9 px-3 rounded-lg border-slate-200 text-slate-600 hover:text-[#008784] hover:bg-[#008784]/10 font-bold"
                             onClick={() => setTargetDesaIds(new Set(desaOptions.map(d => d.id)))}
                           >
                             Pilih Semua
-                          </button>
-                          <span className="text-slate-300">|</span>
-                          <button 
-                            className="text-slate-500 hover:underline"
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-9 px-3 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 font-bold"
                             onClick={() => setTargetDesaIds(new Set())}
                           >
                             Reset
-                          </button>
+                          </Button>
                         </div>
                       </div>
-                      <div className="max-h-48 overflow-y-auto p-2 grid grid-cols-1 sm:grid-cols-2 gap-1 bg-white">
-                        {desaOptions.map(d => (
-                          <label key={d.id} className="flex items-center gap-2 text-xs p-1.5 hover:bg-slate-50 rounded cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              checked={targetDesaIds.has(d.id)}
-                              onChange={(e) => {
-                                const newSet = new Set(targetDesaIds)
-                                if (e.target.checked) newSet.add(d.id)
-                                else newSet.delete(d.id)
-                                setTargetDesaIds(newSet)
-                              }}
-                              className="text-[#008784] focus:ring-[#008784] rounded-sm"
-                            />
-                            <span className="truncate">{d.nama}</span>
-                          </label>
-                        ))}
+                      
+                      <div className="flex-1 overflow-y-auto p-2 space-y-1 relative">
+                        {searchedDesas.length === 0 ? (
+                          <div className="text-center py-8 text-slate-400 text-sm font-medium">Desa tidak ditemukan</div>
+                        ) : (
+                          searchedDesas.map(d => {
+                            const isSelected = targetDesaIds.has(d.id);
+                            return (
+                              <div 
+                                key={d.id} 
+                                onClick={() => {
+                                  const newSet = new Set(targetDesaIds)
+                                  if (isSelected) newSet.delete(d.id)
+                                  else newSet.add(d.id)
+                                  setTargetDesaIds(newSet)
+                                }}
+                                className={cn(
+                                  "flex items-center justify-between p-2.5 rounded-lg cursor-pointer border transition-colors",
+                                  isSelected 
+                                    ? "bg-[#008784]/5 border-[#008784]/30" 
+                                    : "bg-white border-transparent hover:bg-slate-50 hover:border-slate-200"
+                                )}
+                              >
+                                <div>
+                                  <div className={cn("text-sm font-bold", isSelected ? "text-[#008784]" : "text-slate-700")}>{d.nama}</div>
+                                  <div className="text-xs text-slate-400 font-medium">{d.relawan_nama || 'Tanpa Relawan'}</div>
+                                </div>
+                                <div className={cn(
+                                  "w-5 h-5 rounded-md border flex items-center justify-center transition-colors shrink-0",
+                                  isSelected ? "bg-[#008784] border-[#008784]" : "border-slate-300 bg-white"
+                                )}>
+                                  {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[3px]" />}
+                                </div>
+                              </div>
+                            )
+                          })
+                        )}
                       </div>
                     </div>
                   )}

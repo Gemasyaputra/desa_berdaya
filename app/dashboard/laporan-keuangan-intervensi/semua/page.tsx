@@ -21,9 +21,14 @@ import {
   Loader2,
   CheckCircle2,
   X,
-  Link2
+  Link2,
+  ChevronDown,
+  ChevronRight,
+  Layers
 } from 'lucide-react'
 import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   getAllLaporanKeuanganEntries,
   verifyCA,
@@ -42,6 +47,9 @@ export default function SemuaLaporanKeuanganPage() {
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('Semua')
   const [sortBulan, setSortBulan] = useState<'asc' | 'desc'>('asc')
+  
+  const [groupBys, setGroupBys] = useState<string[]>([])
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   
   const [filters, setFilters] = useState({
     desa: [] as string[],
@@ -253,6 +261,46 @@ export default function SemuaLaporanKeuanganPage() {
     return monthB - monthA;
   });
 
+  const buildGroups = (data: any[], keys: string[], depth: number = 0, path: string = ''): any[] => {
+    if (depth >= keys.length || keys.length === 0) return data;
+    const keyType = keys[depth];
+    const map = new Map<string, any[]>();
+    
+    data.forEach(item => {
+      let val = 'Lain-lain';
+      if (keyType === 'relawan') val = item.nama_relawan || 'Tanpa Relawan';
+      else if (keyType === 'desa') val = item.nama_desa || 'Tanpa Desa';
+      else if (keyType === 'program') val = item.nama_program || 'Tanpa Program';
+      else if (keyType === 'sumber_dana') val = item.sumber_dana || 'Tidak Ada';
+      else if (keyType === 'tahun') val = (item.tahun || '').toString() || 'Tidak Ada Tahun';
+      
+      if (!map.has(val)) map.set(val, []);
+      map.get(val)!.push(item);
+    });
+
+    const groups = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    return groups.map(([groupName, items]) => {
+      const currentPath = path ? `${path}|${groupName}` : groupName;
+      return {
+        groupName,
+        path: currentPath,
+        depth,
+        itemsCount: items.length,
+        children: buildGroups(items, keys, depth + 1, currentPath),
+        isLeaf: depth === keys.length - 1
+      };
+    });
+  };
+
+  const groupedData = useMemo(() => {
+    if (groupBys.length === 0) return null;
+    return buildGroups(filtered, groupBys);
+  }, [filtered, groupBys]);
+
+  const toggleGroup = (groupName: string) => {
+    setExpandedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
+  };
+
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const paginatedData = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -402,8 +450,56 @@ export default function SemuaLaporanKeuanganPage() {
                   <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </div>
               </div>
-
-
+              {/* Group By Select */}
+              <div className="flex items-center gap-2">
+                <Select
+                  value="none"
+                  onValueChange={(val) => {
+                    if (val !== 'none' && !groupBys.includes(val)) {
+                      setGroupBys(prev => [...prev, val]);
+                      setExpandedGroups({});
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-[180px] h-9 text-xs rounded-xl border-slate-200">
+                    <SelectValue placeholder="Tambah Group By..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Tambah Group By...</SelectItem>
+                    <SelectItem value="relawan">Berdasarkan Relawan</SelectItem>
+                    <SelectItem value="desa">Berdasarkan Desa</SelectItem>
+                    <SelectItem value="program">Berdasarkan Program</SelectItem>
+                    <SelectItem value="sumber_dana">Berdasarkan Sumber Dana</SelectItem>
+                    <SelectItem value="tahun">Berdasarkan Tahun</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FavoriteGroupSelector 
+                  moduleName="laporan_keuangan_semua" 
+                  currentGroupBys={groupBys} 
+                  onApplyFavorite={(groups) => {
+                    setGroupBys(groups)
+                    setExpandedGroups({})
+                  }} 
+                />
+                {groupBys.length > 0 && (
+                  <div className="flex flex-wrap gap-1 items-center">
+                    {groupBys.map((g, idx) => (
+                      <React.Fragment key={g}>
+                        <Badge variant="secondary" className="bg-slate-200 text-slate-700 text-[10px] uppercase gap-1 flex items-center pr-1 h-6">
+                          {g} 
+                          <button onClick={() => {
+                              setGroupBys(prev => prev.filter(v => v !== g));
+                              setExpandedGroups({});
+                          }} className="hover:bg-slate-300 p-0.5 rounded-full transition-colors">
+                            <X className="w-3 h-3 hover:text-rose-600"/>
+                          </button>
+                        </Badge>
+                        {idx < groupBys.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </CardHeader>
           
@@ -431,149 +527,190 @@ export default function SemuaLaporanKeuanganPage() {
                       {isAdminOrFinance && (
                         <>
                           <th className="px-4 py-3 text-center">Verif CA</th>
-                          <th className="px-4 py-3 text-center">Verif Refund</th>
+<th className="px-4 py-3 text-center">Verif Refund</th>
                         </>
                       )}
                       <th className="px-4 py-3 text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {paginatedData.map((a: any) => {
-                      const { realisasi, sisa } = getRealisasiAndSisa(a);
-                      const rowBg = a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50' : a.status_ca === 'UPLOADED' ? 'bg-amber-50' : 'bg-rose-50';
-                      const rowHoverBg = a.status_ca === 'DIVERIFIKASI' ? 'hover:bg-emerald-100' : a.status_ca === 'UPLOADED' ? 'hover:bg-amber-100' : 'hover:bg-rose-100';
-                      const statusShadow = a.status_ca === 'DIVERIFIKASI' ? 'shadow-[inset_4px_0_0_0_#10b981,1px_0_0_0_#f1f5f9]' : a.status_ca === 'UPLOADED' ? 'shadow-[inset_4px_0_0_0_#f59e0b,1px_0_0_0_#f1f5f9]' : 'shadow-[inset_4px_0_0_0_#f43f5e,1px_0_0_0_#f1f5f9]';
-                      const monthName = isNaN(Number(a.bulan)) ? a.bulan : (MONTHS[Number(a.bulan) - 1] || a.bulan);
-                      
-                      return (
-                        <tr key={a.id} className={`${rowBg} ${rowHoverBg} border-b border-slate-100 transition-colors`}>
-                          <td className={`px-4 py-3 sticky left-0 z-10 ${rowBg} ${rowHoverBg} ${statusShadow}`}>
-                            <div className="text-left outline-none min-w-[80px]">
-                              <div className="font-black text-slate-800 transition-colors flex items-center gap-2">
-                                {monthName}
-                              </div>
-                              <div className="text-[10px] font-bold text-slate-400 transition-colors">{a.tahun}</div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="text-left flex flex-col gap-1 w-[200px]">
-                              <div className="flex items-center gap-1.5">
-                                <Building2 className="w-3.5 h-3.5 text-[#7a1200] shrink-0" />
-                                <span className="font-bold text-slate-800 uppercase tracking-tight truncate">{a.nama_desa}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <Target className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                <span className="text-xs font-medium text-slate-600 truncate">{a.nama_program}</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 font-bold text-slate-700 whitespace-nowrap">
-                            Rp {parseInt(a.ajuan_ri || '0').toLocaleString('id-ID')}
-                          </td>
-                          <td className="px-4 py-3 font-black text-[#7a1200] whitespace-nowrap">
-                            Rp {parseInt(a.anggaran_dicairkan || '0').toLocaleString('id-ID')}
-                          </td>
-                          <td className="px-4 py-3 font-bold text-amber-600 whitespace-nowrap">
-                            Rp {realisasi.toLocaleString('id-ID')}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`font-black tracking-tight ${sisa < 0 ? 'text-rose-600' : 'text-slate-700'}`}>Rp {sisa.toLocaleString('id-ID')}</span>
-                          </td>
-                          <td className="px-4 py-3 text-center align-middle">
-                            {renderBukti(a.bukti_ca_url)}
-                          </td>
-                          <td className="px-4 py-3 text-center align-middle">
-                            {renderBukti(a.bukti_pengembalian_url)}
-                          </td>
-                          <td className="px-4 py-3 align-middle">
-                            <div className="flex flex-col items-center gap-1">
-                              {a.status_ca === 'DIVERIFIKASI' ? (
-                                <Badge className="bg-emerald-100 text-emerald-700 text-[9px]">DIVERIFIKASI</Badge>
-                              ) : a.status_ca === 'UPLOADED' ? (
-                                <Badge className="bg-amber-100 text-amber-700 text-[9px]">UPLOADED</Badge>
-                              ) : (
-                                <Badge className="bg-slate-100 text-slate-500 text-[9px]">BELUM</Badge>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 align-middle min-w-[150px]">
-                            <textarea 
-                              className="w-full text-xs p-2 bg-slate-50 border border-slate-100 rounded-lg min-h-[50px] resize-none"
-                              defaultValue={a.catatan_ca || ''}
-                              id={`note-${a.id}`}
-                              onBlur={(e) => !isAdminOrFinance && handleUpdateCatatan(a.id, e.target.value)}
-                              placeholder="Catatan..."
-                            />
-                          </td>
-                          {isAdminOrFinance && (
-                            <>
-                              <td className="px-4 py-3 text-center align-middle">
-                                <div className="flex flex-row gap-1 justify-center items-center">
-                                  {a.status_ca === 'DIVERIFIKASI' ? (
-                                    <>
-                                      <Button size="sm" className="h-8 w-8 p-0 rounded-lg bg-emerald-50 text-emerald-700 pointer-events-none shadow-none border border-emerald-100">
-                                        <CheckCircle2 className="w-5 h-5" />
-                                      </Button>
-                                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:bg-rose-50 hover:text-rose-500 rounded-lg" onClick={() => handleVerify(a.id, 'UPLOADED', '')}>
-                                        <X className="w-5 h-5" />
-                                      </Button>
-                                    </>
-                                  ) : (
-                                    <Button size="sm" className="h-8 w-8 p-0 rounded-lg transition-all bg-[#7a1200] hover:bg-[#007370] text-white"
-                                      onClick={() => {
-                                        const note = (document.getElementById(`note-${a.id}`) as HTMLTextAreaElement).value
-                                        handleVerify(a.id, 'DIVERIFIKASI', note)
-                                      }}
-                                      disabled={!a.bukti_ca_url || verifyingId === a.id}
-                                    >
-                                      {verifyingId === a.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
-                                    </Button>
-                                  )}
+                    {(() => {
+                      const renderDataRow = (a: any) => {
+                        const { realisasi, sisa } = getRealisasiAndSisa(a);
+                        const rowBg = a.status_ca === 'DIVERIFIKASI' ? 'bg-emerald-50' : a.status_ca === 'UPLOADED' ? 'bg-amber-50' : 'bg-rose-50';
+                        const rowHoverBg = a.status_ca === 'DIVERIFIKASI' ? 'hover:bg-emerald-100' : a.status_ca === 'UPLOADED' ? 'hover:bg-amber-100' : 'hover:bg-rose-100';
+                        const statusShadow = a.status_ca === 'DIVERIFIKASI' ? 'shadow-[inset_4px_0_0_0_#10b981,1px_0_0_0_#f1f5f9]' : a.status_ca === 'UPLOADED' ? 'shadow-[inset_4px_0_0_0_#f59e0b,1px_0_0_0_#f1f5f9]' : 'shadow-[inset_4px_0_0_0_#f43f5e,1px_0_0_0_#f1f5f9]';
+                        const monthName = isNaN(Number(a.bulan)) ? a.bulan : (MONTHS[Number(a.bulan) - 1] || a.bulan);
+                        
+                        return (
+                          <tr key={a.id} className={`${rowBg} ${rowHoverBg} border-b border-slate-100 transition-colors`}>
+                            <td className={`px-4 py-3 sticky left-0 z-10 ${rowBg} ${rowHoverBg} ${statusShadow}`}>
+                              <div className="text-left outline-none min-w-[80px]">
+                                <div className="font-black text-slate-800 transition-colors flex items-center gap-2">
+                                  {monthName}
                                 </div>
-                              </td>
-                              <td className="px-4 py-3 text-center align-middle">
-                                <div className="flex flex-row gap-1 justify-center items-center">
-                                  {a.bukti_pengembalian_url ? (
-                                    a.status_pengembalian === 'DIVERIFIKASI' ? (
+                                <div className="text-[10px] font-bold text-slate-400 transition-colors">{a.tahun}</div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="text-left flex flex-col gap-1 w-[200px]">
+                                <div className="flex items-center gap-1.5">
+                                  <Building2 className="w-3.5 h-3.5 text-[#7a1200] shrink-0" />
+                                  <span className="font-bold text-slate-800 uppercase tracking-tight truncate">{a.nama_desa}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <Target className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                  <span className="text-xs font-medium text-slate-600 truncate">{a.nama_program}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 font-bold text-slate-700 whitespace-nowrap">
+                              Rp {parseInt(a.ajuan_ri || '0').toLocaleString('id-ID')}
+                            </td>
+                            <td className="px-4 py-3 font-black text-[#7a1200] whitespace-nowrap">
+                              Rp {parseInt(a.anggaran_dicairkan || '0').toLocaleString('id-ID')}
+                            </td>
+                            <td className="px-4 py-3 font-bold text-amber-600 whitespace-nowrap">
+                              Rp {realisasi.toLocaleString('id-ID')}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`font-black tracking-tight ${sisa < 0 ? 'text-rose-600' : 'text-slate-700'}`}>Rp {sisa.toLocaleString('id-ID')}</span>
+                            </td>
+                            <td className="px-4 py-3 text-center align-middle">
+                              {renderBukti(a.bukti_ca_url)}
+                            </td>
+                            <td className="px-4 py-3 text-center align-middle">
+                              {renderBukti(a.bukti_pengembalian_url)}
+                            </td>
+                            <td className="px-4 py-3 align-middle">
+                              <div className="flex flex-col items-center gap-1">
+                                {a.status_ca === 'DIVERIFIKASI' ? (
+                                  <Badge className="bg-emerald-100 text-emerald-700 text-[9px]">DIVERIFIKASI</Badge>
+                                ) : a.status_ca === 'UPLOADED' ? (
+                                  <Badge className="bg-amber-100 text-amber-700 text-[9px]">UPLOADED</Badge>
+                                ) : (
+                                  <Badge className="bg-slate-100 text-slate-500 text-[9px]">BELUM</Badge>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 align-middle min-w-[150px]">
+                              <textarea 
+                                className="w-full text-xs p-2 bg-slate-50 border border-slate-100 rounded-lg min-h-[50px] resize-none"
+                                defaultValue={a.catatan_ca || ''}
+                                id={`note-${a.id}`}
+                                onBlur={(e) => !isAdminOrFinance && handleUpdateCatatan(a.id, e.target.value)}
+                                placeholder="Catatan..."
+                              />
+                            </td>
+                            {isAdminOrFinance && (
+                              <>
+                                <td className="px-4 py-3 text-center align-middle">
+                                  <div className="flex flex-row gap-1 justify-center items-center">
+                                    {a.status_ca === 'DIVERIFIKASI' ? (
                                       <>
-                                        <Button size="sm" className="h-8 w-8 p-0 rounded-lg bg-indigo-50 text-indigo-700 pointer-events-none shadow-none border border-indigo-100">
+                                        <Button size="sm" className="h-8 w-8 p-0 rounded-lg bg-emerald-50 text-emerald-700 pointer-events-none shadow-none border border-emerald-100">
                                           <CheckCircle2 className="w-5 h-5" />
                                         </Button>
-                                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:bg-slate-50 hover:text-rose-500 rounded-lg" onClick={() => handleVerifyPengembalian(a.id, 'UPLOADED', '')}>
+                                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:bg-rose-50 hover:text-rose-500 rounded-lg" onClick={() => handleVerify(a.id, 'UPLOADED', '')}>
                                           <X className="w-5 h-5" />
                                         </Button>
                                       </>
                                     ) : (
-                                      <Button size="sm" className="h-8 w-8 p-0 rounded-lg transition-all bg-rose-500 hover:bg-rose-600 text-white" onClick={() => handleVerifyPengembalian(a.id, 'DIVERIFIKASI', '')} disabled={verifyingId === a.id}>
+                                      <Button size="sm" className="h-8 w-8 p-0 rounded-lg transition-all bg-[#7a1200] hover:bg-[#007370] text-white"
+                                        onClick={() => {
+                                          const note = (document.getElementById(`note-${a.id}`) as HTMLTextAreaElement).value
+                                          handleVerify(a.id, 'DIVERIFIKASI', note)
+                                        }}
+                                        disabled={!a.bukti_ca_url || verifyingId === a.id}
+                                      >
                                         {verifyingId === a.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
                                       </Button>
-                                    )
-                                  ) : (
-                                    <span className="text-[10px] font-bold text-slate-300">-</span>
-                                  )}
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-center align-middle">
+                                  <div className="flex flex-row gap-1 justify-center items-center">
+                                    {a.bukti_pengembalian_url ? (
+                                      a.status_pengembalian === 'DIVERIFIKASI' ? (
+                                        <>
+                                          <Button size="sm" className="h-8 w-8 p-0 rounded-lg bg-indigo-50 text-indigo-700 pointer-events-none shadow-none border border-indigo-100">
+                                            <CheckCircle2 className="w-5 h-5" />
+                                          </Button>
+                                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:bg-slate-50 hover:text-rose-500 rounded-lg" onClick={() => handleVerifyPengembalian(a.id, 'UPLOADED', '')}>
+                                            <X className="w-5 h-5" />
+                                          </Button>
+                                        </>
+                                      ) : (
+                                        <Button size="sm" className="h-8 w-8 p-0 rounded-lg transition-all bg-rose-500 hover:bg-rose-600 text-white" onClick={() => handleVerifyPengembalian(a.id, 'DIVERIFIKASI', '')} disabled={verifyingId === a.id}>
+                                          {verifyingId === a.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
+                                        </Button>
+                                      )
+                                    ) : (
+                                      <span className="text-[10px] font-bold text-slate-300">-</span>
+                                    )}
+                                  </div>
+                                </td>
+                              </>
+                            )}
+                            <td className="px-4 py-3 text-center align-middle">
+                              <Button 
+                                size="sm"
+                                variant="outline"
+                                className="text-[#7a1200] border-[#7a1200]/30 hover:bg-[#7a1200] hover:text-white transition-colors h-8 text-[10px] px-2"
+                                onClick={() => router.push(`/dashboard/laporan-keuangan-intervensi/${a.ip_id}`)}
+                              >
+                                Detail <ExternalLink className="w-3 h-3 ml-1" />
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      };
+
+                      const renderGroupNodes = (nodes: any[]) => {
+                        let rows: React.ReactNode[] = [];
+                        
+                        nodes.forEach(node => {
+                          rows.push(
+                            <tr 
+                              key={`group-${node.path}`}
+                              className="bg-slate-100/50 hover:bg-slate-100 cursor-pointer transition-colors border-b border-slate-200"
+                              onClick={() => toggleGroup(node.path)}
+                            >
+                              <td colSpan={isAdminOrFinance ? 13 : 11} className="px-4 py-3">
+                                <div className="flex items-center gap-2 font-black text-slate-800" style={{ paddingLeft: `${node.depth * 1.5}rem` }}>
+                                  {expandedGroups[node.path] ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                                  <span className="uppercase tracking-tight">{node.groupName}</span>
+                                  <Badge variant="secondary" className="bg-slate-200 text-slate-600 ml-1">{node.itemsCount}</Badge>
                                 </div>
                               </td>
-                            </>
-                          )}
-                          <td className="px-4 py-3 text-center align-middle">
-                            <Button 
-                              size="sm"
-                              variant="outline"
-                              className="text-[#7a1200] border-[#7a1200]/30 hover:bg-[#7a1200] hover:text-white transition-colors h-8 text-[10px] px-2"
-                              onClick={() => router.push(`/dashboard/laporan-keuangan-intervensi/${a.ip_id}`)}
-                            >
-                              Detail <ExternalLink className="w-3 h-3 ml-1" />
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            </tr>
+                          );
+                          
+                          if (expandedGroups[node.path]) {
+                            if (node.isLeaf) {
+                              node.children.forEach((a: any) => {
+                                rows.push(renderDataRow(a));
+                              });
+                            } else {
+                              rows.push(...renderGroupNodes(node.children));
+                            }
+                          }
+                        });
+                        
+                        return rows;
+                      };
+
+                      if (groupedData) {
+                        return renderGroupNodes(groupedData);
+                      } else {
+                        return paginatedData.map(renderDataRow);
+                      }
+                    })()}
                   </tbody>
                 </table>
               </div>
             )}
-            
-            {totalPages > 0 && (
+            {!groupedData && totalPages > 0 && (
               <div className="flex flex-col sm:flex-row justify-between items-center bg-slate-50 p-4 border-t border-slate-100 gap-4">
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-bold text-slate-500">

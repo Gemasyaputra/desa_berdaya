@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { PlusCircle, MapPin, Users, Search, Activity, Building2, ChevronRight } from 'lucide-react'
+import { PlusCircle, MapPin, Users, Search, Activity, Building2, ChevronRight, ChevronDown, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getDesaBinaanList } from './actions'
 import DeleteDesaButton from './DeleteDesaButton'
 import { useSession } from 'next-auth/react'
 import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
 import { X } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -25,6 +27,8 @@ export default function DesaBinaanPage() {
     relawan: [] as string[],
     status: [] as string[]
   })
+  const [groupBys, setGroupBys] = useState<string[]>([])
+  const [expandedTableGroups, setExpandedTableGroups] = useState<Record<string, boolean>>({})
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -116,6 +120,45 @@ export default function DesaBinaanPage() {
 
   const hasAnyFilter = search !== '' || Object.values(filters).some(arr => arr.length > 0)
 
+  const buildGroups = (data: any[], keys: string[], depth: number = 0, path: string = ''): any[] => {
+    if (depth >= keys.length || keys.length === 0) return data;
+    const keyType = keys[depth];
+    const map = new Map<string, any[]>();
+    
+    data.forEach(item => {
+      let val = 'Lain-lain';
+      if (keyType === 'provinsi') val = item.nama_provinsi || 'Tanpa Provinsi';
+      else if (keyType === 'kota') val = item.nama_kota || 'Tanpa Kota';
+      else if (keyType === 'relawan') val = item.nama_relawan || 'Tanpa Relawan';
+      else if (keyType === 'status') val = item.status_aktif ? 'Aktif' : 'Nonaktif';
+      
+      if (!map.has(val)) map.set(val, []);
+      map.get(val)!.push(item);
+    });
+
+    const groups = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    return groups.map(([groupName, items]) => {
+      const currentPath = path ? `${path}|${groupName}` : groupName;
+      return {
+        groupName,
+        path: currentPath,
+        depth,
+        itemsCount: items.length,
+        children: buildGroups(items, keys, depth + 1, currentPath),
+        isLeaf: depth === keys.length - 1
+      };
+    });
+  };
+
+  const groupedData = React.useMemo(() => {
+    if (groupBys.length === 0) return null;
+    return buildGroups(filtered, groupBys);
+  }, [filtered, groupBys]);
+
+  const toggleTableGroup = (path: string) => {
+    setExpandedTableGroups(prev => ({ ...prev, [path]: !prev[path] }))
+  }
+
   const formatDate = (dateString: string) =>
     new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(dateString))
 
@@ -201,6 +244,59 @@ export default function DesaBinaanPage() {
               <X className="w-4 h-4" />
               Reset
             </Button>
+          )}
+
+          <div className="hidden md:flex items-center gap-2 ml-auto shrink-0">
+            <Select value="none" onValueChange={(val) => { 
+              if (val !== 'none' && !groupBys.includes(val)) {
+                setGroupBys(prev => [...prev, val]);
+                setExpandedTableGroups({}); 
+              }
+            }}>
+              <SelectTrigger className="w-[180px] bg-white border-slate-200 rounded-xl h-[42px] font-bold text-slate-600">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-slate-400" />
+                  <SelectValue placeholder="Tambah Group By" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Tambah Group By...</SelectItem>
+                <SelectItem value="provinsi">Berdasarkan Provinsi</SelectItem>
+                <SelectItem value="kota">Berdasarkan Kota</SelectItem>
+                <SelectItem value="relawan">Berdasarkan Relawan</SelectItem>
+                <SelectItem value="status">Berdasarkan Status</SelectItem>
+              </SelectContent>
+            </Select>
+            <FavoriteGroupSelector 
+              moduleName="desa" 
+              currentGroupBys={groupBys} 
+              onApplyFavorite={(groups) => {
+                setGroupBys(groups)
+                setExpandedTableGroups({})
+              }} 
+            />
+          </div>
+        </div>
+
+        {/* Group By Chips (Desktop Only) */}
+        <div className="hidden md:flex">
+          {groupBys.length > 0 && (
+            <div className="flex flex-wrap gap-1 items-center">
+              {groupBys.map((g, idx) => (
+                <div key={g} className="flex items-center gap-1">
+                  <div className="bg-slate-200 text-slate-700 text-[10px] uppercase font-bold px-2 py-1 rounded flex items-center gap-1">
+                    {g} 
+                    <button onClick={() => {
+                        setGroupBys(prev => prev.filter(v => v !== g));
+                        setExpandedTableGroups({});
+                    }} className="hover:bg-slate-300 p-0.5 rounded-full transition-colors">
+                      <X className="w-3 h-3 hover:text-rose-600"/>
+                    </button>
+                  </div>
+                  {idx < groupBys.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
@@ -304,56 +400,96 @@ export default function DesaBinaanPage() {
                       ? (isPrivilegedUI ? 'Belum ada data desa binaan.' : 'Anda belum ditugaskan ke desa manapun.')
                       : 'Tidak ada hasil yang cocok'}
                   </td></tr>
-                ) : filtered.map((desa) => (
-                  <tr key={desa.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-slate-800">{desa.nama_desa}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">Kec. {desa.nama_kecamatan}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5 text-slate-600">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        {desa.nama_kota}
-                      </div>
-                      <span className="text-xs text-slate-400 pl-5">{desa.nama_provinsi}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-slate-700">
-                        <Users className="w-4 h-4 text-slate-400" />
-                        {desa.nama_relawan}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-1.5">
-                        <span className={`inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-xs font-medium ${
-                          desa.status_aktif ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${desa.status_aktif ? 'bg-green-500' : 'bg-red-500'}`} />
-                          {desa.status_aktif ? 'Aktif' : 'Nonaktif'}
-                        </span>
-                        <div className="text-xs text-slate-400 flex items-center gap-1">
-                          <Activity className="w-3 h-3" />
-                          Mulai: {formatDate(desa.tanggal_mulai)}
+                ) : (() => {
+                  const renderDataRow = (desa: any) => (
+                    <tr key={desa.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-slate-800">{desa.nama_desa}</div>
+                        <div className="text-xs text-slate-500 mt-0.5">Kec. {desa.nama_kecamatan}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5 text-slate-600">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          {desa.nama_kota}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 justify-end">
-                        <Link href={`/dashboard/desa/${desa.id}`}>
-                          <Button variant="outline" size="sm" className="text-[#7a1200] border-red-200 hover:bg-red-50">Detail</Button>
-                        </Link>
-                        {isPrivilegedUI && (
-                          <>
-                            <Link href={`/dashboard/desa/${desa.id}/edit`}>
-                              <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100">Edit</Button>
-                            </Link>
-                            <DeleteDesaButton id={desa.id} />
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        <span className="text-xs text-slate-400 pl-5">{desa.nama_provinsi}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2 text-slate-700">
+                          <Users className="w-4 h-4 text-slate-400" />
+                          {desa.nama_relawan}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="space-y-1.5">
+                          <span className={`inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-xs font-medium ${
+                            desa.status_aktif ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${desa.status_aktif ? 'bg-green-500' : 'bg-red-500'}`} />
+                            {desa.status_aktif ? 'Aktif' : 'Nonaktif'}
+                          </span>
+                          <div className="text-xs text-slate-400 flex items-center gap-1">
+                            <Activity className="w-3 h-3" />
+                            Mulai: {formatDate(desa.tanggal_mulai)}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2 justify-end">
+                          <Link href={`/dashboard/desa/${desa.id}`}>
+                            <Button variant="outline" size="sm" className="text-[#7a1200] border-red-200 hover:bg-red-50">Detail</Button>
+                          </Link>
+                          {isPrivilegedUI && (
+                            <>
+                              <Link href={`/dashboard/desa/${desa.id}/edit`}>
+                                <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100">Edit</Button>
+                              </Link>
+                              <DeleteDesaButton id={desa.id} />
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+
+                  const renderGroupNodes = (nodes: any[]) => {
+                    let rows: React.ReactNode[] = [];
+                    nodes.forEach(node => {
+                      rows.push(
+                        <tr 
+                          key={`group-${node.path}`}
+                          className="bg-slate-50/50 hover:bg-slate-100 cursor-pointer transition-colors border-b border-slate-200"
+                          onClick={() => toggleTableGroup(node.path)}
+                        >
+                          <td colSpan={5} className="px-6 py-3 sticky left-0 z-20 bg-slate-50/90">
+                            <div className="flex items-center gap-2 font-black text-slate-800" style={{ paddingLeft: `${node.depth * 1.5}rem` }}>
+                              {expandedTableGroups[node.path] ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                              <span className="uppercase tracking-tight">{node.groupName}</span>
+                              <div className="bg-slate-200 text-slate-600 ml-1 px-2 py-0.5 rounded text-xs">{node.itemsCount}</div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                      
+                      if (expandedTableGroups[node.path]) {
+                        if (node.isLeaf) {
+                          node.children.forEach((row: any) => {
+                            rows.push(renderDataRow(row));
+                          });
+                        } else {
+                          rows.push(...renderGroupNodes(node.children));
+                        }
+                      }
+                    });
+                    return rows;
+                  };
+
+                  if (groupedData) {
+                    return renderGroupNodes(groupedData);
+                  } else {
+                    return filtered.map(renderDataRow);
+                  }
+                })()}
               </tbody>
             </table>
           </div>

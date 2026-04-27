@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, Users, LayoutGrid, List, Download, Search, X } from 'lucide-react'
+import { Plus, Edit, Trash2, Users, LayoutGrid, List, Download, Search, X, Layers, ChevronRight, ChevronDown } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,6 +23,7 @@ import {
 } from '@/lib/actions/kelompok'
 import { getPenerimaManfaatByDesaId } from '@/app/dashboard/pm/actions'
 import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
 
 export default function ClientKelompokMainPanel({ 
   initialKelompok, 
@@ -64,6 +65,8 @@ export default function ClientKelompokMainPanel({
   const [filterGender, setFilterGender] = useState<string[]>([])
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+  const [groupBys, setGroupBys] = useState<string[]>([])
+  const [expandedTableGroups, setExpandedTableGroups] = useState<Record<string, boolean>>({})
   
   // Kelompok list filters
   const [searchKelompok, setSearchKelompok] = useState('')
@@ -138,6 +141,46 @@ export default function ClientKelompokMainPanel({
   }
 
   const hasAnyFilter = searchKelompok !== '' || Object.values(kelompokFilters).some(arr => arr.length > 0)
+
+  const buildGroups = (data: any[], keys: string[], depth: number = 0, path: string = ''): any[] => {
+    if (depth >= keys.length || keys.length === 0) return data;
+    const keyType = keys[depth];
+    const map = new Map<string, any[]>();
+    
+    data.forEach(item => {
+      let val = 'Lain-lain';
+      if (keyType === 'desa') val = item.nama_desa || 'Tanpa Desa';
+      else if (keyType === 'program') val = item.nama_program || 'Tanpa Program';
+      else if (keyType === 'tahun') val = (item.tahun || '').toString();
+      else if (keyType === 'pembina') val = item.nama_pembina || 'Tanpa Pembina';
+      else if (keyType === 'relawan') val = item.nama_relawan || 'Tanpa Relawan';
+      
+      if (!map.has(val)) map.set(val, []);
+      map.get(val)!.push(item);
+    });
+
+    const groups = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    return groups.map(([groupName, items]) => {
+      const currentPath = path ? `${path}|${groupName}` : groupName;
+      return {
+        groupName,
+        path: currentPath,
+        depth,
+        itemsCount: items.length,
+        children: buildGroups(items, keys, depth + 1, currentPath),
+        isLeaf: depth === keys.length - 1
+      };
+    });
+  };
+
+  const groupedData = React.useMemo(() => {
+    if (groupBys.length === 0) return null;
+    return buildGroups(filteredKelompok, groupBys);
+  }, [filteredKelompok, groupBys]);
+
+  const toggleTableGroup = (path: string) => {
+    setExpandedTableGroups(prev => ({ ...prev, [path]: !prev[path] }))
+  }
 
   const exportToExcel = () => {
     const dataToExport = filteredKelompok.map((kel: any) => ({
@@ -372,8 +415,9 @@ export default function ClientKelompokMainPanel({
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row flex-wrap gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+        {/* Search bar — full width */}
+        <div className="relative w-full mb-3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
@@ -384,52 +428,108 @@ export default function ClientKelompokMainPanel({
           />
         </div>
 
-        <MultiSelectFilter 
-          label="Desa Binaan" 
-          options={filterOptions.desa} 
-          selected={kelompokFilters.desa}
-          onSelect={(val) => toggleFilter('desa', val)}
-          onClear={() => setKelompokFilters(f => ({ ...f, desa: [] }))}
-        />
-        <MultiSelectFilter 
-          label="Program" 
-          options={filterOptions.program} 
-          selected={kelompokFilters.program}
-          onSelect={(val) => toggleFilter('program', val)}
-          onClear={() => setKelompokFilters(f => ({ ...f, program: [] }))}
-        />
-        <MultiSelectFilter 
-          label="Tahun" 
-          options={filterOptions.tahun} 
-          selected={kelompokFilters.tahun}
-          onSelect={(val) => toggleFilter('tahun', val)}
-          onClear={() => setKelompokFilters(f => ({ ...f, tahun: [] }))}
-        />
-        <MultiSelectFilter 
-          label="Pembina" 
-          options={filterOptions.pembina} 
-          selected={kelompokFilters.pembina}
-          onSelect={(val) => toggleFilter('pembina', val)}
-          onClear={() => setKelompokFilters(f => ({ ...f, pembina: [] }))}
-        />
-        <MultiSelectFilter 
-          label="Relawan" 
-          options={filterOptions.relawan} 
-          selected={kelompokFilters.relawan}
-          onSelect={(val) => toggleFilter('relawan', val)}
-          onClear={() => setKelompokFilters(f => ({ ...f, relawan: [] }))}
-        />
+        {/* Filter chips — horizontal scroll on mobile */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <MultiSelectFilter 
+            label="Desa Binaan" 
+            options={filterOptions.desa} 
+            selected={kelompokFilters.desa}
+            onSelect={(val) => toggleFilter('desa', val)}
+            onClear={() => setKelompokFilters(f => ({ ...f, desa: [] }))}
+          />
+          <MultiSelectFilter 
+            label="Program" 
+            options={filterOptions.program} 
+            selected={kelompokFilters.program}
+            onSelect={(val) => toggleFilter('program', val)}
+            onClear={() => setKelompokFilters(f => ({ ...f, program: [] }))}
+          />
+          <MultiSelectFilter 
+            label="Tahun" 
+            options={filterOptions.tahun} 
+            selected={kelompokFilters.tahun}
+            onSelect={(val) => toggleFilter('tahun', val)}
+            onClear={() => setKelompokFilters(f => ({ ...f, tahun: [] }))}
+          />
+          <MultiSelectFilter 
+            label="Korwil" 
+            options={filterOptions.pembina} 
+            selected={kelompokFilters.pembina}
+            onSelect={(val) => toggleFilter('pembina', val)}
+            onClear={() => setKelompokFilters(f => ({ ...f, pembina: [] }))}
+          />
+          <MultiSelectFilter 
+            label="Relawan" 
+            options={filterOptions.relawan} 
+            selected={kelompokFilters.relawan}
+            onSelect={(val) => toggleFilter('relawan', val)}
+            onClear={() => setKelompokFilters(f => ({ ...f, relawan: [] }))}
+          />
 
-        {hasAnyFilter && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-[42px] px-3 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-bold gap-1 transition-colors"
-            onClick={clearFilters}
-          >
-            <X className="w-4 h-4" />
-            Reset
-          </Button>
+          {hasAnyFilter && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-[42px] px-3 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-bold gap-1 transition-colors shrink-0"
+              onClick={clearFilters}
+            >
+              <X className="w-4 h-4" />
+              Reset
+            </Button>
+          )}
+
+          {viewMode === 'table' && (
+            <div className="flex items-center gap-2 ml-auto shrink-0">
+              <Select value="none" onValueChange={(val) => { 
+                if (val !== 'none' && !groupBys.includes(val)) {
+                  setGroupBys(prev => [...prev, val]);
+                  setExpandedTableGroups({}); 
+                }
+              }}>
+                <SelectTrigger className="w-[180px] bg-white border-slate-200 rounded-xl h-[42px] font-bold text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-slate-400" />
+                    <SelectValue placeholder="Tambah Group By" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Tambah Group By...</SelectItem>
+                  <SelectItem value="desa">Berdasarkan Desa</SelectItem>
+                  <SelectItem value="program">Berdasarkan Program</SelectItem>
+                  <SelectItem value="tahun">Berdasarkan Tahun</SelectItem>
+                  <SelectItem value="pembina">Berdasarkan Korwil</SelectItem>
+                  <SelectItem value="relawan">Berdasarkan Relawan</SelectItem>
+                </SelectContent>
+              </Select>
+              <FavoriteGroupSelector 
+                moduleName="kelompok" 
+                currentGroupBys={groupBys} 
+                onApplyFavorite={(groups) => {
+                  setGroupBys(groups)
+                  setExpandedTableGroups({})
+                }} 
+              />
+            </div>
+          )}
+        </div>
+        
+        {viewMode === 'table' && groupBys.length > 0 && (
+          <div className="flex flex-wrap gap-1 items-center mt-3 pt-3 border-t border-slate-100">
+            {groupBys.map((g, idx) => (
+              <React.Fragment key={g}>
+                <div className="bg-slate-200 text-slate-700 text-[10px] uppercase font-bold px-2 py-1 rounded flex items-center gap-1">
+                  {g} 
+                  <button onClick={() => {
+                      setGroupBys(prev => prev.filter(v => v !== g));
+                      setExpandedTableGroups({});
+                  }} className="hover:bg-slate-300 p-0.5 rounded-full transition-colors">
+                    <X className="w-3 h-3 hover:text-rose-600"/>
+                  </button>
+                </div>
+                {idx < groupBys.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
+              </React.Fragment>
+            ))}
+          </div>
         )}
       </div>
 
@@ -440,60 +540,65 @@ export default function ClientKelompokMainPanel({
               <thead className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">
                 <tr>
                   <th className="px-4 py-3 min-w-[200px] sticky left-0 bg-slate-50 z-10 border-r border-slate-100">Nama Kelompok</th>
-                  <th className="px-4 py-3 min-w-[150px]">Atribut</th>
-                  <th className="px-4 py-3 min-w-[150px]">Kepengurusan</th>
+                  <th className="px-4 py-3 min-w-[70px]">Tahun</th>
+                  <th className="px-4 py-3 min-w-[140px]">Desa</th>
+                  <th className="px-4 py-3 min-w-[160px]">Program</th>
+                  <th className="px-4 py-3 min-w-[140px]">Korwil</th>
+                  <th className="px-4 py-3 min-w-[140px]">Relawan</th>
                   <th className="px-4 py-3 min-w-[200px]">Anggota PM</th>
                   {canMod && <th className="px-4 py-3 min-w-[100px] text-right">Aksi</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredKelompok.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
-                      {initialKelompok.length === 0 ? 'Belum Ada Kelompok' : 'Tidak ada kelompok yang cocok dengan filter'}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredKelompok.map(kel => (
+                {(() => {
+                  const renderDataRow = (kel: any) => (
                     <tr key={kel.id} className="hover:bg-slate-50/50 group/row transition-colors">
                       <td className="px-4 py-3 sticky left-0 bg-white group-hover/row:bg-slate-50 z-10 border-r border-slate-100/50 align-top">
                         <div className="font-bold text-slate-800">{kel.nama_kelompok}</div>
-                        <div className="text-[10px] text-slate-500 font-bold mt-1 tracking-wider">TAHUN: {kel.tahun}</div>
                       </td>
                       <td className="px-4 py-3 align-top">
-                        <div className="flex flex-col items-start gap-1.5">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border-none">
-                            <span className="mr-1 opacity-70">Desa:</span> {kel.nama_desa}
-                          </span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border-none">
-                            <span className="mr-1 opacity-70">Prog:</span> {kel.nama_program} 
-                          </span>
-                        </div>
+                        <span className="text-[11px] font-bold text-slate-500">{kel.tahun}</span>
                       </td>
                       <td className="px-4 py-3 align-top">
-                        <div className="text-[11px] font-semibold text-slate-700"><span className="text-slate-400 font-normal">Pembina:</span> {kel.nama_pembina}</div>
-                        <div className="text-[11px] font-semibold text-slate-700 mt-1.5"><span className="text-slate-400 font-normal">Relawan:</span> {kel.nama_relawan || '-'}</div>
+                        <span className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-700">
+                          {kel.nama_desa}
+                        </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-between items-center mb-2">
-                           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{kel.anggota?.length || 0} Anggota</span>
-                           {canMod && (
-                             <button onClick={() => handleOpenTambahAnggota(kel)} className="text-[10px] font-bold text-[var(--brand-primary)] hover:underline flex items-center bg-rose-50 px-2 py-0.5 rounded cursor-pointer">
-                               <Plus className="w-3 h-3 mr-0.5"/> Tambah
-                             </button>
-                           )}
+                      <td className="px-4 py-3 align-top">
+                        <span className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-bold bg-blue-50 text-blue-700">
+                          {kel.nama_program}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <div className="text-[11px] font-semibold text-slate-700">{kel.nama_pembina}</div>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <div className="text-[11px] font-semibold text-slate-700">{kel.nama_relawan || '-'}</div>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {kel.anggota && kel.anggota.length > 0 ? (
+                            <>
+                              {kel.anggota.slice(0, 5).map((a: any) => (
+                                <span key={a.id} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/60 whitespace-nowrap">
+                                  {a.nama_pm}
+                                </span>
+                              ))}
+                              {kel.anggota.length > 5 && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-[#7a1200]/10 text-[#7a1200] border border-[#7a1200]/20 whitespace-nowrap">
+                                  +{kel.anggota.length - 5} lagi
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 italic font-medium">Belum ada PM</span>
+                          )}
                         </div>
-                        <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1 custom-scrollbar">
-                           {kel.anggota && kel.anggota.length > 0 ? (
-                             kel.anggota.map((a: any) => (
-                               <span key={a.id} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/60">
-                                 {a.nama_pm}
-                               </span>
-                             ))
-                           ) : (
-                             <span className="text-[10px] text-slate-400 italic font-medium">Belum ada PM</span>
-                           )}
-                        </div>
+                        {canMod && (
+                          <button onClick={() => handleOpenTambahAnggota(kel)} className="mt-2 text-[10px] font-bold text-[var(--brand-primary)] hover:underline flex items-center bg-rose-50 px-2 py-0.5 rounded cursor-pointer w-fit">
+                            <Plus className="w-3 h-3 mr-0.5"/> Tambah
+                          </button>
+                        )}
                       </td>
                       {canMod && (
                         <td className="px-4 py-3 align-top text-right">
@@ -508,8 +613,56 @@ export default function ClientKelompokMainPanel({
                         </td>
                       )}
                     </tr>
-                  ))
-                )}
+                  );
+
+                  const renderGroupNodes = (nodes: any[]) => {
+                    let rows: React.ReactNode[] = [];
+                    nodes.forEach(node => {
+                      rows.push(
+                        <tr 
+                          key={`group-${node.path}`}
+                          className="bg-slate-50/50 hover:bg-slate-100 cursor-pointer transition-colors border-b border-slate-200"
+                          onClick={() => toggleTableGroup(node.path)}
+                        >
+                          <td colSpan={canMod ? 8 : 7} className="px-4 py-3 sticky left-0 z-20 bg-slate-50/90 shadow-[2px_0_0_0_#cbd5e1]">
+                            <div className="flex items-center gap-2 font-black text-slate-800" style={{ paddingLeft: `${node.depth * 1.5}rem` }}>
+                              {expandedTableGroups[node.path] ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                              <span className="uppercase tracking-tight">{node.groupName}</span>
+                              <div className="bg-slate-200 text-slate-600 ml-1 px-2 py-0.5 rounded text-xs">{node.itemsCount}</div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                      
+                      if (expandedTableGroups[node.path]) {
+                        if (node.isLeaf) {
+                          node.children.forEach((row: any) => {
+                            rows.push(renderDataRow(row));
+                          });
+                        } else {
+                          rows.push(...renderGroupNodes(node.children));
+                        }
+                      }
+                    });
+                    return rows;
+                  };
+
+                  if (filteredKelompok.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={canMod ? 8 : 7} className="px-4 py-8 text-center text-slate-500">
+                          {initialKelompok.length === 0 ? 'Belum Ada Kelompok' : 'Tidak ada kelompok yang cocok dengan filter'}
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  if (groupedData) {
+                    return renderGroupNodes(groupedData);
+                  } else {
+                    return filteredKelompok.map(renderDataRow);
+                  }
+                })()}
               </tbody>
             </table>
           </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { PlusCircle, Search, MapPin, UserSquare2, Users, ChevronRight, Upload, Download, FileSpreadsheet } from 'lucide-react'
+import { PlusCircle, Search, MapPin, UserSquare2, Users, ChevronRight, ChevronDown, Upload, Download, FileSpreadsheet, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
@@ -14,6 +14,7 @@ import { getPenerimaManfaatList, getDesaBerdayaOptions, importPemerimaManfaatExc
 import { useSession } from 'next-auth/react'
 import * as xlsx from 'xlsx'
 import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
 import { X } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -34,6 +35,8 @@ export default function PenerimaManfaatPage() {
     desa: [] as string[],
     kategori: [] as string[]
   })
+  const [groupBys, setGroupBys] = useState<string[]>([])
+  const [expandedTableGroups, setExpandedTableGroups] = useState<Record<string, boolean>>({})
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -137,6 +140,44 @@ export default function PenerimaManfaatPage() {
   }
 
   const hasAnyFilter = search !== '' || filterKtpStatus !== 'all' || filters.desa.length > 0 || filters.kategori.length > 0
+
+  const buildGroups = (data: any[], keys: string[], depth: number = 0, path: string = ''): any[] => {
+    if (depth >= keys.length || keys.length === 0) return data;
+    const keyType = keys[depth];
+    const map = new Map<string, any[]>();
+    
+    data.forEach(item => {
+      let val = 'Lain-lain';
+      if (keyType === 'desa') val = item.nama_desa || 'Tanpa Desa';
+      else if (keyType === 'kategori') val = item.kategori_pm || 'Tidak Ada';
+      else if (keyType === 'ktp') val = item.foto_ktp_url ? 'Ada KTP' : 'Belum Ada KTP';
+      
+      if (!map.has(val)) map.set(val, []);
+      map.get(val)!.push(item);
+    });
+
+    const groups = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    return groups.map(([groupName, items]) => {
+      const currentPath = path ? `${path}|${groupName}` : groupName;
+      return {
+        groupName,
+        path: currentPath,
+        depth,
+        itemsCount: items.length,
+        children: buildGroups(items, keys, depth + 1, currentPath),
+        isLeaf: depth === keys.length - 1
+      };
+    });
+  };
+
+  const groupedData = useMemo(() => {
+    if (groupBys.length === 0) return null;
+    return buildGroups(filtered, groupBys);
+  }, [filtered, groupBys]);
+
+  const toggleTableGroup = (path: string) => {
+    setExpandedTableGroups(prev => ({ ...prev, [path]: !prev[path] }))
+  }
 
   const handleDownloadTemplate = (desa: any) => {
     const wsData = [
@@ -296,8 +337,59 @@ export default function PenerimaManfaatPage() {
               Reset
             </Button>
           )}
+
+          <div className="hidden md:flex items-center gap-2 ml-auto shrink-0">
+            <Select value="none" onValueChange={(val) => { 
+              if (val !== 'none' && !groupBys.includes(val)) {
+                setGroupBys(prev => [...prev, val]);
+                setExpandedTableGroups({}); 
+              }
+            }}>
+              <SelectTrigger className="w-[180px] bg-white border-slate-200 rounded-xl h-[42px] font-bold text-slate-600">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-slate-400" />
+                  <SelectValue placeholder="Tambah Group By" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Tambah Group By...</SelectItem>
+                <SelectItem value="desa">Berdasarkan Desa</SelectItem>
+                <SelectItem value="kategori">Berdasarkan Kategori</SelectItem>
+                <SelectItem value="ktp">Berdasarkan Status KTP</SelectItem>
+              </SelectContent>
+            </Select>
+            <FavoriteGroupSelector 
+              moduleName="pm" 
+              currentGroupBys={groupBys} 
+              onApplyFavorite={(groups) => {
+                setGroupBys(groups)
+                setExpandedTableGroups({})
+              }} 
+            />
+          </div>
         </div>
 
+        {/* Group By Chips (Desktop Only) */}
+        <div className="hidden md:flex">
+          {groupBys.length > 0 && (
+            <div className="flex flex-wrap gap-1 items-center">
+              {groupBys.map((g, idx) => (
+                <div key={g} className="flex items-center gap-1">
+                  <div className="bg-slate-200 text-slate-700 text-[10px] uppercase font-bold px-2 py-1 rounded flex items-center gap-1">
+                    {g} 
+                    <button onClick={() => {
+                        setGroupBys(prev => prev.filter(v => v !== g));
+                        setExpandedTableGroups({});
+                    }} className="hover:bg-slate-300 p-0.5 rounded-full transition-colors">
+                      <X className="w-3 h-3 hover:text-rose-600"/>
+                    </button>
+                  </div>
+                  {idx < groupBys.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {!loading && (
           <p className="text-xs text-slate-400">{filtered.length} penerima manfaat ditemukan</p>
@@ -405,67 +497,107 @@ export default function PenerimaManfaatPage() {
                   <tr><td colSpan={4} className="px-6 py-12 text-center text-slate-500">
                     {list.length === 0 ? 'Belum ada data penerima manfaat.' : 'Tidak ada hasil yang cocok'}
                   </td></tr>
-                ) : filtered.map((pm) => (
-                  <tr key={pm.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-[#7a1200] shrink-0">
-                          <UserSquare2 className="w-5 h-5" />
+                ) : (() => {
+                  const renderDataRow = (pm: any) => (
+                    <tr key={pm.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-[#7a1200] shrink-0">
+                            <UserSquare2 className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-800 flex items-center gap-2">
+                              {pm.nama}
+                              {pm.foto_ktp_url ? (
+                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-100" title="Foto KTP Tersedia">
+                                   KTP
+                                 </span>
+                              ) : (
+                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-50 text-red-700 border border-red-100" title="Foto KTP Belum Diupload">
+                                   No KTP
+                                 </span>
+                              )}
+                            </p>
+                            <p className="text-xs text-slate-500 font-mono mt-0.5">{pm.nik}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold text-slate-800 flex items-center gap-2">
-                            {pm.nama}
-                            {pm.foto_ktp_url ? (
-                               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-100" title="Foto KTP Tersedia">
-                                 KTP
-                               </span>
-                            ) : (
-                               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-50 text-red-700 border border-red-100" title="Foto KTP Belum Diupload">
-                                 No KTP
-                               </span>
-                            )}
-                          </p>
-                          <p className="text-xs text-slate-500 font-mono mt-0.5">{pm.nik}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                          {pm.kategori_pm}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5 text-slate-600">
+                          <MapPin className="w-4 h-4 text-slate-400" />
+                          {pm.nama_desa}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
-                        {pm.kategori_pm}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5 text-slate-600">
-                        <MapPin className="w-4 h-4 text-slate-400" />
-                        {pm.nama_desa}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        {!pm.foto_ktp_url && canAdd && (
-                          <ShortcutUploadKtp pmId={pm.id} onSuccess={fetchData} />
-                        )}
-                        <Link href={`/dashboard/pm/${pm.id}`}>
-                          <Button variant="ghost" size="sm" className="text-[#7a1200] hover:bg-red-50">Detail</Button>
-                        </Link>
-                        {canMod && (
-                          <>
-                            <Link href={`/dashboard/pm/${pm.id}/edit`}>
-                              <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100">Edit</Button>
-                            </Link>
-                            <DeletePMButton 
-                              id={pm.id} 
-                              onDeleted={(deletedId) => {
-                                setList(prev => prev.filter((item) => item.id !== deletedId))
-                                setFiltered(prev => prev.filter((item) => item.id !== deletedId))
-                              }} 
-                            />
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          {!pm.foto_ktp_url && canAdd && (
+                            <ShortcutUploadKtp pmId={pm.id} onSuccess={fetchData} />
+                          )}
+                          <Link href={`/dashboard/pm/${pm.id}`}>
+                            <Button variant="ghost" size="sm" className="text-[#7a1200] hover:bg-red-50">Detail</Button>
+                          </Link>
+                          {canMod && (
+                            <>
+                              <Link href={`/dashboard/pm/${pm.id}/edit`}>
+                                <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100">Edit</Button>
+                              </Link>
+                              <DeletePMButton 
+                                id={pm.id} 
+                                onDeleted={(deletedId) => {
+                                  setList(prev => prev.filter((item) => item.id !== deletedId))
+                                  setFiltered(prev => prev.filter((item) => item.id !== deletedId))
+                                }} 
+                              />
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+
+                  const renderGroupNodes = (nodes: any[]) => {
+                    let rows: React.ReactNode[] = [];
+                    nodes.forEach(node => {
+                      rows.push(
+                        <tr 
+                          key={`group-${node.path}`}
+                          className="bg-slate-50/50 hover:bg-slate-100 cursor-pointer transition-colors border-b border-slate-200"
+                          onClick={() => toggleTableGroup(node.path)}
+                        >
+                          <td colSpan={4} className="px-6 py-3 sticky left-0 z-20 bg-slate-50/90">
+                            <div className="flex items-center gap-2 font-black text-slate-800" style={{ paddingLeft: `${node.depth * 1.5}rem` }}>
+                              {expandedTableGroups[node.path] ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                              <span className="uppercase tracking-tight">{node.groupName}</span>
+                              <div className="bg-slate-200 text-slate-600 ml-1 px-2 py-0.5 rounded text-xs">{node.itemsCount}</div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                      
+                      if (expandedTableGroups[node.path]) {
+                        if (node.isLeaf) {
+                          node.children.forEach((row: any) => {
+                            rows.push(renderDataRow(row));
+                          });
+                        } else {
+                          rows.push(...renderGroupNodes(node.children));
+                        }
+                      }
+                    });
+                    return rows;
+                  };
+
+                  if (groupedData) {
+                    return renderGroupNodes(groupedData);
+                  } else {
+                    return filtered.map(renderDataRow);
+                  }
+                })()}
               </tbody>
             </table>
           </div>

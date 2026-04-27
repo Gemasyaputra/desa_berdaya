@@ -16,7 +16,9 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 
 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
 
 export default function IntervensiListPage() {
   const router = useRouter()
@@ -33,6 +35,8 @@ export default function IntervensiListPage() {
   const [deleteTarget, setDeleteTarget] = useState<any>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [groupBys, setGroupBys] = useState<string[]>([])
+  const [expandedTableGroups, setExpandedTableGroups] = useState<Record<string, boolean>>({})
 
   // Duplicate states
   const [duplicateTarget, setDuplicateTarget] = useState<any>(null)
@@ -181,6 +185,45 @@ export default function IntervensiListPage() {
     filters.program.length > 0 || 
     filters.relawan.length > 0 || 
     filters.status.length > 0
+
+  const buildGroups = (data: any[], keys: string[], depth: number = 0, path: string = ''): any[] => {
+    if (depth >= keys.length || keys.length === 0) return data;
+    const keyType = keys[depth];
+    const map = new Map<string, any[]>();
+    
+    data.forEach(item => {
+      let val = 'Lain-lain';
+      if (keyType === 'desa') val = item.nama_desa || 'Tanpa Desa';
+      else if (keyType === 'program') val = item.nama_program || 'Tanpa Program';
+      else if (keyType === 'relawan') val = item.nama_relawan || 'Tanpa Relawan';
+      else if (keyType === 'status') val = item.status || 'DRAFT';
+      
+      if (!map.has(val)) map.set(val, []);
+      map.get(val)!.push(item);
+    });
+
+    const groups = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    return groups.map(([groupName, items]) => {
+      const currentPath = path ? `${path}|${groupName}` : groupName;
+      return {
+        groupName,
+        path: currentPath,
+        depth,
+        itemsCount: items.length,
+        children: buildGroups(items, keys, depth + 1, currentPath),
+        isLeaf: depth === keys.length - 1
+      };
+    });
+  };
+
+  const groupedData = useMemo(() => {
+    if (groupBys.length === 0) return null;
+    return buildGroups(filtered, groupBys);
+  }, [filtered, groupBys]);
+
+  const toggleTableGroup = (path: string) => {
+    setExpandedTableGroups(prev => ({ ...prev, [path]: !prev[path] }))
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -699,7 +742,57 @@ export default function IntervensiListPage() {
                   </Button>
                 )}
               </div>
+              
+              <div className="flex items-center gap-2 ml-auto shrink-0 w-full xl:w-auto mt-2 xl:mt-0">
+                <Select value="none" onValueChange={(val) => { 
+                  if (val !== 'none' && !groupBys.includes(val)) {
+                    setGroupBys(prev => [...prev, val]);
+                    setExpandedTableGroups({}); 
+                  }
+                }}>
+                  <SelectTrigger className="w-[180px] bg-white border-slate-200 rounded-xl h-10 font-bold text-slate-600">
+                    <div className="flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-slate-400" />
+                      <SelectValue placeholder="Tambah Group By" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Tambah Group By...</SelectItem>
+                    <SelectItem value="desa">Berdasarkan Desa</SelectItem>
+                    <SelectItem value="program">Berdasarkan Program</SelectItem>
+                    <SelectItem value="relawan">Berdasarkan Relawan</SelectItem>
+                    <SelectItem value="status">Berdasarkan Status</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FavoriteGroupSelector 
+                  moduleName="intervensi" 
+                  currentGroupBys={groupBys} 
+                  onApplyFavorite={(groups) => {
+                    setGroupBys(groups)
+                    setExpandedTableGroups({})
+                  }} 
+                />
+              </div>
             </div>
+            
+            {groupBys.length > 0 && (
+              <div className="flex flex-wrap gap-1 items-center mt-3 pt-3 border-t border-slate-100 w-full">
+                {groupBys.map((g, idx) => (
+                  <div key={g} className="flex items-center gap-1">
+                    <div className="bg-slate-200 text-slate-700 text-[10px] uppercase font-bold px-2 py-1 rounded flex items-center gap-1">
+                      {g} 
+                      <button onClick={() => {
+                          setGroupBys(prev => prev.filter(v => v !== g));
+                          setExpandedTableGroups({});
+                      }} className="hover:bg-slate-300 p-0.5 rounded-full transition-colors">
+                        <X className="w-3 h-3 hover:text-rose-600"/>
+                      </button>
+                    </div>
+                    {idx < groupBys.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -762,8 +855,8 @@ export default function IntervensiListPage() {
                       </div>
                     </td>
                   </tr>
-                ) : (
-                  filtered.map((row) => (
+                ) : (() => {
+                  const renderDataRow = (row: any) => (
                     <tr
                       key={row.id}
                       className={`hover:bg-slate-50/80 transition-colors group ${
@@ -838,8 +931,46 @@ export default function IntervensiListPage() {
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
+                  );
+
+                  const renderGroupNodes = (nodes: any[]) => {
+                    let rows: React.ReactNode[] = [];
+                    nodes.forEach(node => {
+                      rows.push(
+                        <tr 
+                          key={`group-${node.path}`}
+                          className="bg-slate-50/50 hover:bg-slate-100 cursor-pointer transition-colors border-b border-slate-200"
+                          onClick={() => toggleTableGroup(node.path)}
+                        >
+                          <td colSpan={7} className="px-5 py-3 sticky left-0 z-20 bg-slate-50/90 shadow-[2px_0_0_0_#cbd5e1]">
+                            <div className="flex items-center gap-2 font-black text-slate-800" style={{ paddingLeft: `${node.depth * 1.5}rem` }}>
+                              {expandedTableGroups[node.path] ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                              <span className="uppercase tracking-tight">{node.groupName}</span>
+                              <div className="bg-slate-200 text-slate-600 ml-1 px-2 py-0.5 rounded text-xs">{node.itemsCount}</div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                      
+                      if (expandedTableGroups[node.path]) {
+                        if (node.isLeaf) {
+                          node.children.forEach((row: any) => {
+                            rows.push(renderDataRow(row));
+                          });
+                        } else {
+                          rows.push(...renderGroupNodes(node.children));
+                        }
+                      }
+                    });
+                    return rows;
+                  };
+
+                  if (groupedData) {
+                    return renderGroupNodes(groupedData);
+                  } else {
+                    return filtered.map(renderDataRow);
+                  }
+                })()}
               </tbody>
             </table>
           </div>

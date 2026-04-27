@@ -14,7 +14,11 @@ import {
   TrendingUp,
   Target,
   User,
-  ArrowRight
+  ArrowRight,
+  Layers,
+  ChevronDown,
+  ChevronRight,
+  X
 } from 'lucide-react'
 import { toast } from 'sonner'
 import * as XLSX from 'xlsx'
@@ -22,6 +26,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { MultiSelectGroup } from '@/components/ui/multi-select-group'
+import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
 
 export default function RekapPenyaluranPage() {
   const [data, setData] = useState<any[]>([])
@@ -35,6 +40,8 @@ export default function RekapPenyaluranPage() {
   const [filterRelawan, setFilterRelawan] = useState<string[]>([])
   const [itemsPerPage, setItemsPerPage] = useState<number>(50)
   const [currentPage, setCurrentPage] = useState<number>(1)
+  const [groupBys, setGroupBys] = useState<string[]>([])
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     loadData()
@@ -167,6 +174,43 @@ export default function RekapPenyaluranPage() {
     })
     return Array.from(grouped.values()).sort((a, b) => (a.nama_desa ?? '').localeCompare(b.nama_desa ?? ''))
   }, [filteredData])
+
+  const buildGroups = (data: any[], keys: string[], depth: number = 0, path: string = ''): any[] => {
+    if (depth >= keys.length || keys.length === 0) return data;
+    const keyType = keys[depth];
+    const map = new Map<string, any[]>();
+    
+    data.forEach(item => {
+      let val = 'Lain-lain';
+      if (keyType === 'relawan') val = item.relawan_nama || 'Tanpa Relawan';
+      else if (keyType === 'desa') val = item.nama_desa || 'Tanpa Desa';
+      
+      if (!map.has(val)) map.set(val, []);
+      map.get(val)!.push(item);
+    });
+
+    const groups = Array.from(map.entries()).sort((a, b) => (a[0] ?? '').localeCompare(b[0] ?? ''));
+    return groups.map(([groupName, items]) => {
+      const currentPath = path ? `${path}|${groupName}` : groupName;
+      return {
+        groupName,
+        path: currentPath,
+        depth,
+        itemsCount: items.length,
+        children: buildGroups(items, keys, depth + 1, currentPath),
+        isLeaf: depth === keys.length - 1
+      };
+    });
+  };
+
+  const groupedData = useMemo(() => {
+    if (groupBys.length === 0) return null;
+    return buildGroups(pivotData, groupBys);
+  }, [pivotData, groupBys]);
+
+  const toggleGroup = (groupName: string) => {
+    setExpandedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
+  };
 
   const totalPages = Math.ceil(pivotData.length / itemsPerPage)
   const paginatedData = pivotData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
@@ -378,6 +422,55 @@ export default function RekapPenyaluranPage() {
                 <SelectItem value="500">500 Baris</SelectItem>
               </SelectContent>
             </Select>
+
+            <div className="flex flex-col gap-2 w-full lg:w-auto">
+              <Select value="none" onValueChange={(val) => { 
+                if (val !== 'none' && !groupBys.includes(val)) {
+                  setGroupBys(prev => [...prev, val]);
+                  setExpandedGroups({}); 
+                }
+              }}>
+                <SelectTrigger className="w-full lg:w-[220px] bg-slate-50 border-slate-200 rounded-xl h-[42px] font-bold text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-slate-400" />
+                    <SelectValue placeholder="Tambah Group By..." />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Tambah Group By...</SelectItem>
+                  <SelectItem value="relawan">Berdasarkan Relawan</SelectItem>
+                  <SelectItem value="desa">Berdasarkan Desa</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="w-full lg:w-[220px]">
+                <FavoriteGroupSelector 
+                  moduleName="rekap_penyaluran" 
+                  currentGroupBys={groupBys} 
+                  onApplyFavorite={(groups) => {
+                    setGroupBys(groups)
+                    setExpandedGroups({})
+                  }} 
+                />
+              </div>
+              {groupBys.length > 0 && (
+                <div className="flex flex-wrap gap-1 items-center">
+                  {groupBys.map((g, idx) => (
+                    <React.Fragment key={g}>
+                      <Badge variant="secondary" className="bg-slate-200 text-slate-700 text-[10px] uppercase gap-1 flex items-center pr-1 h-6">
+                        {g} 
+                        <button onClick={() => {
+                            setGroupBys(prev => prev.filter(v => v !== g));
+                            setExpandedGroups({});
+                        }} className="hover:bg-slate-300 p-0.5 rounded-full transition-colors">
+                          <X className="w-3 h-3 hover:text-rose-600"/>
+                        </button>
+                      </Badge>
+                      {idx < groupBys.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
+                    </React.Fragment>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -408,59 +501,99 @@ export default function RekapPenyaluranPage() {
                 <th className="px-3 py-2 text-right font-black tracking-widest min-w-[130px] text-indigo-700 bg-indigo-50/20">Total Saldo</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100/80 font-medium">
-              {paginatedData.length === 0 ? (
-                <tr>
-                  <td colSpan={1 + uniquePrograms.length * 5 + 5} className="px-4 py-12 text-center text-slate-400">
-                    <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                    <p>Tidak ada data</p>
-                  </td>
-                </tr>
-              ) : (
-                paginatedData.map(row => (
-                  <tr key={`${row.nama_desa}_${row.relawan_nama}`} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-4 py-3 bg-white sticky left-0 z-10 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                      <div className="flex flex-col gap-1">
-                        <div className="font-bold text-slate-800 flex items-center gap-1.5 whitespace-nowrap">
-                          <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate max-w-[200px]">{row.nama_desa}</span>
+              <tbody className="divide-y divide-slate-100/80 font-medium">
+                {(() => {
+                  const renderDataRow = (row: any) => (
+                    <tr key={`${row.nama_desa}_${row.relawan_nama}`} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-4 py-3 bg-white sticky left-0 z-10 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                        <div className="flex flex-col gap-1 pl-4">
+                          <div className="font-bold text-slate-800 flex items-center gap-1.5 whitespace-nowrap">
+                            <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="truncate max-w-[180px]">{row.nama_desa}</span>
+                          </div>
+                          <div className="text-xs text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
+                            <User className="w-3 h-3 opacity-70 shrink-0" />
+                            <span className="truncate max-w-[180px]">{row.relawan_nama}</span>
+                          </div>
                         </div>
-                        <div className="text-xs text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
-                          <User className="w-3 h-3 opacity-70 shrink-0" />
-                          <span className="truncate max-w-[200px]">{row.relawan_nama}</span>
-                        </div>
-                      </div>
-                    </td>
-                    {uniquePrograms.map(p => {
-                      const pData = row.programsData[p] || { ajuan: 0, cair: 0, realisasi: 0, pengembalian: 0, sisa: 0 }
-                      return (
-                        <React.Fragment key={`${row.nama_desa}_${p}`}>
-                          <td className="px-3 py-3 text-right tabular-nums border-l border-slate-100/50">{pData.ajuan === 0 ? '-' : pData.ajuan.toLocaleString('id-ID')}</td>
-                          <td className="px-3 py-3 text-right tabular-nums font-bold text-[#7a1200]/80">{pData.cair === 0 ? '-' : pData.cair.toLocaleString('id-ID')}</td>
-                          <td className="px-3 py-3 text-right tabular-nums font-bold text-amber-600/80">{pData.realisasi === 0 ? '-' : pData.realisasi.toLocaleString('id-ID')}</td>
-                          <td className="px-3 py-3 text-right tabular-nums text-rose-500/80">{pData.pengembalian === 0 ? '-' : pData.pengembalian.toLocaleString('id-ID')}</td>
-                          <td className="px-3 py-3 text-right tabular-nums border-r border-slate-100/50">
-                            <span className={`font-black px-1.5 py-0.5 rounded-md text-xs ${pData.sisa < 0 ? 'bg-rose-100/50 text-rose-600' : 'text-slate-500'}`}>
-                               {pData.cair === 0 && pData.ajuan === 0 ? '-' : pData.sisa.toLocaleString('id-ID')}
-                            </span>
+                      </td>
+                      {uniquePrograms.map(p => {
+                        const pData = row.programsData[p] || { ajuan: 0, cair: 0, realisasi: 0, pengembalian: 0, sisa: 0 }
+                        return (
+                          <React.Fragment key={`${row.nama_desa}_${p}`}>
+                            <td className="px-3 py-3 text-right tabular-nums border-l border-slate-100/50">{pData.ajuan === 0 ? '-' : pData.ajuan.toLocaleString('id-ID')}</td>
+                            <td className="px-3 py-3 text-right tabular-nums font-bold text-[#7a1200]/80">{pData.cair === 0 ? '-' : pData.cair.toLocaleString('id-ID')}</td>
+                            <td className="px-3 py-3 text-right tabular-nums font-bold text-amber-600/80">{pData.realisasi === 0 ? '-' : pData.realisasi.toLocaleString('id-ID')}</td>
+                            <td className="px-3 py-3 text-right tabular-nums text-rose-500/80">{pData.pengembalian === 0 ? '-' : pData.pengembalian.toLocaleString('id-ID')}</td>
+                            <td className="px-3 py-3 text-right tabular-nums border-r border-slate-100/50">
+                              <span className={`font-black px-1.5 py-0.5 rounded-md text-xs ${pData.sisa < 0 ? 'bg-rose-100/50 text-rose-600' : 'text-slate-500'}`}>
+                                {pData.cair === 0 && pData.ajuan === 0 ? '-' : pData.sisa.toLocaleString('id-ID')}
+                              </span>
+                            </td>
+                          </React.Fragment>
+                        )
+                      })}
+                      <td className="px-3 py-3 text-right tabular-nums font-black border-l border-slate-300 bg-slate-50/50">{row.rowTotal.ajuan.toLocaleString('id-ID')}</td>
+                      <td className="px-3 py-3 text-right tabular-nums font-black text-[#7a1200] bg-emerald-50/30">{row.rowTotal.cair.toLocaleString('id-ID')}</td>
+                      <td className="px-3 py-3 text-right tabular-nums font-black text-amber-600 bg-amber-50/30">{row.rowTotal.realisasi.toLocaleString('id-ID')}</td>
+                      <td className="px-3 py-3 text-right tabular-nums font-black text-rose-500 bg-rose-50/30">{row.rowTotal.pengembalian.toLocaleString('id-ID')}</td>
+                      <td className="px-3 py-3 text-right tabular-nums font-black text-indigo-700 bg-indigo-50/50">{row.rowTotal.sisa.toLocaleString('id-ID')}</td>
+                    </tr>
+                  );
+
+                  const renderGroupNodes = (nodes: any[]) => {
+                    let rows: React.ReactNode[] = [];
+                    nodes.forEach(node => {
+                      rows.push(
+                        <tr 
+                          key={`group-${node.path}`}
+                          className="bg-slate-100/50 hover:bg-slate-100 cursor-pointer transition-colors border-b border-slate-200"
+                          onClick={() => toggleGroup(node.path)}
+                        >
+                          <td colSpan={1 + uniquePrograms.length * 5 + 5} className="px-4 py-3 sticky left-0 z-10 bg-slate-100/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                            <div className="flex items-center gap-2 font-black text-slate-800" style={{ paddingLeft: `${node.depth * 1.5}rem` }}>
+                              {expandedGroups[node.path] ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                              <span className="uppercase tracking-tight">{node.groupName}</span>
+                              <Badge variant="secondary" className="bg-slate-200 text-slate-600 ml-1">{node.itemsCount}</Badge>
+                            </div>
                           </td>
-                        </React.Fragment>
-                      )
-                    })}
-                    <td className="px-3 py-3 text-right tabular-nums font-black border-l border-slate-300 bg-slate-50/50">{row.rowTotal.ajuan.toLocaleString('id-ID')}</td>
-                    <td className="px-3 py-3 text-right tabular-nums font-black text-[#7a1200] bg-emerald-50/30">{row.rowTotal.cair.toLocaleString('id-ID')}</td>
-                    <td className="px-3 py-3 text-right tabular-nums font-black text-amber-600 bg-amber-50/30">{row.rowTotal.realisasi.toLocaleString('id-ID')}</td>
-                    <td className="px-3 py-3 text-right tabular-nums font-black text-rose-500 bg-rose-50/30">{row.rowTotal.pengembalian.toLocaleString('id-ID')}</td>
-                    <td className="px-3 py-3 text-right tabular-nums font-black text-indigo-700 bg-indigo-50/50">{row.rowTotal.sisa.toLocaleString('id-ID')}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
+                        </tr>
+                      );
+                      
+                      if (expandedGroups[node.path]) {
+                        if (node.isLeaf) {
+                          node.children.forEach((row: any) => {
+                            rows.push(renderDataRow(row));
+                          });
+                        } else {
+                          rows.push(...renderGroupNodes(node.children));
+                        }
+                      }
+                    });
+                    return rows;
+                  };
+
+                  if (groupedData) {
+                    return renderGroupNodes(groupedData);
+                  } else if (paginatedData.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={1 + uniquePrograms.length * 5 + 5} className="px-4 py-12 text-center text-slate-400">
+                          <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                          <p>Tidak ada data</p>
+                        </td>
+                      </tr>
+                    );
+                  } else {
+                    return paginatedData.map(renderDataRow);
+                  }
+                })()}
+              </tbody>
           </table>
         </div>
 
         {/* Pagination Setup */}
-        {totalPages > 0 && (
+        {!groupedData && totalPages > 0 && (
           <div className="flex justify-between items-center mt-6 p-4 border-t border-slate-100">
             <span className="text-sm font-medium text-slate-500">
               Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredData.length)} dari {filteredData.length} data

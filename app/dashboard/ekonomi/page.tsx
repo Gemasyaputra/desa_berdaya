@@ -25,7 +25,9 @@ import { getEkonomiUpdates, deleteEkonomiUpdate } from './actions'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { MultiSelectFilter } from '@/components/multi-select-filter'
-import { X } from 'lucide-react'
+import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
+import { X, Layers } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import * as XLSX from 'xlsx'
 
@@ -44,6 +46,8 @@ export default function EkonomiPage() {
     tipe: [] as string[],
     program: [] as string[]
   })
+  const [groupBys, setGroupBys] = useState<string[]>([])
+  const [expandedTableGroups, setExpandedTableGroups] = useState<Record<string, boolean>>({})
   const [itemsPerPage, setItemsPerPage] = useState<number>(50)
   const [currentPage, setCurrentPage] = useState<number>(1)
 
@@ -164,6 +168,46 @@ export default function EkonomiPage() {
   const totalPages = Math.max(1, Math.ceil(filteredUpdates.length / itemsPerPage))
   const displayTableUpdates = filteredUpdates.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
+  const buildGroups = (data: any[], keys: string[], depth: number = 0, path: string = ''): any[] => {
+    if (depth >= keys.length || keys.length === 0) return data;
+    const keyType = keys[depth];
+    const map = new Map<string, any[]>();
+    
+    data.forEach(item => {
+      let val = 'Lain-lain';
+      if (keyType === 'kelompok') val = item.nama_kelompok || 'Tanpa Kelompok';
+      else if (keyType === 'bulan') val = getBulanName(item.bulan);
+      else if (keyType === 'kategori') val = item.kategori || 'Tidak Ada';
+      else if (keyType === 'tipe') val = item.tipe || 'Tidak Ada';
+      else if (keyType === 'program') val = item.program || 'Tidak Ada';
+      
+      if (!map.has(val)) map.set(val, []);
+      map.get(val)!.push(item);
+    });
+
+    const groups = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    return groups.map(([groupName, items]) => {
+      const currentPath = path ? `${path}|${groupName}` : groupName;
+      return {
+        groupName,
+        path: currentPath,
+        depth,
+        itemsCount: items.length,
+        children: buildGroups(items, keys, depth + 1, currentPath),
+        isLeaf: depth === keys.length - 1
+      };
+    });
+  };
+
+  const groupedData = React.useMemo(() => {
+    if (groupBys.length === 0) return null;
+    return buildGroups(filteredUpdates, groupBys);
+  }, [filteredUpdates, groupBys]);
+
+  const toggleTableGroup = (path: string) => {
+    setExpandedTableGroups(prev => ({ ...prev, [path]: !prev[path] }))
+  }
+
   const groupedByKelompok = filteredUpdates.reduce((acc, curr) => {
     const kId = curr.kelompok_id || 'tanpa_kelompok'
     const kNama = curr.nama_kelompok || 'Tanpa Kelompok'
@@ -231,7 +275,7 @@ export default function EkonomiPage() {
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-8 bg-slate-50/50 min-h-screen">
+    <div className="p-4 lg:p-8 max-w-screen-2xl mx-auto space-y-8 bg-slate-50/50 min-h-screen">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
@@ -323,6 +367,60 @@ export default function EkonomiPage() {
                   <X className="w-4 h-4" />
                   Reset
                 </Button>
+              )}
+              
+              {viewMode === 'table' && (
+                <div className="flex flex-col gap-2 w-full lg:w-auto ml-auto">
+                  <Select value="none" onValueChange={(val) => { 
+                    if (val !== 'none' && !groupBys.includes(val)) {
+                      setGroupBys(prev => [...prev, val]);
+                      setExpandedTableGroups({}); 
+                    }
+                  }}>
+                    <SelectTrigger className="w-full lg:w-[220px] bg-white border-slate-200 rounded-xl h-[42px] font-bold text-slate-600">
+                      <div className="flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-slate-400" />
+                        <SelectValue placeholder="Tambah Group By..." />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Tambah Group By...</SelectItem>
+                      <SelectItem value="kelompok">Berdasarkan Kelompok</SelectItem>
+                      <SelectItem value="bulan">Berdasarkan Bulan</SelectItem>
+                      <SelectItem value="kategori">Berdasarkan Kategori</SelectItem>
+                      <SelectItem value="tipe">Berdasarkan Tipe Usaha</SelectItem>
+                      <SelectItem value="program">Berdasarkan Program</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="w-full lg:w-[220px]">
+                    <FavoriteGroupSelector 
+                      moduleName="ekonomi" 
+                      currentGroupBys={groupBys} 
+                      onApplyFavorite={(groups) => {
+                        setGroupBys(groups)
+                        setExpandedTableGroups({})
+                      }} 
+                    />
+                  </div>
+                  {groupBys.length > 0 && (
+                    <div className="flex flex-wrap gap-1 items-center">
+                      {groupBys.map((g, idx) => (
+                        <React.Fragment key={g}>
+                          <Badge variant="secondary" className="bg-slate-200 text-slate-700 text-[10px] uppercase gap-1 flex items-center pr-1 h-6">
+                            {g} 
+                            <button onClick={() => {
+                                setGroupBys(prev => prev.filter(v => v !== g));
+                                setExpandedTableGroups({});
+                            }} className="hover:bg-slate-300 p-0.5 rounded-full transition-colors">
+                              <X className="w-3 h-3 hover:text-rose-600"/>
+                            </button>
+                          </Badge>
+                          {idx < groupBys.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
 
               <select 
@@ -422,55 +520,96 @@ export default function EkonomiPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
-                    {displayTableUpdates.map((update: any) => (
-                      <tr key={update.id} className="hover:bg-emerald-50/50 transition-colors group/row">
-                        <td className="px-3 py-2 sticky left-0 bg-white group-hover/row:bg-emerald-50/50 z-10 border border-slate-300 text-center">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100"
-                            onClick={() => router.push(`/dashboard/ekonomi/${update.id}/edit`)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                        </td>
-                        <td className="px-3 py-2 sticky left-[80px] bg-white group-hover/row:bg-emerald-50/50 z-10 border border-slate-300 shadow-[2px_0_0_0_#cbd5e1]">
-                          <div className="font-semibold text-slate-800">{update.nama_pm}</div>
-                          <div className="text-[10px] text-slate-500 font-medium">{update.nik_pm}</div>
-                          <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">{update.nama_kelompok || 'Tanpa Kelompok'}</div>
-                        </td>
-                        <td className="px-3 py-2 border border-slate-300 text-center">{update.tahun}</td>
-                        <td className="px-3 py-2 border border-slate-300 text-center font-medium">{getBulanName(update.bulan)}</td>
-                        <td className="px-3 py-2 border border-slate-300 text-center">
-                          {update.checked ? (
-                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 font-bold text-[10px]">Selesai</Badge>
-                          ) : (
-                            <Badge variant="secondary" className="bg-amber-100 text-amber-700 font-bold text-[10px]">Draft</Badge>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 border border-slate-300">{update.kategori || '-'}</td>
-                        <td className="px-3 py-2 border border-slate-300">{update.tipe || '-'}</td>
-                        <td className="px-3 py-2 border border-slate-300">{update.komoditas_produk || '-'}</td>
-                        <td className="px-3 py-2 border border-slate-300">{update.program || '-'}</td>
-                        <td className="px-3 py-2 border border-slate-300 text-right">{update.jumlah_tanggungan || 0}</td>
-                        <td className="px-3 py-2 border border-slate-300 text-right">{update.modal?.toLocaleString('id-ID') || 0}</td>
-                        <td className="px-3 py-2 border border-slate-300 text-right">{update.pengeluaran_operasional?.toLocaleString('id-ID') || 0}</td>
-                        <td className="px-3 py-2 border border-slate-300 text-right">{update.omzet?.toLocaleString('id-ID') || 0}</td>
-                        <td className="px-3 py-2 border border-slate-300 text-right">{update.pendapatan?.toLocaleString('id-ID') || 0}</td>
-                        <td className="px-3 py-2 border border-slate-300 text-right">{update.pendapatan_lainnya?.toLocaleString('id-ID') || 0}</td>
-                        <td className="px-3 py-2 border border-slate-300">{update.status_gk || '-'}</td>
-                        <td className="px-3 py-2 border border-slate-300 text-right">{update.nilai_ntp || 0}</td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      const renderDataRow = (update: any) => (
+                        <tr key={update.id} className="hover:bg-emerald-50/50 transition-colors group/row">
+                          <td className="px-3 py-2 sticky left-0 bg-white group-hover/row:bg-emerald-50/50 z-10 border border-slate-300 text-center">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100"
+                              onClick={() => router.push(`/dashboard/ekonomi/${update.id}/edit`)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          </td>
+                          <td className="px-3 py-2 sticky left-[80px] bg-white group-hover/row:bg-emerald-50/50 z-10 border border-slate-300 shadow-[2px_0_0_0_#cbd5e1]">
+                            <div className="font-semibold text-slate-800">{update.nama_pm}</div>
+                            <div className="text-[10px] text-slate-500 font-medium">{update.nik_pm}</div>
+                            <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">{update.nama_kelompok || 'Tanpa Kelompok'}</div>
+                          </td>
+                          <td className="px-3 py-2 border border-slate-300 text-center">{update.tahun}</td>
+                          <td className="px-3 py-2 border border-slate-300 text-center font-medium">{getBulanName(update.bulan)}</td>
+                          <td className="px-3 py-2 border border-slate-300 text-center">
+                            {update.checked ? (
+                              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 font-bold text-[10px]">Selesai</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="bg-amber-100 text-amber-700 font-bold text-[10px]">Draft</Badge>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 border border-slate-300">{update.kategori || '-'}</td>
+                          <td className="px-3 py-2 border border-slate-300">{update.tipe || '-'}</td>
+                          <td className="px-3 py-2 border border-slate-300">{update.komoditas_produk || '-'}</td>
+                          <td className="px-3 py-2 border border-slate-300">{update.program || '-'}</td>
+                          <td className="px-3 py-2 border border-slate-300 text-right">{update.jumlah_tanggungan || 0}</td>
+                          <td className="px-3 py-2 border border-slate-300 text-right">{update.modal?.toLocaleString('id-ID') || 0}</td>
+                          <td className="px-3 py-2 border border-slate-300 text-right">{update.pengeluaran_operasional?.toLocaleString('id-ID') || 0}</td>
+                          <td className="px-3 py-2 border border-slate-300 text-right">{update.omzet?.toLocaleString('id-ID') || 0}</td>
+                          <td className="px-3 py-2 border border-slate-300 text-right">{update.pendapatan?.toLocaleString('id-ID') || 0}</td>
+                          <td className="px-3 py-2 border border-slate-300 text-right">{update.pendapatan_lainnya?.toLocaleString('id-ID') || 0}</td>
+                          <td className="px-3 py-2 border border-slate-300">{update.status_gk || '-'}</td>
+                          <td className="px-3 py-2 border border-slate-300 text-right">{update.nilai_ntp || 0}</td>
+                        </tr>
+                      );
+
+                      const renderGroupNodes = (nodes: any[]) => {
+                        let rows: React.ReactNode[] = [];
+                        nodes.forEach(node => {
+                          rows.push(
+                            <tr 
+                              key={`group-${node.path}`}
+                              className="bg-slate-50/50 hover:bg-slate-100 cursor-pointer transition-colors border-b border-slate-200"
+                              onClick={() => toggleTableGroup(node.path)}
+                            >
+                              <td colSpan={17} className="px-3 py-2 sticky left-0 z-20 bg-slate-50/90 shadow-[2px_0_0_0_#cbd5e1]">
+                                <div className="flex items-center gap-2 font-black text-slate-800" style={{ paddingLeft: `${node.depth * 1.5}rem` }}>
+                                  {expandedTableGroups[node.path] ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                                  <span className="uppercase tracking-tight">{node.groupName}</span>
+                                  <Badge variant="secondary" className="bg-slate-200 text-slate-600 ml-1">{node.itemsCount}</Badge>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                          
+                          if (expandedTableGroups[node.path]) {
+                            if (node.isLeaf) {
+                              node.children.forEach((row: any) => {
+                                rows.push(renderDataRow(row));
+                              });
+                            } else {
+                              rows.push(...renderGroupNodes(node.children));
+                            }
+                          }
+                        });
+                        return rows;
+                      };
+
+                      if (groupedData) {
+                        return renderGroupNodes(groupedData);
+                      } else {
+                        return displayTableUpdates.map(renderDataRow);
+                      }
+                    })()}
                   </tbody>
                 </table>
               </div>
-              <div className="flex items-center justify-between text-sm text-slate-500 py-4">
-                <div>
-                  Menampilkan {displayTableUpdates.length} dari {filteredUpdates.length} data
-                </div>
-                {totalPages > 1 && (
-                  <div className="flex items-center gap-2">
+              {(!groupedData || groupBys.length === 0) && (
+                <div className="flex items-center justify-between text-sm text-slate-500 py-4">
+                  <div>
+                    Menampilkan {displayTableUpdates.length} dari {filteredUpdates.length} data
+                  </div>
+                  {totalPages > 1 && (
+                    <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -493,6 +632,7 @@ export default function EkonomiPage() {
                   </div>
                 )}
               </div>
+              )}
             </div>
             ) : (
               <div className="space-y-6">

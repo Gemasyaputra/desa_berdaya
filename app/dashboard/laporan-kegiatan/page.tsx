@@ -6,11 +6,13 @@ import { PlusCircle, Search, MapPin, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getLaporanKegiatan } from './actions'
 import DeleteLaporanButton from './DeleteLaporanButton'
+import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
 import { useSession } from 'next-auth/react'
 import { Badge } from '@/components/ui/badge'
 import { useSearchParams } from 'next/navigation'
 import { MultiSelectFilter } from '@/components/multi-select-filter'
-import { X } from 'lucide-react'
+import { X, Layers, ChevronDown, ChevronRight } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 function LaporanKegiatanListContent() {
   const { data: session } = useSession()
@@ -24,6 +26,8 @@ function LaporanKegiatanListContent() {
     jenis: [] as string[],
     tahun: [] as string[]
   })
+  const [groupBys, setGroupBys] = useState<string[]>([])
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
   const role = (session?.user as any)?.role
   const canMod = role === 'RELAWAN' || role === 'PROG_HEAD' || role === 'ADMIN' || role === 'KORWIL'
@@ -110,6 +114,47 @@ function LaporanKegiatanListContent() {
 
   const hasAnyFilter = searchQuery !== '' || Object.values(filters).some(arr => arr.length > 0)
 
+  const buildGroups = (data: any[], keys: string[], depth: number = 0, path: string = ''): any[] => {
+    if (depth >= keys.length || keys.length === 0) return data;
+    const keyType = keys[depth];
+    const map = new Map<string, any[]>();
+    
+    data.forEach(item => {
+      let val = 'Lain-lain';
+      if (keyType === 'desa') val = item.nama_desa || 'Tanpa Desa';
+      else if (keyType === 'jenis') val = item.jenis_kegiatan || 'Tidak Ada';
+      else if (keyType === 'tahun') {
+        const dateStr = item.tanggal_kegiatan || item.created_at;
+        val = dateStr ? new Date(dateStr).getFullYear().toString() : 'Tanpa Tahun';
+      }
+      
+      if (!map.has(val)) map.set(val, []);
+      map.get(val)!.push(item);
+    });
+
+    const groups = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    return groups.map(([groupName, items]) => {
+      const currentPath = path ? `${path}|${groupName}` : groupName;
+      return {
+        groupName,
+        path: currentPath,
+        depth,
+        itemsCount: items.length,
+        children: buildGroups(items, keys, depth + 1, currentPath),
+        isLeaf: depth === keys.length - 1
+      };
+    });
+  };
+
+  const groupedData = React.useMemo(() => {
+    if (groupBys.length === 0) return null;
+    return buildGroups(filteredList, groupBys);
+  }, [filteredList, groupBys]);
+
+  const toggleGroup = (path: string) => {
+    setExpandedGroups(prev => ({ ...prev, [path]: !prev[path] }))
+  }
+
   return (
     <div className="p-4 lg:p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-6">
@@ -160,7 +205,6 @@ function LaporanKegiatanListContent() {
             onSelect={(val) => toggleFilter('tahun', val)}
             onClear={() => setFilters(f => ({ ...f, tahun: [] }))}
           />
-          
           {hasAnyFilter && (
             <Button
               variant="ghost"
@@ -175,6 +219,56 @@ function LaporanKegiatanListContent() {
               Reset
             </Button>
           )}
+
+          <div className="flex flex-col gap-2 w-full lg:w-auto ml-auto">
+            <Select value="none" onValueChange={(val) => { 
+              if (val !== 'none' && !groupBys.includes(val)) {
+                setGroupBys(prev => [...prev, val]);
+                setExpandedGroups({}); 
+              }
+            }}>
+              <SelectTrigger className="w-full lg:w-[220px] bg-white border-slate-200 rounded-xl h-[42px] font-bold text-slate-600">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-slate-400" />
+                  <SelectValue placeholder="Tambah Group By..." />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Tambah Group By...</SelectItem>
+                <SelectItem value="desa">Berdasarkan Desa</SelectItem>
+                <SelectItem value="jenis">Berdasarkan Jenis</SelectItem>
+                <SelectItem value="tahun">Berdasarkan Tahun</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="w-full lg:w-[220px]">
+              <FavoriteGroupSelector 
+                moduleName="laporan_kegiatan" 
+                currentGroupBys={groupBys} 
+                onApplyFavorite={(groups) => {
+                  setGroupBys(groups)
+                  setExpandedGroups({})
+                }} 
+              />
+            </div>
+            {groupBys.length > 0 && (
+              <div className="flex flex-wrap gap-1 items-center">
+                {groupBys.map((g, idx) => (
+                  <React.Fragment key={g}>
+                    <Badge variant="secondary" className="bg-slate-200 text-slate-700 text-[10px] uppercase gap-1 flex items-center pr-1 h-6">
+                      {g} 
+                      <button onClick={() => {
+                          setGroupBys(prev => prev.filter(v => v !== g));
+                          setExpandedGroups({});
+                      }} className="hover:bg-slate-300 p-0.5 rounded-full transition-colors">
+                        <X className="w-3 h-3 hover:text-rose-600"/>
+                      </button>
+                    </Badge>
+                    {idx < groupBys.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Mobile View: Card Layout */}
@@ -240,42 +334,82 @@ function LaporanKegiatanListContent() {
                   <td colSpan={5} className="px-6 py-12 text-center text-slate-500">Memuat data...</td>
                 </tr>
               ) : (
-                filteredList.map((laporan) => (
-                  <tr key={laporan.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-slate-800">{laporan.judul_kegiatan}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">{laporan.jenis_kegiatan}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5 text-slate-600">
-                        <MapPin className="w-4 h-4 text-slate-400" />
-                        {laporan.nama_desa}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">
-                      {formatDate(laporan.tanggal_kegiatan || laporan.created_at)}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link href={`/dashboard/laporan-kegiatan/${laporan.id}`}>
-                          <Button variant="ghost" size="sm" className="text-teal-600 hover:bg-teal-50">
-                            Lihat Detail
-                          </Button>
-                        </Link>
-                        {canMod && (
-                          <>
-                            <Button asChild variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100">
-                              <Link href={getEditUrl(laporan)}>
-                                Edit
-                              </Link>
+                (() => {
+                  const renderDataRow = (laporan: any) => (
+                    <tr key={laporan.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-slate-800">{laporan.judul_kegiatan}</div>
+                        <div className="text-xs text-slate-500 mt-0.5">{laporan.jenis_kegiatan}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5 text-slate-600">
+                          <MapPin className="w-4 h-4 text-slate-400" />
+                          {laporan.nama_desa}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-slate-600">
+                        {formatDate(laporan.tanggal_kegiatan || laporan.created_at)}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Link href={`/dashboard/laporan-kegiatan/${laporan.id}`}>
+                            <Button variant="ghost" size="sm" className="text-teal-600 hover:bg-teal-50">
+                              Lihat Detail
                             </Button>
-                            <DeleteLaporanButton id={laporan.id} />
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          </Link>
+                          {canMod && (
+                            <>
+                              <Button asChild variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100">
+                                <Link href={getEditUrl(laporan)}>
+                                  Edit
+                                </Link>
+                              </Button>
+                              <DeleteLaporanButton id={laporan.id} />
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+
+                  const renderGroupNodes = (nodes: any[]) => {
+                    let rows: React.ReactNode[] = [];
+                    nodes.forEach(node => {
+                      rows.push(
+                        <tr 
+                          key={`group-${node.path}`}
+                          className="bg-slate-100/50 hover:bg-slate-100 cursor-pointer transition-colors border-b border-slate-200"
+                          onClick={() => toggleGroup(node.path)}
+                        >
+                          <td colSpan={4} className="px-6 py-3">
+                            <div className="flex items-center gap-2 font-black text-slate-800" style={{ paddingLeft: `${node.depth * 1.5}rem` }}>
+                              {expandedGroups[node.path] ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                              <span className="uppercase tracking-tight">{node.groupName}</span>
+                              <Badge variant="secondary" className="bg-slate-200 text-slate-600 ml-1">{node.itemsCount}</Badge>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                      
+                      if (expandedGroups[node.path]) {
+                        if (node.isLeaf) {
+                          node.children.forEach((row: any) => {
+                            rows.push(renderDataRow(row));
+                          });
+                        } else {
+                          rows.push(...renderGroupNodes(node.children));
+                        }
+                      }
+                    });
+                    return rows;
+                  };
+
+                  if (groupedData) {
+                    return renderGroupNodes(groupedData);
+                  } else {
+                    return filteredList.map(renderDataRow);
+                  }
+                })()
               )}
             </tbody>
           </table>

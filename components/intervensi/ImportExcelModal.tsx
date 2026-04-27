@@ -38,7 +38,6 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
-  const [importMode, setImportMode] = useState<'banyak-bulan' | 'banyak-desa'>('banyak-bulan')
 
   // Options data
   const [desaOptions, setDesaOptions] = useState<any[]>([])
@@ -110,50 +109,29 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
 
   // ── TEMPLATE DOWNLOAD ──────────────────────────────────────────────
   const handleDownloadTemplate = async () => {
-    if (importMode === 'banyak-bulan' && (!selectedDesa || !selectedProgram || !selectedKategori)) return
-    if (importMode === 'banyak-desa' && (!selectedProgram || !selectedKategori || targetBulanIds.size === 0 || !selectedTahun)) return
+    if (!selectedProgram || !selectedKategori || targetBulanIds.size === 0 || !selectedTahun) return
 
     const XLSX = await import('xlsx')
-    const tahun = importMode === 'banyak-bulan' ? new Date().getFullYear() : Number(selectedTahun)
+    const tahun = Number(selectedTahun)
     let wsData: any[][] = []
 
-    if (importMode === 'banyak-bulan') {
-      wsData = [
-        ['⚠ JANGAN UBAH BARIS 1-2. Isi data mulai baris 3 ke bawah.'],
-        [
-          '[METADATA] kategori_program_id', '[METADATA] program_id', '[METADATA] desa_berdaya_id', '[METADATA] relawan_id',
-          '[READONLY] nama_program', '[READONLY] nama_desa', '[READONLY] nama_relawan',
-          'tahun', 'bulan', 'sumber_dana', 'fundraiser', 'deskripsi',
-          'ajuan_ri', 'anggaran_disetujui', 'anggaran_dicairkan', 'status_pencairan',
-          'id_stp', 'catatan', 'is_dbf', 'is_rz'
-        ],
-        ...BULAN_OPTIONS.map(bulan => [
-          Number(selectedKategoriId), selectedProgram?.id, selectedDesa?.id, selectedDesa?.relawan_id,
-          selectedProgram?.nama_program, selectedDesa?.nama, selectedDesa?.relawan_nama || '',
-          tahun, bulan, selectedSumberDana || '', selectedFundraiser || '', '',
-          0, 0, 0, 'Dialokasikan',
-          '', '', 'FALSE', 'FALSE'
-        ])
-      ]
-    } else {
-      wsData = [
-        ['⚠ JANGAN UBAH BARIS 1-2. Isi data mulai baris 3 ke bawah.'],
-        [
-          '[METADATA] kategori_program_id', '[METADATA] program_id', '[METADATA] desa_berdaya_id', '[METADATA] relawan_id',
-          '[READONLY] nama_program', '[READONLY] nama_desa', '[READONLY] nama_relawan',
-          'tahun', 'bulan', 'sumber_dana', 'fundraiser', 'deskripsi',
-          'ajuan_ri', 'anggaran_disetujui', 'anggaran_dicairkan', 'status_pencairan',
-          'id_stp', 'catatan', 'is_dbf', 'is_rz'
-        ],
-        ...activeTargetDesas.flatMap(d => Array.from(targetBulanIds).map(b => [
-          Number(selectedKategoriId), selectedProgram?.id, d.id, d.relawan_id,
-          selectedProgram?.nama_program, d.nama, d.relawan_nama || '',
-          tahun, b, '', '', '',
-          0, 0, 0, 'Dialokasikan',
-          '', '', 'FALSE', 'FALSE'
-        ]))
-      ]
-    }
+    wsData = [
+      ['⚠ JANGAN UBAH BARIS 1-2. Isi data mulai baris 3 ke bawah.'],
+      [
+        'kategori_program_id', 'program_id', 'desa_berdaya_id', 'relawan_id',
+        'nama_program', 'nama_desa', 'nama_relawan',
+        'tahun', 'bulan', 'sumber_dana', 'fundraiser', 'deskripsi',
+        'ajuan_ri', 'anggaran_disetujui', 'anggaran_dicairkan', 'status_pencairan',
+        'id_stp', 'catatan', 'is_dbf', 'is_rz'
+      ],
+      ...activeTargetDesas.flatMap(d => Array.from(targetBulanIds).map(b => [
+        Number(selectedKategoriId), selectedProgram?.id, d.id, d.relawan_id,
+        selectedProgram?.nama_program, d.nama, d.relawan_nama || '',
+        tahun, b, '', '', '',
+        0, 0, 0, 'Dialokasikan',
+        '', '', 'FALSE', 'FALSE'
+      ]))
+    ]
 
     const ws = XLSX.utils.aoa_to_sheet(wsData)
 
@@ -169,9 +147,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Intervensi Import')
 
-    const safeName = importMode === 'banyak-bulan' 
-      ? `${selectedDesa?.nama}_${selectedProgram?.nama_program}`.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 40)
-      : `BanyakDesa_${selectedProgram?.nama_program}_${Array.from(targetBulanIds).join('-')}`.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 40)
+    const safeName = `BanyakDesa_${selectedProgram?.nama_program}_${Array.from(targetBulanIds).join('-')}`.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 40)
     
     XLSX.writeFile(wb, `template_intervensi_${safeName}.xlsx`)
   }
@@ -247,7 +223,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
       }
 
       setParsedMeta({
-        mode: importMode,
+        mode: 'banyak-desa',
         kategoriId: parsedKategoriId,
         programId: parsedProgramId,
         tahun: parsedTahun,
@@ -300,8 +276,8 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
   // ── RENDER ─────────────────────────────────────────────────────────
   const fmt = (n: number) => new Intl.NumberFormat('id-ID').format(n)
 
-  const canGoStep2 = !!selectedDesaId
-  const canGoStep3 = !!selectedProgramId
+  const canGoStep2 = !!selectedProgramId
+  const canGoStep3 = !!selectedTahun && targetBulanIds.size > 0 && (targetDesaMode === 'semua' || targetDesaIds.size > 0)
   const canImport = !!parsedMeta && previewRows.length > 0
 
   return (
@@ -319,27 +295,11 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
           </DialogDescription>
         </DialogHeader>
 
-        {/* Mode Toggle */}
-        <div className="flex gap-2 bg-slate-100 p-1 rounded-xl mt-4 mb-4">
-          <button 
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${importMode === 'banyak-bulan' ? 'bg-white text-[#7a1200] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            onClick={() => { setImportMode('banyak-bulan'); setStep(1); setParsedMeta(null); setPreviewRows([]); }}
-          >
-            1 Program, 1 Desa (Banyak Bulan)
-          </button>
-          <button 
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${importMode === 'banyak-desa' ? 'bg-white text-[#7a1200] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            onClick={() => { setImportMode('banyak-desa'); setStep(1); setParsedMeta(null); setPreviewRows([]); }}
-          >
-            1 Program, Banyak Desa (Banyak Bulan)
-          </button>
-        </div>
-
         {/* Step indicator */}
-        <div className="flex items-center gap-2 mt-2 mb-4">
+        <div className="flex items-center gap-2 mt-4 mb-4">
           {[
-            { n: 1, label: importMode === 'banyak-bulan' ? 'Pilih Desa' : 'Pilih Program' },
-            { n: 2, label: importMode === 'banyak-bulan' ? 'Pilih Program' : 'Pilih Waktu' },
+            { n: 1, label: 'Pilih Program' },
+            { n: 2, label: 'Pilih Waktu' },
             { n: 3, label: 'Upload & Import' },
           ].map((s, i) => (
             <React.Fragment key={s.n}>
@@ -364,38 +324,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
           <div className="space-y-6">
 
             {/* ── STEP 1: PILIH DESA / PROGRAM ─────────────────────── */}
-            {step === 1 && importMode === 'banyak-bulan' && (
-              <div className="space-y-5">
-                <div className="bg-[#7a1200]/5 border border-[#7a1200]/15 rounded-xl p-4 text-sm text-[#7a1200] font-medium flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  Pilih Desa Binaan yang ingin dibuatkan Intervensi Program baru.
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-bold text-slate-700">Desa Binaan <span className="text-rose-500">*</span></Label>
-                  <select
-                    className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#7a1200]/40 cursor-pointer shadow-sm"
-                    value={selectedDesaId}
-                    onChange={e => setSelectedDesaId(e.target.value)}
-                  >
-                    <option value="">— Pilih Desa Binaan —</option>
-                    {desaOptions.map(d => (
-                      <option key={d.id} value={d.id}>{d.nama} {d.relawan_nama ? `(${d.relawan_nama})` : ''}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {selectedDesa && (
-                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-sm space-y-1">
-                    <div className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Info Desa</div>
-                    <div className="flex gap-3"><span className="text-slate-500 w-24">Desa</span><span className="font-semibold text-slate-800">{selectedDesa.nama}</span></div>
-                    <div className="flex gap-3"><span className="text-slate-500 w-24">Relawan</span><span className="font-semibold text-slate-800">{selectedDesa.relawan_nama || '-'}</span></div>
-                    <div className="flex gap-3"><span className="text-slate-500 w-24">ID Desa</span><span className="font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded text-xs">{selectedDesa.id}</span></div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {step === 1 && importMode === 'banyak-desa' && (
+            {step === 1 && (
               <div className="space-y-5">
                 <div className="bg-[#7a1200]/5 border border-[#7a1200]/15 rounded-xl p-4 text-sm text-[#7a1200] font-medium flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -433,93 +362,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
               </div>
             )}
 
-            {/* ── STEP 2: PILIH PROGRAM / WAKTU ──────────────────── */}
-            {step === 2 && importMode === 'banyak-bulan' && (
-              <div className="space-y-5">
-                <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-3">
-                  <CheckCircle2 className="w-4 h-4 text-[#7a1200] flex-shrink-0" />
-                  <div>
-                    <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Desa terpilih:</span>
-                    <span className="ml-2 font-bold text-slate-800">{selectedDesa?.nama}</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="font-bold text-slate-700">Kategori Program <span className="text-rose-500">*</span></Label>
-                    <select
-                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#7a1200]/40 cursor-pointer shadow-sm"
-                      value={selectedKategoriId}
-                      onChange={e => { setSelectedKategoriId(e.target.value); setSelectedProgramId('') }}
-                    >
-                      <option value="">— Pilih Kategori —</option>
-                      {kategoriOptions.map(k => (
-                        <option key={k.id} value={k.id}>{k.nama}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="font-bold text-slate-700">Program <span className="text-rose-500">*</span></Label>
-                    <select
-                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-[#7a1200] focus:outline-none focus:ring-2 focus:ring-[#7a1200]/40 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      value={selectedProgramId}
-                      onChange={e => setSelectedProgramId(e.target.value)}
-                      disabled={!selectedKategoriId}
-                    >
-                      <option value="">— Pilih Program —</option>
-                      {filteredPrograms.map(p => (
-                        <option key={p.id} value={p.id}>{p.nama_program}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {selectedProgram && selectedDesa && (
-                  <>
-                    {/* Sumber Dana & Fundraiser */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="font-bold text-slate-700">Sumber Dana</Label>
-                        <select
-                          className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#7a1200]/40 cursor-pointer shadow-sm"
-                          value={selectedSumberDana}
-                          onChange={e => setSelectedSumberDana(e.target.value)}
-                        >
-                          <option value="">— Pilih Sumber Dana —</option>
-                          {SUMBER_DANA_OPTIONS.map(s => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="font-bold text-slate-700">Fundraiser</Label>
-                        <input
-                          type="text"
-                          placeholder="Nama fundraiser..."
-                          className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7a1200]/40 shadow-sm"
-                          value={selectedFundraiser}
-                          onChange={e => setSelectedFundraiser(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Ringkasan template */}
-                    <div className="bg-[#7a1200]/5 border border-[#7a1200]/15 rounded-xl p-4 text-sm space-y-2">
-                      <div className="text-xs text-[#7a1200] font-bold uppercase tracking-wider mb-2">Ringkasan Template</div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div><span className="text-slate-500">Desa ID:</span> <code className="bg-white px-2 py-0.5 rounded text-xs font-mono border border-slate-200">{selectedDesa.id}</code></div>
-                        <div><span className="text-slate-500">Program ID:</span> <code className="bg-white px-2 py-0.5 rounded text-xs font-mono border border-slate-200">{selectedProgram.id}</code></div>
-                        <div><span className="text-slate-500">Kategori ID:</span> <code className="bg-white px-2 py-0.5 rounded text-xs font-mono border border-slate-200">{selectedKategoriId}</code></div>
-                        <div><span className="text-slate-500">Relawan ID:</span> <code className="bg-white px-2 py-0.5 rounded text-xs font-mono border border-slate-200">{selectedDesa.relawan_id}</code></div>
-                        {selectedSumberDana && <div><span className="text-slate-500">Sumber Dana:</span> <span className="font-semibold text-slate-700">{selectedSumberDana}</span></div>}
-                        {selectedFundraiser && <div><span className="text-slate-500">Fundraiser:</span> <span className="font-semibold text-slate-700">{selectedFundraiser}</span></div>}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {step === 2 && importMode === 'banyak-desa' && (
+            {step === 2 && (
               <div className="space-y-5">
                 <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-3">
                   <CheckCircle2 className="w-4 h-4 text-[#7a1200] flex-shrink-0" />
@@ -684,30 +527,19 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
             {/* ── STEP 3: DOWNLOAD TEMPLATE & UPLOAD ────── */}
             {step === 3 && (
               <div className="space-y-5">
-                {/* Info summary */}
                 <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
-                  {importMode === 'banyak-bulan' && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-slate-400">Desa:</span>
-                      <span className="font-bold text-slate-800">{selectedDesa?.nama}</span>
-                    </div>
-                  )}
                   <div className="flex items-center gap-2">
                     <span className="text-slate-400">Program:</span>
                     <span className="font-bold text-[#7a1200]">{selectedProgram?.nama_program}</span>
                   </div>
-                  {importMode === 'banyak-desa' && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-slate-400">Target Desa:</span>
-                      <span className="font-bold text-slate-800">{activeTargetDesas.length} Desa</span>
-                    </div>
-                  )}
-                  {importMode === 'banyak-desa' && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-slate-400">Waktu:</span>
-                      <span className="font-bold text-slate-800">{targetBulanIds.size} Bulan, {selectedTahun}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400">Target Desa:</span>
+                    <span className="font-bold text-slate-800">{activeTargetDesas.length} Desa</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400">Waktu:</span>
+                    <span className="font-bold text-slate-800">{targetBulanIds.size} Bulan, {selectedTahun}</span>
+                  </div>
                 </div>
 
                 {/* 1. Download template */}
@@ -717,7 +549,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                     <h4 className="font-bold text-slate-800 text-sm">Download Template Excel</h4>
                   </div>
                   <p className="text-xs text-slate-500 ml-9">
-                    Template sudah berisi format yang tepat. {importMode === 'banyak-bulan' ? 'Isi data anggaran per bulan.' : 'Isi kolom data untuk setiap desa yang dituju.'}
+                    Template sudah berisi format yang tepat. Isi kolom data untuk setiap desa yang dituju.
                   </p>
                   <div className="ml-9">
                     <Button
@@ -772,20 +604,10 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                     {/* Header meta preview */}
                     <div className="ml-9 bg-[#7a1200]/5 border border-[#7a1200]/15 rounded-xl p-3 text-xs space-y-1">
                       <div className="text-[#7a1200] font-bold uppercase tracking-wider text-[10px] mb-1.5">Header Intervensi</div>
-                      {parsedMeta.mode === 'banyak-bulan' ? (
-                        <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 text-slate-600">
-                          <span><b className="text-slate-500">Desa:</b> {parsedMeta.namaDesa}</span>
-                          <span><b className="text-slate-500">Program:</b> {parsedMeta.namaProgram}</span>
-                          <span><b className="text-slate-500">Sumber Dana:</b> {parsedMeta.sumber_dana || '-'}</span>
-                          <span><b className="text-slate-500">Fundraiser:</b> {parsedMeta.fundraiser || '-'}</span>
-                          <span className="col-span-2"><b className="text-slate-500">Deskripsi:</b> {parsedMeta.deskripsi || '-'}</span>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-slate-600">
-                          <span><b className="text-slate-500">Program:</b> {parsedMeta.namaProgram}</span>
-                          <span><b className="text-slate-500">Bulan/Tahun:</b> {parsedMeta.bulan} {parsedMeta.tahun}</span>
-                        </div>
-                      )}
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-slate-600">
+                        <span><b className="text-slate-500">Program:</b> {parsedMeta.namaProgram}</span>
+                        <span><b className="text-slate-500">Bulan/Tahun:</b> {parsedMeta.bulan} {parsedMeta.tahun}</span>
+                      </div>
                     </div>
 
                     {/* Rows preview table */}
@@ -794,14 +616,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                         <table className="w-full text-xs text-left">
                           <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-500 tracking-wider sticky top-0">
                             <tr>
-                              {parsedMeta.mode === 'banyak-bulan' ? (
-                                <>
-                                  <th className="px-3 py-2">Tahun</th>
-                                  <th className="px-3 py-2">Bulan</th>
-                                </>
-                              ) : (
                                 <th className="px-3 py-2">Desa Tujuan</th>
-                              )}
                               <th className="px-3 py-2 text-right">Ajuan RI</th>
                               <th className="px-3 py-2 text-right">Disetujui</th>
                               <th className="px-3 py-2 text-right">Dicairkan</th>
@@ -812,14 +627,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                           <tbody className="divide-y divide-slate-50">
                             {previewRows.map((row, i) => (
                               <tr key={i} className="hover:bg-slate-50">
-                                {parsedMeta.mode === 'banyak-bulan' ? (
-                                  <>
-                                    <td className="px-3 py-2 font-semibold text-slate-700">{row.tahun}</td>
-                                    <td className="px-3 py-2 text-slate-600">{row.bulan}</td>
-                                  </>
-                                ) : (
-                                  <td className="px-3 py-2 font-semibold text-slate-700">{row.namaDesa}</td>
-                                )}
+                                <td className="px-3 py-2 font-semibold text-slate-700">{row.namaDesa}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">{fmt(row.ajuan_ri)}</td>
                                 <td className="px-3 py-2 text-right tabular-nums font-bold">{fmt(row.anggaran_disetujui)}</td>
                                 <td className="px-3 py-2 text-right tabular-nums text-[#7a1200] font-bold">{fmt(row.anggaran_dicairkan)}</td>
@@ -853,9 +661,8 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                     <Button
                       className="bg-[#7a1200] hover:bg-[#5c0e00] text-white rounded-xl font-bold px-6 gap-2 shadow-md shadow-[#7a1200]/20"
                       disabled={
-                        importMode === 'banyak-bulan' 
-                          ? ((step === 1 && !canGoStep2) || (step === 2 && (targetBulanIds.size === 0 || !selectedTahun))) 
-                          : ((step === 1 && !canGoStep3) || (step === 2 && (!selectedTahun || (targetDesaMode === 'pilih' && targetDesaIds.size === 0))))
+                        (step === 1 && !canGoStep2) || 
+                        (step === 2 && (!selectedTahun || (targetDesaMode === 'pilih' && targetDesaIds.size === 0) || targetBulanIds.size === 0))
                       }
                       onClick={() => setStep(s => s + 1)}
                     >

@@ -491,7 +491,9 @@ export default function SemuaLaporanKeuanganPage() {
                   <thead className="bg-slate-50 text-[11px] font-black text-slate-500 uppercase tracking-widest sticky top-0 z-30 shadow-sm">
                     <tr>
                       <th className="px-4 py-3 sticky left-0 z-40 bg-slate-50 shadow-[1px_0_0_#f1f5f9]">Bulan</th>
-                      <th className="px-4 py-3">Desa & Program</th>
+                      <th className="px-4 py-3">Tahun</th>
+                      <th className="px-4 py-3">Desa Binaan</th>
+                      <th className="px-4 py-3">Program</th>
                       <th className="px-4 py-3">Ajuan</th>
                       <th className="px-4 py-3">Cair</th>
                       <th className="px-4 py-3">Realisasi</th>
@@ -521,36 +523,34 @@ export default function SemuaLaporanKeuanganPage() {
                         return (
                           <tr key={a.id} className={`${rowBg} ${rowHoverBg} border-b border-slate-100 transition-colors`}>
                             <td className={`px-4 py-3 sticky left-0 z-10 ${rowBg} ${rowHoverBg} ${statusShadow}`}>
-                              <div className="text-left outline-none min-w-[80px]">
-                                <div className="font-black text-slate-800 transition-colors flex items-center gap-2">
-                                  {monthName}
-                                </div>
-                                <div className="text-[10px] font-bold text-slate-400 transition-colors">{a.tahun}</div>
+                              <div className="font-semibold text-slate-800 truncate">{monthName}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="font-medium text-slate-600 truncate">{a.tahun}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1.5 min-w-[150px]">
+                                <Building2 className="w-3.5 h-3.5 text-[#7a1200] shrink-0" />
+                                <span className="font-semibold text-slate-800 uppercase tracking-tight truncate">{a.nama_desa}</span>
                               </div>
                             </td>
                             <td className="px-4 py-3">
-                              <div className="text-left flex flex-col gap-1 w-[200px]">
-                                <div className="flex items-center gap-1.5">
-                                  <Building2 className="w-3.5 h-3.5 text-[#7a1200] shrink-0" />
-                                  <span className="font-bold text-slate-800 uppercase tracking-tight truncate">{a.nama_desa}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <Target className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                  <span className="text-xs font-medium text-slate-600 truncate">{a.nama_program}</span>
-                                </div>
+                              <div className="flex items-center gap-1.5 min-w-[150px]">
+                                <Target className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                <span className="text-xs font-medium text-slate-600 truncate">{a.nama_program}</span>
                               </div>
                             </td>
-                            <td className="px-4 py-3 font-bold text-slate-700 whitespace-nowrap">
+                            <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">
                               Rp {parseInt(a.ajuan_ri || '0').toLocaleString('id-ID')}
                             </td>
-                            <td className="px-4 py-3 font-black text-[#7a1200] whitespace-nowrap">
+                            <td className="px-4 py-3 font-semibold text-[#7a1200] whitespace-nowrap">
                               Rp {parseInt(a.anggaran_dicairkan || '0').toLocaleString('id-ID')}
                             </td>
-                            <td className="px-4 py-3 font-bold text-amber-600 whitespace-nowrap">
+                            <td className="px-4 py-3 font-medium text-amber-600 whitespace-nowrap">
                               Rp {realisasi.toLocaleString('id-ID')}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
-                              <span className={`font-black tracking-tight ${sisa < 0 ? 'text-rose-600' : 'text-slate-700'}`}>Rp {sisa.toLocaleString('id-ID')}</span>
+                              <span className={`font-semibold tracking-tight ${sisa < 0 ? 'text-rose-600' : 'text-slate-700'}`}>Rp {sisa.toLocaleString('id-ID')}</span>
                             </td>
                             <td className="px-4 py-3 text-center align-middle">
                               {renderBukti(a.bukti_ca_url)}
@@ -652,7 +652,7 @@ export default function SemuaLaporanKeuanganPage() {
                               className="bg-slate-100/50 hover:bg-slate-100 cursor-pointer transition-colors border-b border-slate-200"
                               onClick={() => toggleGroup(node.path)}
                             >
-                              <td colSpan={isAdminOrFinance ? 13 : 11} className="px-4 py-3">
+                              <td colSpan={isAdminOrFinance ? 15 : 13} className="px-4 py-3">
                                 <div className="flex items-center gap-2 font-black text-slate-800" style={{ paddingLeft: `${node.depth * 1.5}rem` }}>
                                   {expandedGroups[node.path] ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
                                   <span className="uppercase tracking-tight">{node.groupName}</span>

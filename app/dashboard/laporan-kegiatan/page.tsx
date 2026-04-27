@@ -318,6 +318,7 @@ function LaporanKegiatanListContent() {
             <thead className="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
               <tr>
                 <th className="px-6 py-4">Judul Kegiatan</th>
+                <th className="px-6 py-4">Kategori Program</th>
                 <th className="px-6 py-4">Desa Binaan</th>
                 <th className="px-6 py-4">Tanggal Aktifitas</th>
                 <th className="px-6 py-4 text-right">Aksi</th>
@@ -334,7 +335,9 @@ function LaporanKegiatanListContent() {
                     <tr key={laporan.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="font-semibold text-slate-800">{laporan.judul_kegiatan}</div>
-                        <div className="text-xs text-slate-500 mt-0.5">{laporan.jenis_kegiatan}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg">{laporan.jenis_kegiatan}</span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1.5 text-slate-600">
@@ -376,7 +379,7 @@ function LaporanKegiatanListContent() {
                           className="bg-slate-100/50 hover:bg-slate-100 cursor-pointer transition-colors border-b border-slate-200"
                           onClick={() => toggleGroup(node.path)}
                         >
-                          <td colSpan={4} className="px-6 py-3">
+                          <td colSpan={5} className="px-6 py-3">
                             <div className="flex items-center gap-2 font-black text-slate-800" style={{ paddingLeft: `${node.depth * 1.5}rem` }}>
                               {expandedGroups[node.path] ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
                               <span className="uppercase tracking-tight">{node.groupName}</span>

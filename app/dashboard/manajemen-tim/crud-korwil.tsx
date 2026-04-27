@@ -461,8 +461,10 @@ export function CRUDKorwil({ isAdmin, isMonev }: { isAdmin: boolean; isMonev: bo
                 <thead className="border-b border-slate-100 bg-slate-50/80">
                   <tr>
                     <th className="text-center py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400 w-16 rounded-tl-2xl">No</th>
-                    <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Identitas</th>
-                    <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Kontak</th>
+                    <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Korwil</th>
+                    <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Posisi</th>
+                    <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Email</th>
+                    <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">No. HP</th>
                     {isAdmin && <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Atasan (Monev)</th>}
                     <th className="text-center py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Relawan Binaan</th>
                     <th className="text-center py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400 rounded-tr-2xl">Tindakan</th>
@@ -477,15 +479,17 @@ export function CRUDKorwil({ isAdmin, isMonev }: { isAdmin: boolean; isMonev: bo
                           <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center font-bold text-slate-800 group-hover:bg-amber-500 group-hover:border-amber-500 group-hover:text-white transition-colors duration-300 flex-shrink-0">
                             {row.nama.charAt(0).toUpperCase()}
                           </div>
-                          <div>
-                            <span className="text-sm font-semibold text-slate-800 block truncate leading-none mb-1">{row.nama}</span>
-                            <span className="text-[11px] font-medium text-slate-500">Koordinator Wilayah</span>
-                          </div>
+                          <span className="text-sm font-semibold text-slate-800 block truncate">{row.nama}</span>
                         </div>
                       </td>
                       <td className="py-4 px-4">
-                        <p className="text-sm font-semibold text-slate-600 mb-0.5">{row.email ?? '-'}</p>
-                        <p className="text-[11px] font-medium text-slate-400">{row.hp ?? '-'}</p>
+                        <span className="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg">Koordinator Wilayah</span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <p className="text-sm font-semibold text-slate-600">{row.email ?? '-'}</p>
+                      </td>
+                      <td className="py-4 px-4">
+                        <p className="text-sm font-medium text-slate-500">{row.hp ?? '-'}</p>
                       </td>
                       {isAdmin && (
                         <td className="py-4 px-4">
@@ -518,7 +522,7 @@ export function CRUDKorwil({ isAdmin, isMonev }: { isAdmin: boolean; isMonev: bo
                   ))}
                   {filteredList.length === 0 && list.length > 0 && (
                     <tr>
-                      <td colSpan={isAdmin ? 6 : 5} className="py-8 text-center text-slate-400 text-sm">Tidak ada hasil pencarian.</td>
+                      <td colSpan={isAdmin ? 8 : 7} className="py-8 text-center text-slate-400 text-sm">Tidak ada hasil pencarian.</td>
                     </tr>
                   )}
                 </tbody>

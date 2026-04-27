@@ -477,6 +477,7 @@ export default function PenerimaManfaatPage() {
               <thead className="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
                 <tr>
                   <th className="px-6 py-4">Penerima Manfaat</th>
+                  <th className="px-6 py-4">NIK</th>
                   <th className="px-6 py-4">Kategori</th>
                   <th className="px-6 py-4">Desa Binaan</th>
                   <th className="px-6 py-4 text-right">Aksi</th>
@@ -484,9 +485,9 @@ export default function PenerimaManfaatPage() {
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {loading ? (
-                  <tr><td colSpan={4} className="px-6 py-12 text-center text-slate-500">Memuat data...</td></tr>
+                  <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500">Memuat data...</td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={4} className="px-6 py-12 text-center text-slate-500">
+                  <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500">
                     {list.length === 0 ? 'Belum ada data penerima manfaat.' : 'Tidak ada hasil yang cocok'}
                   </td></tr>
                 ) : (() => {
@@ -497,22 +498,22 @@ export default function PenerimaManfaatPage() {
                           <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-[#7a1200] shrink-0">
                             <UserSquare2 className="w-5 h-5" />
                           </div>
-                          <div>
-                            <p className="font-semibold text-slate-800 flex items-center gap-2">
-                              {pm.nama}
-                              {pm.foto_ktp_url ? (
-                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-100" title="Foto KTP Tersedia">
-                                   KTP
-                                 </span>
-                              ) : (
-                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-50 text-red-700 border border-red-100" title="Foto KTP Belum Diupload">
-                                   No KTP
-                                 </span>
-                              )}
-                            </p>
-                            <p className="text-xs text-slate-500 font-mono mt-0.5">{pm.nik}</p>
-                          </div>
+                          <p className="font-semibold text-slate-800 flex items-center gap-2">
+                            {pm.nama}
+                            {pm.foto_ktp_url ? (
+                               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-100" title="Foto KTP Tersedia">
+                                 KTP
+                               </span>
+                            ) : (
+                               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-50 text-red-700 border border-red-100" title="Foto KTP Belum Diupload">
+                                 No KTP
+                               </span>
+                            )}
+                          </p>
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-sm text-slate-600 font-mono">{pm.nik || '-'}</p>
                       </td>
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
@@ -561,7 +562,7 @@ export default function PenerimaManfaatPage() {
                           className="bg-slate-50/50 hover:bg-slate-100 cursor-pointer transition-colors border-b border-slate-200"
                           onClick={() => toggleTableGroup(node.path)}
                         >
-                          <td colSpan={4} className="px-6 py-3 sticky left-0 z-20 bg-slate-50/90">
+                          <td colSpan={5} className="px-6 py-3 sticky left-0 z-20 bg-slate-50/90">
                             <div className="flex items-center gap-2 font-black text-slate-800" style={{ paddingLeft: `${node.depth * 1.5}rem` }}>
                               {expandedTableGroups[node.path] ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
                               <span className="uppercase tracking-tight">{node.groupName}</span>

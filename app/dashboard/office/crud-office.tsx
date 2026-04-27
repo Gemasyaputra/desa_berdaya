@@ -235,7 +235,9 @@ export function CRUDOffice() {
                 <thead className="border-b border-slate-100 bg-slate-50/80">
                   <tr>
                     <th className="text-center py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400 w-16 rounded-tl-2xl">No</th>
-                    <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Identitas Kantor</th>
+                    <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Kantor Regional</th>
+                    <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Lokasi</th>
+                    <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Alamat</th>
                     <th className="text-center py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Jumlah User</th>
                     <th className="text-center py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Desa Binaan</th>
                     <th className="text-center py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400 rounded-tr-2xl">Tindakan</th>
@@ -250,16 +252,18 @@ export function CRUDOffice() {
                           <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center font-black text-slate-800 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300 flex-shrink-0">
                             {row.nama_office.charAt(0).toUpperCase()}
                           </div>
-                          <div>
-                            <span className="text-sm font-black text-slate-800 block truncate leading-none mb-1">{row.nama_office}</span>
-                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex flex-wrap gap-x-2">
-                               {row.nama_kecamatan && <span>{row.nama_kecamatan},</span>}
-                               {row.nama_kota && <span>{row.nama_kota}</span>}
-                               {row.nama_provinsi && <span>({row.nama_provinsi})</span>}
-                            </div>
-                            <span className="text-[10px] font-medium text-slate-300 line-clamp-1 italic">{row.alamat || 'Detail alamat tidak diinput'}</span>
-                          </div>
+                          <span className="text-sm font-black text-slate-800 block truncate leading-none">{row.nama_office}</span>
                         </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex flex-wrap gap-x-2">
+                           {row.nama_kecamatan && <span>{row.nama_kecamatan},</span>}
+                           {row.nama_kota && <span>{row.nama_kota}</span>}
+                           {row.nama_provinsi && <span>({row.nama_provinsi})</span>}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="text-[11px] font-medium text-slate-500 line-clamp-2 italic">{row.alamat || 'Tidak diinput'}</span>
                       </td>
                       <td className="py-4 px-4 text-center">
                         <Badge className="bg-blue-50 text-blue-700 border-blue-200/50 px-3 py-1 font-bold shadow-none rounded-lg">{row.jumlah_user} Pengguna</Badge>

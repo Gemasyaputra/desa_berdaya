@@ -485,7 +485,9 @@ export default function EkonomiPage() {
                   <thead className="bg-[#f8f9fa] text-[11px] font-bold text-slate-700 border-b-2 border-slate-300">
                     <tr>
                       <th className="px-3 py-2 min-w-[80px] sticky left-0 bg-[#f8f9fa] z-20 border border-slate-300 text-center">Aksi</th>
-                      <th className="px-3 py-2 min-w-[200px] sticky left-[80px] bg-[#f8f9fa] z-20 border border-slate-300 shadow-[2px_0_0_0_#cbd5e1]">Kelompok & PM</th>
+                      <th className="px-3 py-2 min-w-[150px] sticky left-[80px] bg-[#f8f9fa] z-20 border border-slate-300 shadow-[2px_0_0_0_#cbd5e1]">Penerima Manfaat</th>
+                      <th className="px-3 py-2 min-w-[120px] border border-slate-300">NIK</th>
+                      <th className="px-3 py-2 min-w-[150px] border border-slate-300">Kelompok</th>
                       <th className="px-3 py-2 min-w-[80px] border border-slate-300 text-center">Tahun</th>
                       <th className="px-3 py-2 min-w-[100px] border border-slate-300 text-center">Bulan</th>
                       <th className="px-3 py-2 min-w-[100px] border border-slate-300 text-center">Status</th>
@@ -519,9 +521,9 @@ export default function EkonomiPage() {
                           </td>
                           <td className="px-3 py-2 sticky left-[80px] bg-white group-hover/row:bg-emerald-50/50 z-10 border border-slate-300 shadow-[2px_0_0_0_#cbd5e1]">
                             <div className="font-semibold text-slate-800">{update.nama_pm}</div>
-                            <div className="text-[10px] text-slate-500 font-medium">{update.nik_pm}</div>
-                            <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">{update.nama_kelompok || 'Tanpa Kelompok'}</div>
                           </td>
+                          <td className="px-3 py-2 border border-slate-300 text-[11px] font-medium text-slate-600">{update.nik_pm}</td>
+                          <td className="px-3 py-2 border border-slate-300 text-[11px] text-emerald-700 font-semibold">{update.nama_kelompok || '-'}</td>
                           <td className="px-3 py-2 border border-slate-300 text-center">{update.tahun}</td>
                           <td className="px-3 py-2 border border-slate-300 text-center font-medium">{getBulanName(update.bulan)}</td>
                           <td className="px-3 py-2 border border-slate-300 text-center">
@@ -555,7 +557,7 @@ export default function EkonomiPage() {
                               className="bg-slate-50/50 hover:bg-slate-100 cursor-pointer transition-colors border-b border-slate-200"
                               onClick={() => toggleTableGroup(node.path)}
                             >
-                              <td colSpan={17} className="px-3 py-2 sticky left-0 z-20 bg-slate-50/90 shadow-[2px_0_0_0_#cbd5e1]">
+                              <td colSpan={19} className="px-3 py-2 sticky left-0 z-20 bg-slate-50/90 shadow-[2px_0_0_0_#cbd5e1]">
                                 <div className="flex items-center gap-2 font-black text-slate-800" style={{ paddingLeft: `${node.depth * 1.5}rem` }}>
                                   {expandedTableGroups[node.path] ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
                                   <span className="uppercase tracking-tight">{node.groupName}</span>

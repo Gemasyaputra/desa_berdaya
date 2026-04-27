@@ -222,7 +222,9 @@ export function CRUDOfficeUser() {
                   <tr>
                     <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400 w-16 rounded-tl-2xl">No</th>
                     <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Identitas Staf</th>
-                    <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Posis & Kontak</th>
+                    <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Email</th>
+                    <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Jabatan</th>
+                    <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Kontak</th>
                     <th className="text-left py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400">Penugasan Regional</th>
                     <th className="text-center py-4 px-4 text-[11px] font-black uppercase tracking-widest text-slate-400 rounded-tr-2xl w-[260px]">Tindakan</th>
                   </tr>
@@ -236,15 +238,17 @@ export function CRUDOfficeUser() {
                           <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center font-bold text-slate-800 group-hover:bg-amber-600 group-hover:text-white transition-colors duration-300 flex-shrink-0">
                             {row.nama.charAt(0).toUpperCase()}
                           </div>
-                          <div>
-                            <span className="text-sm font-semibold text-slate-800 block truncate leading-none mb-1">{row.nama}</span>
-                            <span className="text-[11px] font-medium text-slate-500 line-clamp-1">{row.email}</span>
-                          </div>
+                          <span className="text-sm font-semibold text-slate-800 block truncate">{row.nama}</span>
                         </div>
                       </td>
                       <td className="py-4 px-4">
-                        <Badge className="bg-slate-100 text-slate-700 border-slate-200/50 px-2.5 py-0.5 font-bold shadow-none rounded-md mb-1">{row.jabatan}</Badge>
-                        <p className="text-[11px] font-medium text-slate-400">{row.hp || 'Belum set HP'}</p>
+                        <span className="text-sm font-medium text-slate-600">{row.email}</span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge className="bg-slate-100 text-slate-700 border-slate-200/50 px-2.5 py-0.5 font-bold shadow-none rounded-md">{row.jabatan}</Badge>
+                      </td>
+                      <td className="py-4 px-4">
+                        <p className="text-sm font-medium text-slate-600">{row.hp || 'Belum set HP'}</p>
                       </td>
                       <td className="py-4 px-4">
                         {row.office_id ? (
@@ -268,7 +272,7 @@ export function CRUDOfficeUser() {
                   ))}
                   {filteredList.length === 0 && list.length > 0 && (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-400 text-sm">Tidak ada hasil pencarian.</td>
+                      <td colSpan={7} className="py-8 text-center text-slate-400 text-sm">Tidak ada hasil pencarian.</td>
                     </tr>
                   )}
                 </tbody>

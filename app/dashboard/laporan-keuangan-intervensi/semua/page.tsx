@@ -338,35 +338,6 @@ export default function SemuaLaporanKeuanganPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <MultiSelectGroup 
-          title="Filter Data"
-          groups={[
-            { key: 'desa', title: 'Desa', options: filterOptions.desa, selected: filters.desa, onChange: (val) => { setFilters(f => ({ ...f, desa: val })); setCurrentPage(1) } },
-            { key: 'program', title: 'Program', options: filterOptions.program, selected: filters.program, onChange: (val) => { setFilters(f => ({ ...f, program: val })); setCurrentPage(1) } },
-            { key: 'relawan', title: 'Relawan', options: filterOptions.relawan, selected: filters.relawan, onChange: (val) => { setFilters(f => ({ ...f, relawan: val })); setCurrentPage(1) } },
-            { key: 'sumber_dana', title: 'Sumber Dana', options: filterOptions.sumber_dana, selected: filters.sumber_dana, onChange: (val) => { setFilters(f => ({ ...f, sumber_dana: val })); setCurrentPage(1) } },
-            { key: 'tahun', title: 'Tahun', options: filterOptions.tahun, selected: filters.tahun, onChange: (val) => { setFilters(f => ({ ...f, tahun: val })); setCurrentPage(1) } }
-          ]}
-        />
-        
-        {hasAnyFilter && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-[36px] px-3 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-bold gap-1 transition-colors"
-            onClick={() => {
-              setSearch('')
-              setFilterStatus('Semua')
-              setFilters({ desa: [], program: [], relawan: [], sumber_dana: [], tahun: [] })
-              setCurrentPage(1)
-            }}
-          >
-            <X className="w-4 h-4" />
-            Reset
-          </Button>
-        )}
-      </div>
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
@@ -409,7 +380,35 @@ export default function SemuaLaporanKeuanganPage() {
 
               <div className="h-6 w-px bg-slate-200 hidden sm:block" />
 
+              <MultiSelectGroup 
+                title="Filter Data"
+                groups={[
+                  { key: 'desa', title: 'Desa', options: filterOptions.desa, selected: filters.desa, onChange: (val) => { setFilters(f => ({ ...f, desa: val })); setCurrentPage(1) } },
+                  { key: 'program', title: 'Program', options: filterOptions.program, selected: filters.program, onChange: (val) => { setFilters(f => ({ ...f, program: val })); setCurrentPage(1) } },
+                  { key: 'relawan', title: 'Relawan', options: filterOptions.relawan, selected: filters.relawan, onChange: (val) => { setFilters(f => ({ ...f, relawan: val })); setCurrentPage(1) } },
+                  { key: 'sumber_dana', title: 'Sumber Dana', options: filterOptions.sumber_dana, selected: filters.sumber_dana, onChange: (val) => { setFilters(f => ({ ...f, sumber_dana: val })); setCurrentPage(1) } },
+                  { key: 'tahun', title: 'Tahun', options: filterOptions.tahun, selected: filters.tahun, onChange: (val) => { setFilters(f => ({ ...f, tahun: val })); setCurrentPage(1) } }
+                ]}
+              />
+              
+              {hasAnyFilter && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 px-3 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-bold gap-1 transition-colors"
+                  onClick={() => {
+                    setSearch('')
+                    setFilterStatus('Semua')
+                    setFilters({ desa: [], program: [], relawan: [], sumber_dana: [], tahun: [] })
+                    setCurrentPage(1)
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                  Reset
+                </Button>
+              )}
 
+              <div className="h-6 w-px bg-slate-200 hidden sm:block" />
 
               {/* Sort Select */}
               <div className="relative">
@@ -456,26 +455,28 @@ export default function SemuaLaporanKeuanganPage() {
                     setExpandedGroups({})
                   }} 
                 />
-                {groupBys.length > 0 && (
-                  <div className="flex flex-wrap gap-1 items-center">
-                    {groupBys.map((g, idx) => (
-                      <React.Fragment key={g}>
-                        <Badge variant="secondary" className="bg-slate-200 text-slate-700 text-[10px] uppercase gap-1 flex items-center pr-1 h-6">
-                          {g} 
-                          <button onClick={() => {
-                              setGroupBys(prev => prev.filter(v => v !== g));
-                              setExpandedGroups({});
-                          }} className="hover:bg-slate-300 p-0.5 rounded-full transition-colors">
-                            <X className="w-3 h-3 hover:text-rose-600"/>
-                          </button>
-                        </Badge>
-                        {idx < groupBys.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
-                      </React.Fragment>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
+            
+            {/* Active Group Bys Row */}
+            {groupBys.length > 0 && (
+              <div className="flex flex-wrap gap-1 items-center pt-2 border-t border-slate-100 w-full mt-3">
+                {groupBys.map((g, idx) => (
+                  <div key={g} className="flex items-center gap-1">
+                    <div className="bg-slate-200 text-slate-700 text-[10px] uppercase font-bold px-2 py-1 rounded flex items-center gap-1">
+                      {g} 
+                      <button onClick={() => {
+                          setGroupBys(prev => prev.filter(v => v !== g));
+                          setExpandedGroups({});
+                      }} className="hover:bg-slate-300 p-0.5 rounded-full transition-colors">
+                        <X className="w-3 h-3 hover:text-rose-600"/>
+                      </button>
+                    </div>
+                    {idx < groupBys.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardHeader>
           
           <CardContent className="p-0">

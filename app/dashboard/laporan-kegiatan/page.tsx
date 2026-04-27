@@ -173,63 +173,67 @@ function LaporanKegiatanListContent() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row flex-wrap gap-4 bg-slate-50/50">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-            <input 
-              type="text" 
-              placeholder="Cari kegiatan, desa..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl h-[42px] text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
-            />
-          </div>
-          
-          <MultiSelectGroup 
-            title="Filter Data"
-            groups={[
-              { key: 'desa', title: 'Desa Binaan', options: filterOptions.desa, selected: filters.desa, onChange: (val) => setFilters(f => ({ ...f, desa: val })) },
-              { key: 'jenis', title: 'Jenis Kegiatan', options: filterOptions.jenis, selected: filters.jenis, onChange: (val) => setFilters(f => ({ ...f, jenis: val })) },
-              { key: 'tahun', title: 'Tahun', options: filterOptions.tahun, selected: filters.tahun, onChange: (val) => setFilters(f => ({ ...f, tahun: val })) }
-            ]}
-          />
+        <div className="p-4 border-b border-slate-100 flex flex-col gap-4 bg-slate-50/50">
+          <div className="flex flex-col xl:flex-row flex-wrap items-start xl:items-center justify-between gap-3 w-full">
+            {/* Left side: Search and Filters */}
+            <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+              <div className="relative flex-grow sm:flex-grow-0 min-w-[200px] max-w-sm">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <input 
+                  type="text" 
+                  placeholder="Cari kegiatan, desa..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl h-[42px] text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                />
+              </div>
+              
+              <MultiSelectGroup 
+                title="Filter Data"
+                groups={[
+                  { key: 'desa', title: 'Desa Binaan', options: filterOptions.desa, selected: filters.desa, onChange: (val) => setFilters(f => ({ ...f, desa: val })) },
+                  { key: 'jenis', title: 'Jenis Kegiatan', options: filterOptions.jenis, selected: filters.jenis, onChange: (val) => setFilters(f => ({ ...f, jenis: val })) },
+                  { key: 'tahun', title: 'Tahun', options: filterOptions.tahun, selected: filters.tahun, onChange: (val) => setFilters(f => ({ ...f, tahun: val })) }
+                ]}
+              />
 
-          {hasAnyFilter && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-[42px] px-3 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-bold gap-1 transition-colors"
-              onClick={() => {
-                setSearchQuery('')
-                setFilters({ desa: [], jenis: [], tahun: [] })
-              }}
-            >
-              <X className="w-4 h-4" />
-              Reset
-            </Button>
-          )}
+              {hasAnyFilter && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-[42px] px-3 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-bold gap-1 transition-colors"
+                  onClick={() => {
+                    setSearchQuery('')
+                    setFilters({ desa: [], jenis: [], tahun: [] })
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                  Reset
+                </Button>
+              )}
+            </div>
 
-          <div className="flex flex-col gap-2 w-full lg:w-auto ml-auto">
-            <Select value="none" onValueChange={(val) => { 
-              if (val !== 'none' && !groupBys.includes(val)) {
-                setGroupBys(prev => [...prev, val]);
-                setExpandedGroups({}); 
-              }
-            }}>
-              <SelectTrigger className="w-full lg:w-[220px] bg-white border-slate-200 rounded-xl h-[42px] font-bold text-slate-600">
-                <div className="flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-slate-400" />
-                  <SelectValue placeholder="Tambah Group By..." />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Tambah Group By...</SelectItem>
-                <SelectItem value="desa">Berdasarkan Desa</SelectItem>
-                <SelectItem value="jenis">Berdasarkan Jenis</SelectItem>
-                <SelectItem value="tahun">Berdasarkan Tahun</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="w-full lg:w-[220px]">
+            {/* Right side: Group By */}
+            <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+              <Select value="none" onValueChange={(val) => { 
+                if (val !== 'none' && !groupBys.includes(val)) {
+                  setGroupBys(prev => [...prev, val]);
+                  setExpandedGroups({}); 
+                }
+              }}>
+                <SelectTrigger className="w-full lg:w-auto min-w-[180px] bg-white border-slate-200 rounded-xl h-[42px] font-bold text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-slate-400" />
+                    <SelectValue placeholder="Tambah Group By..." />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Tambah Group By...</SelectItem>
+                  <SelectItem value="desa">Berdasarkan Desa</SelectItem>
+                  <SelectItem value="jenis">Berdasarkan Jenis</SelectItem>
+                  <SelectItem value="tahun">Berdasarkan Tahun</SelectItem>
+                </SelectContent>
+              </Select>
               <FavoriteGroupSelector 
                 moduleName="laporan_kegiatan" 
                 currentGroupBys={groupBys} 
@@ -239,25 +243,27 @@ function LaporanKegiatanListContent() {
                 }} 
               />
             </div>
-            {groupBys.length > 0 && (
-              <div className="flex flex-wrap gap-1 items-center">
-                {groupBys.map((g, idx) => (
-                  <React.Fragment key={g}>
-                    <Badge variant="secondary" className="bg-slate-200 text-slate-700 text-[10px] uppercase gap-1 flex items-center pr-1 h-6">
-                      {g} 
-                      <button onClick={() => {
-                          setGroupBys(prev => prev.filter(v => v !== g));
-                          setExpandedGroups({});
-                      }} className="hover:bg-slate-300 p-0.5 rounded-full transition-colors">
-                        <X className="w-3 h-3 hover:text-rose-600"/>
-                      </button>
-                    </Badge>
-                    {idx < groupBys.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
-                  </React.Fragment>
-                ))}
-              </div>
-            )}
           </div>
+
+          {/* Active Group Bys Row */}
+          {groupBys.length > 0 && (
+            <div className="flex flex-wrap gap-1 items-center pt-2 border-t border-slate-100 w-full">
+              {groupBys.map((g, idx) => (
+                <div key={g} className="flex items-center gap-1">
+                  <div className="bg-slate-200 text-slate-700 text-[10px] uppercase font-bold px-2 py-1 rounded flex items-center gap-1">
+                    {g} 
+                    <button onClick={() => {
+                        setGroupBys(prev => prev.filter(v => v !== g));
+                        setExpandedGroups({});
+                    }} className="hover:bg-slate-300 p-0.5 rounded-full transition-colors">
+                      <X className="w-3 h-3 hover:text-rose-600"/>
+                    </button>
+                  </div>
+                  {idx < groupBys.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Mobile View: Card Layout */}

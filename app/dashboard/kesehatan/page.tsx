@@ -335,103 +335,111 @@ export default function KesehatanPage() {
       </div>
 
       <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 overflow-hidden border-none p-6">
-            <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-6">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-4 w-5 h-5 text-slate-400 pointer-events-none top-1/2 -translate-y-1/2" />
-                <input 
-                  type="text" 
-                  placeholder="Cari nama atau NIK..."
-                  className="w-full bg-slate-50 rounded-xl pl-12 pr-4 h-[42px] border border-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 transition-all text-sm font-medium text-slate-800 placeholder:text-slate-400"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <MultiSelectGroup 
-                title="Filter Data"
-                groups={[
-                  { key: 'kelompok', title: 'Kelompok', options: filterOptions.kelompok, selected: filters.kelompok, onChange: (val) => setFilters(f => ({ ...f, kelompok: val })) },
-                  { key: 'bulan', title: 'Bulan', options: filterOptions.bulan, selected: filters.bulan, onChange: (val) => setFilters(f => ({ ...f, bulan: val })) },
-                  { key: 'program', title: 'Program Kesehatan', options: filterOptions.program, selected: filters.program, onChange: (val) => setFilters(f => ({ ...f, program: val })) },
-                  { key: 'relawan', title: 'Relawan', options: filterOptions.relawan, selected: filters.relawan, onChange: (val) => setFilters(f => ({ ...f, relawan: val })) }
-                ]}
-              />
-              
-              {hasAnyFilter && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-[42px] px-3 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-bold gap-1 transition-colors"
-                  onClick={clearFilters}
-                >
-                  <X className="w-4 h-4" />
-                  Reset
-                </Button>
-              )}
-
-              {viewMode === 'table' && (
-                <div className="flex flex-col gap-2 w-full lg:w-auto ml-auto">
-                  <Select value="none" onValueChange={(val) => { 
-                    if (val !== 'none' && !groupBys.includes(val)) {
-                      setGroupBys(prev => [...prev, val]);
-                      setExpandedTableGroups({}); 
-                    }
-                  }}>
-                    <SelectTrigger className="w-full lg:w-[220px] bg-white border-slate-200 rounded-xl h-[42px] font-bold text-slate-600">
-                      <div className="flex items-center gap-2">
-                        <Layers className="w-4 h-4 text-slate-400" />
-                        <SelectValue placeholder="Tambah Group By..." />
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Tambah Group By...</SelectItem>
-                      <SelectItem value="kelompok">Berdasarkan Kelompok</SelectItem>
-                      <SelectItem value="bulan">Berdasarkan Bulan</SelectItem>
-                      <SelectItem value="program">Berdasarkan Program</SelectItem>
-                      <SelectItem value="relawan">Berdasarkan Relawan</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div className="w-full lg:w-[220px]">
-                    <FavoriteGroupSelector 
-                      moduleName="kesehatan" 
-                      currentGroupBys={groupBys} 
-                      onApplyFavorite={(groups) => {
-                        setGroupBys(groups)
-                        setExpandedTableGroups({})
-                      }} 
+            <div className="flex flex-col gap-4 mb-6">
+              <div className="flex flex-col xl:flex-row flex-wrap items-start xl:items-center justify-between gap-3 w-full">
+                {/* Left side: Search and Filters */}
+                <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+                  <div className="relative flex-grow sm:flex-grow-0 min-w-[200px]">
+                    <Search className="absolute left-4 w-5 h-5 text-slate-400 pointer-events-none top-1/2 -translate-y-1/2" />
+                    <input 
+                      type="text" 
+                      placeholder="Cari nama atau NIK..."
+                      className="w-full bg-slate-50 rounded-xl pl-12 pr-4 h-[42px] border border-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 transition-all text-sm font-medium text-slate-800 placeholder:text-slate-400"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-                  {groupBys.length > 0 && (
-                    <div className="flex flex-wrap gap-1 items-center">
-                      {groupBys.map((g, idx) => (
-                        <React.Fragment key={g}>
-                          <Badge variant="secondary" className="bg-slate-200 text-slate-700 text-[10px] uppercase gap-1 flex items-center pr-1 h-6">
-                            {g} 
-                            <button onClick={() => {
-                                setGroupBys(prev => prev.filter(v => v !== g));
-                                setExpandedTableGroups({});
-                            }} className="hover:bg-slate-300 p-0.5 rounded-full transition-colors">
-                              <X className="w-3 h-3 hover:text-rose-600"/>
-                            </button>
-                          </Badge>
-                          {idx < groupBys.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
-                        </React.Fragment>
-                      ))}
-                    </div>
+                  <MultiSelectGroup 
+                    title="Filter Data"
+                    groups={[
+                      { key: 'kelompok', title: 'Kelompok', options: filterOptions.kelompok, selected: filters.kelompok, onChange: (val) => setFilters(f => ({ ...f, kelompok: val })) },
+                      { key: 'bulan', title: 'Bulan', options: filterOptions.bulan, selected: filters.bulan, onChange: (val) => setFilters(f => ({ ...f, bulan: val })) },
+                      { key: 'program', title: 'Program Kesehatan', options: filterOptions.program, selected: filters.program, onChange: (val) => setFilters(f => ({ ...f, program: val })) },
+                      { key: 'relawan', title: 'Relawan', options: filterOptions.relawan, selected: filters.relawan, onChange: (val) => setFilters(f => ({ ...f, relawan: val })) }
+                    ]}
+                  />
+                  
+                  {hasAnyFilter && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-[42px] px-3 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-bold gap-1 transition-colors"
+                      onClick={clearFilters}
+                    >
+                      <X className="w-4 h-4" />
+                      Reset
+                    </Button>
                   )}
                 </div>
-              )}
 
-              <select 
-                className="bg-slate-50 rounded-xl px-4 h-[42px] border border-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 text-sm font-medium text-slate-800"
-                value={itemsPerPage}
-                onChange={(e) => setItemsPerPage(Number(e.target.value))}
-              >
-                <option value={10}>10 Baris</option>
-                <option value={20}>20 Baris</option>
-                <option value={50}>50 Baris</option>
-                <option value={100}>100 Baris</option>
-                <option value={999999}>Semua Data</option>
-              </select>
+                {/* Right side: Group By and Rows */}
+                <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+                  {viewMode === 'table' && (
+                    <>
+                      <Select value="none" onValueChange={(val) => { 
+                        if (val !== 'none' && !groupBys.includes(val)) {
+                          setGroupBys(prev => [...prev, val]);
+                          setExpandedTableGroups({}); 
+                        }
+                      }}>
+                        <SelectTrigger className="w-full lg:w-auto min-w-[180px] bg-white border-slate-200 rounded-xl h-[42px] font-bold text-slate-600">
+                          <div className="flex items-center gap-2">
+                            <Layers className="w-4 h-4 text-slate-400" />
+                            <SelectValue placeholder="Tambah Group By..." />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Tambah Group By...</SelectItem>
+                          <SelectItem value="kelompok">Berdasarkan Kelompok</SelectItem>
+                          <SelectItem value="bulan">Berdasarkan Bulan</SelectItem>
+                          <SelectItem value="program">Berdasarkan Program</SelectItem>
+                          <SelectItem value="relawan">Berdasarkan Relawan</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FavoriteGroupSelector 
+                        moduleName="kesehatan" 
+                        currentGroupBys={groupBys} 
+                        onApplyFavorite={(groups) => {
+                          setGroupBys(groups)
+                          setExpandedTableGroups({})
+                        }} 
+                      />
+                    </>
+                  )}
+
+                  <select 
+                    className="bg-slate-50 rounded-xl px-4 h-[42px] border border-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 text-sm font-medium text-slate-800"
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  >
+                    <option value={10}>10 Baris</option>
+                    <option value={20}>20 Baris</option>
+                    <option value={50}>50 Baris</option>
+                    <option value={100}>100 Baris</option>
+                    <option value={999999}>Semua Data</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Active Group Bys Row */}
+              {viewMode === 'table' && groupBys.length > 0 && (
+                <div className="flex flex-wrap gap-1 items-center pt-2 border-t border-slate-100 w-full">
+                  {groupBys.map((g, idx) => (
+                    <div key={g} className="flex items-center gap-1">
+                      <div className="bg-slate-200 text-slate-700 text-[10px] uppercase font-bold px-2 py-1 rounded flex items-center gap-1">
+                        {g} 
+                        <button onClick={() => {
+                            setGroupBys(prev => prev.filter(v => v !== g));
+                            setExpandedTableGroups({});
+                        }} className="hover:bg-slate-300 p-0.5 rounded-full transition-colors">
+                          <X className="w-3 h-3 hover:text-rose-600"/>
+                        </button>
+                      </div>
+                      {idx < groupBys.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             
             <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">

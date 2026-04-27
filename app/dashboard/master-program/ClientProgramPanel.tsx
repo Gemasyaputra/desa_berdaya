@@ -20,7 +20,7 @@ import {
   createKategoriProgram, updateKategoriProgram, deleteKategoriProgram,
   createProgram, updateProgram, deleteProgram
 } from '@/lib/actions/program'
-import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { MultiSelectGroup } from '@/components/ui/multi-select-group'
 
 export default function ClientProgramPanel({ 
   initialKategori, 
@@ -250,19 +250,12 @@ export default function ClientProgramPanel({
               className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl h-[42px] text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
             />
           </div>
-          <MultiSelectFilter 
-            label="Kategori Program" 
-            options={progOptions.kategori} 
-            selected={filterProg.kategori}
-            onSelect={(val) => toggleFilterProg('kategori', val)}
-            onClear={() => setFilterProg(f => ({ ...f, kategori: [] }))}
-          />
-          <MultiSelectFilter 
-            label="Tipe Form" 
-            options={progOptions.tipeForm} 
-            selected={filterProg.tipeForm}
-            onSelect={(val) => toggleFilterProg('tipeForm', val)}
-            onClear={() => setFilterProg(f => ({ ...f, tipeForm: [] }))}
+          <MultiSelectGroup 
+            title="Filter Data"
+            groups={[
+              { key: 'kategori', title: 'Kategori Program', options: progOptions.kategori, selected: filterProg.kategori, onChange: (val) => setFilterProg(f => ({ ...f, kategori: val })) },
+              { key: 'tipeForm', title: 'Tipe Form', options: progOptions.tipeForm, selected: filterProg.tipeForm, onChange: (val) => setFilterProg(f => ({ ...f, tipeForm: val })) }
+            ]}
           />
           {hasAnyFilterProg && (
             <Button

@@ -24,7 +24,7 @@ import {
 import { getEkonomiUpdates, deleteEkonomiUpdate } from './actions'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { MultiSelectGroup } from '@/components/ui/multi-select-group'
 import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
 import { X, Layers } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -321,40 +321,15 @@ export default function EkonomiPage() {
                 />
               </div>
               
-              <MultiSelectFilter 
-                label="Kelompok" 
-                options={filterOptions.kelompok} 
-                selected={filters.kelompok}
-                onSelect={(val) => toggleFilter('kelompok', val)}
-                onClear={() => setFilters(f => ({ ...f, kelompok: [] }))}
-              />
-              <MultiSelectFilter 
-                label="Bulan" 
-                options={filterOptions.bulan} 
-                selected={filters.bulan}
-                onSelect={(val) => toggleFilter('bulan', val)}
-                onClear={() => setFilters(f => ({ ...f, bulan: [] }))}
-              />
-              <MultiSelectFilter 
-                label="Kategori" 
-                options={filterOptions.kategori} 
-                selected={filters.kategori}
-                onSelect={(val) => toggleFilter('kategori', val)}
-                onClear={() => setFilters(f => ({ ...f, kategori: [] }))}
-              />
-              <MultiSelectFilter 
-                label="Tipe Usaha" 
-                options={filterOptions.tipe} 
-                selected={filters.tipe}
-                onSelect={(val) => toggleFilter('tipe', val)}
-                onClear={() => setFilters(f => ({ ...f, tipe: [] }))}
-              />
-              <MultiSelectFilter 
-                label="Program" 
-                options={filterOptions.program} 
-                selected={filters.program}
-                onSelect={(val) => toggleFilter('program', val)}
-                onClear={() => setFilters(f => ({ ...f, program: [] }))}
+              <MultiSelectGroup 
+                title="Filter Data"
+                groups={[
+                  { key: 'kelompok', title: 'Kelompok', options: filterOptions.kelompok, selected: filters.kelompok, onChange: (val) => setFilters(f => ({ ...f, kelompok: val })) },
+                  { key: 'bulan', title: 'Bulan', options: filterOptions.bulan, selected: filters.bulan, onChange: (val) => setFilters(f => ({ ...f, bulan: val })) },
+                  { key: 'kategori', title: 'Kategori', options: filterOptions.kategori, selected: filters.kategori, onChange: (val) => setFilters(f => ({ ...f, kategori: val })) },
+                  { key: 'tipe', title: 'Tipe Usaha', options: filterOptions.tipe, selected: filters.tipe, onChange: (val) => setFilters(f => ({ ...f, tipe: val })) },
+                  { key: 'program', title: 'Program', options: filterOptions.program, selected: filters.program, onChange: (val) => setFilters(f => ({ ...f, program: val })) }
+                ]}
               />
 
               {hasAnyFilter && (

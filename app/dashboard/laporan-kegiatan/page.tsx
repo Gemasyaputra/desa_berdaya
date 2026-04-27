@@ -10,7 +10,7 @@ import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
 import { useSession } from 'next-auth/react'
 import { Badge } from '@/components/ui/badge'
 import { useSearchParams } from 'next/navigation'
-import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { MultiSelectGroup } from '@/components/ui/multi-select-group'
 import { X, Layers, ChevronDown, ChevronRight } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
@@ -156,7 +156,7 @@ function LaporanKegiatanListContent() {
   }
 
   return (
-    <div className="p-4 lg:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 lg:p-6 max-w-screen-2xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Laporan Kegiatan</h1>
@@ -175,36 +175,25 @@ function LaporanKegiatanListContent() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row flex-wrap gap-4 bg-slate-50/50">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             <input 
               type="text" 
               placeholder="Cari kegiatan, desa..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl h-[42px] text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl h-[42px] text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
             />
           </div>
-          <MultiSelectFilter 
-            label="Desa Binaan" 
-            options={filterOptions.desa} 
-            selected={filters.desa}
-            onSelect={(val) => toggleFilter('desa', val)}
-            onClear={() => setFilters(f => ({ ...f, desa: [] }))}
+          
+          <MultiSelectGroup 
+            title="Filter Data"
+            groups={[
+              { key: 'desa', title: 'Desa Binaan', options: filterOptions.desa, selected: filters.desa, onChange: (val) => setFilters(f => ({ ...f, desa: val })) },
+              { key: 'jenis', title: 'Jenis Kegiatan', options: filterOptions.jenis, selected: filters.jenis, onChange: (val) => setFilters(f => ({ ...f, jenis: val })) },
+              { key: 'tahun', title: 'Tahun', options: filterOptions.tahun, selected: filters.tahun, onChange: (val) => setFilters(f => ({ ...f, tahun: val })) }
+            ]}
           />
-          <MultiSelectFilter 
-            label="Jenis Kegiatan" 
-            options={filterOptions.jenis} 
-            selected={filters.jenis}
-            onSelect={(val) => toggleFilter('jenis', val)}
-            onClear={() => setFilters(f => ({ ...f, jenis: [] }))}
-          />
-          <MultiSelectFilter 
-            label="Tahun" 
-            options={filterOptions.tahun} 
-            selected={filters.tahun}
-            onSelect={(val) => toggleFilter('tahun', val)}
-            onClear={() => setFilters(f => ({ ...f, tahun: [] }))}
-          />
+
           {hasAnyFilter && (
             <Button
               variant="ghost"

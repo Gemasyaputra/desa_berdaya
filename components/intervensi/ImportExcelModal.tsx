@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import {
   FileSpreadsheet, Download, Upload, ChevronRight, ChevronLeft,
-  CheckCircle2, AlertCircle, X, Loader2, Table2
+  CheckCircle2, AlertCircle, X, Loader2, Table2, Filter, Check
 } from 'lucide-react'
 import {
   getDesaBerdayaOptions,
@@ -15,6 +15,7 @@ import {
   getKategoriProgramOptions,
   importIntervensiProgramUniversal
 } from '@/app/dashboard/intervensi/actions'
+import { cn } from '@/lib/utils'
 
 interface ImportExcelModalProps {
   isOpen: boolean
@@ -55,7 +56,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
   const [selectedFundraiser, setSelectedFundraiser] = useState('')
   
   // For Banyak Desa mode
-  const [selectedBulan, setSelectedBulan] = useState(BULAN_OPTIONS[new Date().getMonth()])
+  const [targetBulanIds, setTargetBulanIds] = useState<Set<string>>(new Set([BULAN_OPTIONS[new Date().getMonth()]]))
   const [selectedTahun, setSelectedTahun] = useState(new Date().getFullYear().toString())
   const [targetDesaMode, setTargetDesaMode] = useState<'semua' | 'pilih'>('semua')
   const [targetDesaIds, setTargetDesaIds] = useState<Set<number>>(new Set())
@@ -110,7 +111,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
   // ── TEMPLATE DOWNLOAD ──────────────────────────────────────────────
   const handleDownloadTemplate = async () => {
     if (importMode === 'banyak-bulan' && (!selectedDesa || !selectedProgram || !selectedKategori)) return
-    if (importMode === 'banyak-desa' && (!selectedProgram || !selectedKategori || !selectedBulan || !selectedTahun)) return
+    if (importMode === 'banyak-desa' && (!selectedProgram || !selectedKategori || targetBulanIds.size === 0 || !selectedTahun)) return
 
     const XLSX = await import('xlsx')
     const tahun = importMode === 'banyak-bulan' ? new Date().getFullYear() : Number(selectedTahun)
@@ -144,13 +145,13 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
           'ajuan_ri', 'anggaran_disetujui', 'anggaran_dicairkan', 'status_pencairan',
           'id_stp', 'catatan', 'is_dbf', 'is_rz'
         ],
-        ...activeTargetDesas.map(d => [
+        ...activeTargetDesas.flatMap(d => Array.from(targetBulanIds).map(b => [
           Number(selectedKategoriId), selectedProgram?.id, d.id, d.relawan_id,
           selectedProgram?.nama_program, d.nama, d.relawan_nama || '',
-          tahun, selectedBulan, '', '', '',
+          tahun, b, '', '', '',
           0, 0, 0, 'Dialokasikan',
           '', '', 'FALSE', 'FALSE'
-        ])
+        ]))
       ]
     }
 
@@ -170,7 +171,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
 
     const safeName = importMode === 'banyak-bulan' 
       ? `${selectedDesa?.nama}_${selectedProgram?.nama_program}`.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 40)
-      : `BanyakDesa_${selectedProgram?.nama_program}_${selectedBulan}`.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 40)
+      : `BanyakDesa_${selectedProgram?.nama_program}_${Array.from(targetBulanIds).join('-')}`.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 40)
     
     XLSX.writeFile(wb, `template_intervensi_${safeName}.xlsx`)
   }
@@ -308,8 +309,8 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
       <DialogContent className="sm:max-w-3xl bg-white max-h-[90vh] overflow-y-auto w-[95%] rounded-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-[#008784]/10 border border-[#008784]/20 rounded-xl flex items-center justify-center">
-              <FileSpreadsheet className="w-5 h-5 text-[#008784]" />
+            <div className="w-9 h-9 bg-[#7a1200]/10 border border-[#7a1200]/20 rounded-xl flex items-center justify-center">
+              <FileSpreadsheet className="w-5 h-5 text-[#7a1200]" />
             </div>
             Import dari Excel
           </DialogTitle>
@@ -321,16 +322,16 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
         {/* Mode Toggle */}
         <div className="flex gap-2 bg-slate-100 p-1 rounded-xl mt-4 mb-4">
           <button 
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${importMode === 'banyak-bulan' ? 'bg-white text-[#008784] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${importMode === 'banyak-bulan' ? 'bg-white text-[#7a1200] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             onClick={() => { setImportMode('banyak-bulan'); setStep(1); setParsedMeta(null); setPreviewRows([]); }}
           >
             1 Program, 1 Desa (Banyak Bulan)
           </button>
           <button 
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${importMode === 'banyak-desa' ? 'bg-white text-[#008784] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${importMode === 'banyak-desa' ? 'bg-white text-[#7a1200] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             onClick={() => { setImportMode('banyak-desa'); setStep(1); setParsedMeta(null); setPreviewRows([]); }}
           >
-            1 Program, Banyak Desa (1 Bulan)
+            1 Program, Banyak Desa (Banyak Bulan)
           </button>
         </div>
 
@@ -343,8 +344,8 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
           ].map((s, i) => (
             <React.Fragment key={s.n}>
               <div className={`flex items-center gap-2 text-sm font-bold px-3 py-1.5 rounded-full transition-colors ${
-                step === s.n ? 'bg-[#008784] text-white' :
-                step > s.n ? 'bg-[#008784]/10 text-[#008784]' : 'bg-slate-100 text-slate-400'
+                step === s.n ? 'bg-[#7a1200] text-white' :
+                step > s.n ? 'bg-[#7a1200]/10 text-[#7a1200]' : 'bg-slate-100 text-slate-400'
               }`}>
                 {step > s.n ? <CheckCircle2 className="w-4 h-4" /> : <span className="text-xs w-4 text-center">{s.n}</span>}
                 <span className="text-xs">{s.label}</span>
@@ -365,14 +366,14 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
             {/* ── STEP 1: PILIH DESA / PROGRAM ─────────────────────── */}
             {step === 1 && importMode === 'banyak-bulan' && (
               <div className="space-y-5">
-                <div className="bg-[#008784]/5 border border-[#008784]/15 rounded-xl p-4 text-sm text-[#008784] font-medium flex items-start gap-2">
+                <div className="bg-[#7a1200]/5 border border-[#7a1200]/15 rounded-xl p-4 text-sm text-[#7a1200] font-medium flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
                   Pilih Desa Binaan yang ingin dibuatkan Intervensi Program baru.
                 </div>
                 <div className="space-y-2">
                   <Label className="font-bold text-slate-700">Desa Binaan <span className="text-rose-500">*</span></Label>
                   <select
-                    className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#008784]/40 cursor-pointer shadow-sm"
+                    className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#7a1200]/40 cursor-pointer shadow-sm"
                     value={selectedDesaId}
                     onChange={e => setSelectedDesaId(e.target.value)}
                   >
@@ -396,7 +397,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
 
             {step === 1 && importMode === 'banyak-desa' && (
               <div className="space-y-5">
-                <div className="bg-[#008784]/5 border border-[#008784]/15 rounded-xl p-4 text-sm text-[#008784] font-medium flex items-start gap-2">
+                <div className="bg-[#7a1200]/5 border border-[#7a1200]/15 rounded-xl p-4 text-sm text-[#7a1200] font-medium flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
                   Pilih Program yang akan didistribusikan ke banyak desa sekaligus.
                 </div>
@@ -404,7 +405,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                   <div className="space-y-2">
                     <Label className="font-bold text-slate-700">Kategori Program <span className="text-rose-500">*</span></Label>
                     <select
-                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#008784]/40 cursor-pointer shadow-sm"
+                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#7a1200]/40 cursor-pointer shadow-sm"
                       value={selectedKategoriId}
                       onChange={e => { setSelectedKategoriId(e.target.value); setSelectedProgramId('') }}
                     >
@@ -417,7 +418,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                   <div className="space-y-2">
                     <Label className="font-bold text-slate-700">Program <span className="text-rose-500">*</span></Label>
                     <select
-                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-[#008784] focus:outline-none focus:ring-2 focus:ring-[#008784]/40 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-[#7a1200] focus:outline-none focus:ring-2 focus:ring-[#7a1200]/40 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       value={selectedProgramId}
                       onChange={e => setSelectedProgramId(e.target.value)}
                       disabled={!selectedKategoriId}
@@ -436,7 +437,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
             {step === 2 && importMode === 'banyak-bulan' && (
               <div className="space-y-5">
                 <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-3">
-                  <CheckCircle2 className="w-4 h-4 text-[#008784] flex-shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-[#7a1200] flex-shrink-0" />
                   <div>
                     <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Desa terpilih:</span>
                     <span className="ml-2 font-bold text-slate-800">{selectedDesa?.nama}</span>
@@ -446,7 +447,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                   <div className="space-y-2">
                     <Label className="font-bold text-slate-700">Kategori Program <span className="text-rose-500">*</span></Label>
                     <select
-                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#008784]/40 cursor-pointer shadow-sm"
+                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#7a1200]/40 cursor-pointer shadow-sm"
                       value={selectedKategoriId}
                       onChange={e => { setSelectedKategoriId(e.target.value); setSelectedProgramId('') }}
                     >
@@ -459,7 +460,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                   <div className="space-y-2">
                     <Label className="font-bold text-slate-700">Program <span className="text-rose-500">*</span></Label>
                     <select
-                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-[#008784] focus:outline-none focus:ring-2 focus:ring-[#008784]/40 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-[#7a1200] focus:outline-none focus:ring-2 focus:ring-[#7a1200]/40 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       value={selectedProgramId}
                       onChange={e => setSelectedProgramId(e.target.value)}
                       disabled={!selectedKategoriId}
@@ -479,7 +480,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                       <div className="space-y-2">
                         <Label className="font-bold text-slate-700">Sumber Dana</Label>
                         <select
-                          className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#008784]/40 cursor-pointer shadow-sm"
+                          className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#7a1200]/40 cursor-pointer shadow-sm"
                           value={selectedSumberDana}
                           onChange={e => setSelectedSumberDana(e.target.value)}
                         >
@@ -494,7 +495,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                         <input
                           type="text"
                           placeholder="Nama fundraiser..."
-                          className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#008784]/40 shadow-sm"
+                          className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7a1200]/40 shadow-sm"
                           value={selectedFundraiser}
                           onChange={e => setSelectedFundraiser(e.target.value)}
                         />
@@ -502,8 +503,8 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                     </div>
 
                     {/* Ringkasan template */}
-                    <div className="bg-[#008784]/5 border border-[#008784]/15 rounded-xl p-4 text-sm space-y-2">
-                      <div className="text-xs text-[#008784] font-bold uppercase tracking-wider mb-2">Ringkasan Template</div>
+                    <div className="bg-[#7a1200]/5 border border-[#7a1200]/15 rounded-xl p-4 text-sm space-y-2">
+                      <div className="text-xs text-[#7a1200] font-bold uppercase tracking-wider mb-2">Ringkasan Template</div>
                       <div className="grid grid-cols-2 gap-2">
                         <div><span className="text-slate-500">Desa ID:</span> <code className="bg-white px-2 py-0.5 rounded text-xs font-mono border border-slate-200">{selectedDesa.id}</code></div>
                         <div><span className="text-slate-500">Program ID:</span> <code className="bg-white px-2 py-0.5 rounded text-xs font-mono border border-slate-200">{selectedProgram.id}</code></div>
@@ -521,10 +522,10 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
             {step === 2 && importMode === 'banyak-desa' && (
               <div className="space-y-5">
                 <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-3">
-                  <CheckCircle2 className="w-4 h-4 text-[#008784] flex-shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-[#7a1200] flex-shrink-0" />
                   <div>
                     <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Program terpilih:</span>
-                    <span className="ml-2 font-bold text-[#008784]">{selectedProgram?.nama_program}</span>
+                    <span className="ml-2 font-bold text-[#7a1200]">{selectedProgram?.nama_program}</span>
                   </div>
                 </div>
 
@@ -537,12 +538,12 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                       className={cn(
                         "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
                         targetDesaMode === 'semua'
-                          ? "bg-white text-[#008784] shadow-sm ring-1 ring-slate-200"
+                          ? "bg-white text-[#7a1200] shadow-sm ring-1 ring-slate-200"
                           : "text-slate-500 hover:text-slate-700 hover:bg-slate-100/50"
                       )}
                       onClick={() => setTargetDesaMode('semua')}
                     >
-                      <CheckCircle2 className={cn("w-4 h-4", targetDesaMode === 'semua' ? "text-[#008784]" : "text-transparent")} />
+                      <CheckCircle2 className={cn("w-4 h-4", targetDesaMode === 'semua' ? "text-[#7a1200]" : "text-transparent")} />
                       Semua Desa ({desaOptions.length})
                     </button>
                     <button
@@ -571,14 +572,14 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                             placeholder="Cari desa atau relawan..." 
                             value={desaSearchQuery}
                             onChange={(e) => setDesaSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#008784]/40"
+                            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7a1200]/40"
                           />
                         </div>
                         <div className="flex items-center gap-2 text-xs shrink-0">
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="h-9 px-3 rounded-lg border-slate-200 text-slate-600 hover:text-[#008784] hover:bg-[#008784]/10 font-bold"
+                            className="h-9 px-3 rounded-lg border-slate-200 text-slate-600 hover:text-[#7a1200] hover:bg-[#7a1200]/10 font-bold"
                             onClick={() => setTargetDesaIds(new Set(desaOptions.map(d => d.id)))}
                           >
                             Pilih Semua
@@ -612,17 +613,17 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                                 className={cn(
                                   "flex items-center justify-between p-2.5 rounded-lg cursor-pointer border transition-colors",
                                   isSelected 
-                                    ? "bg-[#008784]/5 border-[#008784]/30" 
+                                    ? "bg-[#7a1200]/5 border-[#7a1200]/30" 
                                     : "bg-white border-transparent hover:bg-slate-50 hover:border-slate-200"
                                 )}
                               >
                                 <div>
-                                  <div className={cn("text-sm font-bold", isSelected ? "text-[#008784]" : "text-slate-700")}>{d.nama}</div>
+                                  <div className={cn("text-sm font-bold", isSelected ? "text-[#7a1200]" : "text-slate-700")}>{d.nama}</div>
                                   <div className="text-xs text-slate-400 font-medium">{d.relawan_nama || 'Tanpa Relawan'}</div>
                                 </div>
                                 <div className={cn(
                                   "w-5 h-5 rounded-md border flex items-center justify-center transition-colors shrink-0",
-                                  isSelected ? "bg-[#008784] border-[#008784]" : "border-slate-300 bg-white"
+                                  isSelected ? "bg-[#7a1200] border-[#7a1200]" : "border-slate-300 bg-white"
                                 )}>
                                   {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[3px]" />}
                                 </div>
@@ -639,7 +640,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                   <div className="space-y-2">
                     <Label className="font-bold text-slate-700">Tahun <span className="text-rose-500">*</span></Label>
                     <select
-                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#008784]/40 cursor-pointer shadow-sm"
+                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#7a1200]/40 cursor-pointer shadow-sm"
                       value={selectedTahun}
                       onChange={e => setSelectedTahun(e.target.value)}
                     >
@@ -650,14 +651,31 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="font-bold text-slate-700">Bulan <span className="text-rose-500">*</span></Label>
-                    <select
-                      className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#008784]/40 cursor-pointer shadow-sm"
-                      value={selectedBulan}
-                      onChange={e => setSelectedBulan(e.target.value)}
-                    >
-                      {BULAN_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
+                    <Label className="font-bold text-slate-700 flex justify-between items-center">
+                      <span>Bulan <span className="text-rose-500">*</span></span>
+                      {targetBulanIds.size > 0 && <Badge className="bg-[#7a1200]/10 text-[#7a1200] border-none px-1.5 py-0 h-5 text-xs">{targetBulanIds.size} dipilih</Badge>}
+                    </Label>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                      {BULAN_OPTIONS.map(b => (
+                        <div 
+                          key={b}
+                          onClick={() => {
+                            const newSet = new Set(targetBulanIds)
+                            if (newSet.has(b)) newSet.delete(b)
+                            else newSet.add(b)
+                            setTargetBulanIds(newSet)
+                          }}
+                          className={cn(
+                            "flex items-center justify-center py-2 px-1 text-xs font-bold rounded-lg border cursor-pointer transition-colors text-center",
+                            targetBulanIds.has(b)
+                              ? "bg-[#7a1200]/5 border-[#7a1200]/30 text-[#7a1200]"
+                              : "bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50"
+                          )}
+                        >
+                          {b.substring(0, 3)}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -676,7 +694,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                   )}
                   <div className="flex items-center gap-2">
                     <span className="text-slate-400">Program:</span>
-                    <span className="font-bold text-[#008784]">{selectedProgram?.nama_program}</span>
+                    <span className="font-bold text-[#7a1200]">{selectedProgram?.nama_program}</span>
                   </div>
                   {importMode === 'banyak-desa' && (
                     <div className="flex items-center gap-2">
@@ -687,15 +705,15 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                   {importMode === 'banyak-desa' && (
                     <div className="flex items-center gap-2">
                       <span className="text-slate-400">Waktu:</span>
-                      <span className="font-bold text-slate-800">{selectedBulan} {selectedTahun}</span>
+                      <span className="font-bold text-slate-800">{targetBulanIds.size} Bulan, {selectedTahun}</span>
                     </div>
                   )}
                 </div>
 
                 {/* 1. Download template */}
-                <div className="border border-dashed border-[#008784]/25 bg-[#008784]/5 rounded-xl p-5 space-y-3">
+                <div className="border border-dashed border-[#7a1200]/25 bg-[#7a1200]/5 rounded-xl p-5 space-y-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-[#008784]/15 text-[#008784] font-black text-xs flex items-center justify-center flex-shrink-0">1</div>
+                    <div className="w-7 h-7 rounded-full bg-[#7a1200]/15 text-[#7a1200] font-black text-xs flex items-center justify-center flex-shrink-0">1</div>
                     <h4 className="font-bold text-slate-800 text-sm">Download Template Excel</h4>
                   </div>
                   <p className="text-xs text-slate-500 ml-9">
@@ -705,7 +723,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                     <Button
                       onClick={handleDownloadTemplate}
                       variant="outline"
-                      className="border-[#008784]/40 text-[#008784] hover:bg-[#008784]/5 font-bold rounded-xl gap-2"
+                      className="border-[#7a1200]/40 text-[#7a1200] hover:bg-[#7a1200]/5 font-bold rounded-xl gap-2"
                     >
                       <Download className="w-4 h-4" />
                       Download Template .xlsx
@@ -716,20 +734,20 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                 {/* 2. Upload file */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-[#008784]/10 text-[#008784] font-black text-xs flex items-center justify-center flex-shrink-0">2</div>
+                    <div className="w-7 h-7 rounded-full bg-[#7a1200]/10 text-[#7a1200] font-black text-xs flex items-center justify-center flex-shrink-0">2</div>
                     <h4 className="font-bold text-slate-800 text-sm">Upload File yang Sudah Diisi</h4>
                   </div>
                   <div
                     className={`ml-9 border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-                      isDragging ? 'border-[#008784] bg-[#008784]/5' : 'border-slate-200 hover:border-[#008784]/40 hover:bg-slate-50'
+                      isDragging ? 'border-[#7a1200] bg-[#7a1200]/5' : 'border-slate-200 hover:border-[#7a1200]/40 hover:bg-slate-50'
                     }`}
                     onClick={() => fileInputRef.current?.click()}
                     onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
                     onDragLeave={() => setIsDragging(false)}
                     onDrop={handleDrop}
                   >
-                    <Upload className={`w-8 h-8 mx-auto mb-3 transition-colors ${isDragging ? 'text-[#008784]' : 'text-slate-300'}`} />
-                    <p className="text-sm font-semibold text-slate-600">Drag & drop file di sini, atau <span className="text-[#008784] underline">browse</span></p>
+                    <Upload className={`w-8 h-8 mx-auto mb-3 transition-colors ${isDragging ? 'text-[#7a1200]' : 'text-slate-300'}`} />
+                    <p className="text-sm font-semibold text-slate-600">Drag & drop file di sini, atau <span className="text-[#7a1200] underline">browse</span></p>
                     <p className="text-xs text-slate-400 mt-1">Format: .xlsx atau .xls</p>
                     <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileChange} />
                   </div>
@@ -748,12 +766,12 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-full bg-slate-600 text-white font-black text-xs flex items-center justify-center flex-shrink-0">3</div>
                       <h4 className="font-bold text-slate-800 text-sm">Preview Data</h4>
-                      <Badge className="bg-[#008784]/10 text-[#008784] font-bold text-xs border-none">{previewRows.length} baris</Badge>
+                      <Badge className="bg-[#7a1200]/10 text-[#7a1200] font-bold text-xs border-none">{previewRows.length} baris</Badge>
                     </div>
 
                     {/* Header meta preview */}
-                    <div className="ml-9 bg-[#008784]/5 border border-[#008784]/15 rounded-xl p-3 text-xs space-y-1">
-                      <div className="text-[#008784] font-bold uppercase tracking-wider text-[10px] mb-1.5">Header Intervensi</div>
+                    <div className="ml-9 bg-[#7a1200]/5 border border-[#7a1200]/15 rounded-xl p-3 text-xs space-y-1">
+                      <div className="text-[#7a1200] font-bold uppercase tracking-wider text-[10px] mb-1.5">Header Intervensi</div>
                       {parsedMeta.mode === 'banyak-bulan' ? (
                         <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 text-slate-600">
                           <span><b className="text-slate-500">Desa:</b> {parsedMeta.namaDesa}</span>
@@ -804,7 +822,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                                 )}
                                 <td className="px-3 py-2 text-right tabular-nums">{fmt(row.ajuan_ri)}</td>
                                 <td className="px-3 py-2 text-right tabular-nums font-bold">{fmt(row.anggaran_disetujui)}</td>
-                                <td className="px-3 py-2 text-right tabular-nums text-[#008784] font-bold">{fmt(row.anggaran_dicairkan)}</td>
+                                <td className="px-3 py-2 text-right tabular-nums text-[#7a1200] font-bold">{fmt(row.anggaran_dicairkan)}</td>
                                 <td className="px-3 py-2 text-slate-500">{row.status_pencairan}</td>
                                 <td className="px-3 py-2 text-slate-400">{row.catatan || '-'}</td>
                               </tr>
@@ -833,11 +851,11 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                 <div className="flex gap-2">
                   {step < 3 && (
                     <Button
-                      className="bg-[#008784] hover:bg-[#006e6b] text-white rounded-xl font-bold px-6 gap-2 shadow-md shadow-[#008784]/20"
+                      className="bg-[#7a1200] hover:bg-[#5c0e00] text-white rounded-xl font-bold px-6 gap-2 shadow-md shadow-[#7a1200]/20"
                       disabled={
                         importMode === 'banyak-bulan' 
-                          ? ((step === 1 && !canGoStep2) || (step === 2 && !canGoStep3)) 
-                          : ((step === 1 && !canGoStep3) || (step === 2 && (!selectedBulan || !selectedTahun || (targetDesaMode === 'pilih' && targetDesaIds.size === 0))))
+                          ? ((step === 1 && !canGoStep2) || (step === 2 && (targetBulanIds.size === 0 || !selectedTahun))) 
+                          : ((step === 1 && !canGoStep3) || (step === 2 && (!selectedTahun || (targetDesaMode === 'pilih' && targetDesaIds.size === 0))))
                       }
                       onClick={() => setStep(s => s + 1)}
                     >
@@ -846,7 +864,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                   )}
                   {step === 3 && (
                     <Button
-                      className="bg-[#008784] hover:bg-[#006e6b] text-white rounded-xl font-bold px-6 gap-2 shadow-md shadow-[#008784]/20 disabled:opacity-50"
+                      className="bg-[#7a1200] hover:bg-[#5c0e00] text-white rounded-xl font-bold px-6 gap-2 shadow-md shadow-[#7a1200]/20 disabled:opacity-50"
                       disabled={!canImport || importing}
                       onClick={handleImport}
                     >

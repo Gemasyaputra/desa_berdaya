@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getDesaBinaanList } from './actions'
 import DeleteDesaButton from './DeleteDesaButton'
 import { useSession } from 'next-auth/react'
-import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { MultiSelectGroup } from '@/components/ui/multi-select-group'
 import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
 import { X } from 'lucide-react'
 
@@ -198,40 +198,15 @@ export default function DesaBinaanPage() {
             />
           </div>
 
-          <MultiSelectFilter 
-            label="Provinsi" 
-            options={filterOptions.provinsi} 
-            selected={filters.provinsi}
-            onSelect={(val) => toggleFilter('provinsi', val)}
-            onClear={() => setFilters(f => ({ ...f, provinsi: [] }))}
-          />
-          <MultiSelectFilter 
-            label="Kota/Kab" 
-            options={filterOptions.kota} 
-            selected={filters.kota}
-            onSelect={(val) => toggleFilter('kota', val)}
-            onClear={() => setFilters(f => ({ ...f, kota: [] }))}
-          />
-          <MultiSelectFilter 
-            label="Kecamatan" 
-            options={filterOptions.kecamatan} 
-            selected={filters.kecamatan}
-            onSelect={(val) => toggleFilter('kecamatan', val)}
-            onClear={() => setFilters(f => ({ ...f, kecamatan: [] }))}
-          />
-          <MultiSelectFilter 
-            label="Relawan" 
-            options={filterOptions.relawan} 
-            selected={filters.relawan}
-            onSelect={(val) => toggleFilter('relawan', val)}
-            onClear={() => setFilters(f => ({ ...f, relawan: [] }))}
-          />
-          <MultiSelectFilter 
-            label="Status" 
-            options={filterOptions.status} 
-            selected={filters.status}
-            onSelect={(val) => toggleFilter('status', val)}
-            onClear={() => setFilters(f => ({ ...f, status: [] }))}
+          <MultiSelectGroup 
+            title="Filter Data"
+            groups={[
+              { key: 'provinsi', title: 'Provinsi', options: filterOptions.provinsi, selected: filters.provinsi, onChange: (val) => setFilters(f => ({ ...f, provinsi: val })) },
+              { key: 'kota', title: 'Kota/Kab', options: filterOptions.kota, selected: filters.kota, onChange: (val) => setFilters(f => ({ ...f, kota: val })) },
+              { key: 'kecamatan', title: 'Kecamatan', options: filterOptions.kecamatan, selected: filters.kecamatan, onChange: (val) => setFilters(f => ({ ...f, kecamatan: val })) },
+              { key: 'relawan', title: 'Relawan', options: filterOptions.relawan, selected: filters.relawan, onChange: (val) => setFilters(f => ({ ...f, relawan: val })) },
+              { key: 'status', title: 'Status', options: filterOptions.status, selected: filters.status, onChange: (val) => setFilters(f => ({ ...f, status: val })) }
+            ]}
           />
 
           {hasAnyFilter && (

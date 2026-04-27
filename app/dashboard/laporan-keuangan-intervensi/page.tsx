@@ -22,7 +22,7 @@ import {
 import { getLaporanKeuanganIntervensi } from './actions'
 import { Input } from '@/components/ui/input'
 import { useSession } from 'next-auth/react'
-import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { MultiSelectGroup } from '@/components/ui/multi-select-group'
 import { X } from 'lucide-react'
 import React, { useMemo } from 'react'
 
@@ -227,33 +227,14 @@ export default function LaporanKeuanganIntervensiPage() {
       </div>
 
       <div className="flex flex-wrap gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <MultiSelectFilter 
-          label="Desa" 
-          options={filterOptions.desa} 
-          selected={filters.desa}
-          onSelect={(val) => toggleFilter('desa', val)}
-          onClear={() => setFilters(f => ({ ...f, desa: [] }))}
-        />
-        <MultiSelectFilter 
-          label="Program" 
-          options={filterOptions.program} 
-          selected={filters.program}
-          onSelect={(val) => toggleFilter('program', val)}
-          onClear={() => setFilters(f => ({ ...f, program: [] }))}
-        />
-        <MultiSelectFilter 
-          label="Relawan" 
-          options={filterOptions.relawan} 
-          selected={filters.relawan}
-          onSelect={(val) => toggleFilter('relawan', val)}
-          onClear={() => setFilters(f => ({ ...f, relawan: [] }))}
-        />
-        <MultiSelectFilter 
-          label="Sumber Dana" 
-          options={filterOptions.sumber_dana} 
-          selected={filters.sumber_dana}
-          onSelect={(val) => toggleFilter('sumber_dana', val)}
-          onClear={() => setFilters(f => ({ ...f, sumber_dana: [] }))}
+        <MultiSelectGroup 
+          title="Filter Data"
+          groups={[
+            { key: 'desa', title: 'Desa', options: filterOptions.desa, selected: filters.desa, onChange: (val) => setFilters(f => ({ ...f, desa: val })) },
+            { key: 'program', title: 'Program', options: filterOptions.program, selected: filters.program, onChange: (val) => setFilters(f => ({ ...f, program: val })) },
+            { key: 'relawan', title: 'Relawan', options: filterOptions.relawan, selected: filters.relawan, onChange: (val) => setFilters(f => ({ ...f, relawan: val })) },
+            { key: 'sumber_dana', title: 'Sumber Dana', options: filterOptions.sumber_dana, selected: filters.sumber_dana, onChange: (val) => setFilters(f => ({ ...f, sumber_dana: val })) }
+          ]}
         />
         
         {hasAnyFilter && (

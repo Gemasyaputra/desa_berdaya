@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Target, LayoutGrid, Search, Filter, X, Check, FileSpreadsheet, Trash2, Download, Loader2, Copy, Layers, ChevronRight, ChevronLeft, Calendar, MapPin, BookOpen, ChevronsRight } from 'lucide-react'
+import { Plus, Target, LayoutGrid, Search, Filter, X, Check, FileSpreadsheet, Trash2, Download, Loader2, Copy, Layers, ChevronRight, ChevronLeft, ChevronDown, Calendar, MapPin, BookOpen, ChevronsRight } from 'lucide-react'
 import { getIntervensiPrograms, deleteIntervensiProgram, getIntervensiExportData, duplicateIntervensiProgram, getDesaBerdayaOptions, getProgramOptions, getIntervensiProgramsForDuplicate, bulkDuplicateIntervensi, getExistingMonthsForTarget, getOccupiedMonthsByProgramIds, getAnggaranForPreview } from './actions'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -17,13 +17,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { MultiSelectGroup } from '@/components/ui/multi-select-group'
 import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
 
 export default function IntervensiListPage() {
   const router = useRouter()
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [isMounted, setIsMounted] = useState(false)
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState({
     desa: [] as string[],
@@ -90,8 +91,10 @@ export default function IntervensiListPage() {
   }, [])
 
   useEffect(() => {
+    setIsMounted(true)
     loadData()
   }, [])
+
 
   async function loadData() {
     try {
@@ -566,6 +569,8 @@ export default function IntervensiListPage() {
     }
   }
 
+  if (!isMounted) return null
+
   return (
     <div className="p-8 max-w-[1400px] mx-auto space-y-8 bg-slate-50/50 min-h-screen">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
@@ -643,8 +648,8 @@ export default function IntervensiListPage() {
       </div>
 
       <Card className="border-none shadow-xl shadow-slate-200/40 rounded-[2rem] overflow-hidden bg-white">
-        <CardHeader className="bg-white border-b border-slate-100 px-8 py-6">
-          <div className="flex flex-col xl:flex-row gap-6 items-start xl:items-center justify-between">
+        <CardHeader className="bg-white border-b border-slate-100 px-8 py-6 flex flex-col gap-4">
+          <div className="flex flex-col xl:flex-row gap-6 items-start xl:items-center justify-between w-full">
             <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <LayoutGrid className="w-5 h-5 text-[#7a1200]" /> 
               Daftar Intervensi Program
@@ -697,36 +702,14 @@ export default function IntervensiListPage() {
 
               <div className="flex flex-wrap items-center gap-2">
                 {/* Multi Filters */}
-                <MultiSelectFilter 
-                  label="Desa" 
-                  options={filterOptions.desa} 
-                  selected={filters.desa}
-                  onSelect={(val) => toggleFilter('desa', val)}
-                  onClear={() => setFilters(f => ({ ...f, desa: [] }))}
-                />
-
-                <MultiSelectFilter 
-                  label="Program" 
-                  options={filterOptions.program} 
-                  selected={filters.program}
-                  onSelect={(val) => toggleFilter('program', val)}
-                  onClear={() => setFilters(f => ({ ...f, program: [] }))}
-                />
-
-                <MultiSelectFilter 
-                  label="Relawan" 
-                  options={filterOptions.relawan} 
-                  selected={filters.relawan}
-                  onSelect={(val) => toggleFilter('relawan', val)}
-                  onClear={() => setFilters(f => ({ ...f, relawan: [] }))}
-                />
-
-                <MultiSelectFilter 
-                  label="Status" 
-                  options={filterOptions.status} 
-                  selected={filters.status}
-                  onSelect={(val) => toggleFilter('status', val)}
-                  onClear={() => setFilters(f => ({ ...f, status: [] }))}
+                <MultiSelectGroup 
+                  title="Filter Data"
+                  groups={[
+                    { key: 'desa', title: 'Desa', options: filterOptions.desa, selected: filters.desa, onChange: (val) => setFilters(f => ({ ...f, desa: val })) },
+                    { key: 'program', title: 'Program', options: filterOptions.program, selected: filters.program, onChange: (val) => setFilters(f => ({ ...f, program: val })) },
+                    { key: 'relawan', title: 'Relawan', options: filterOptions.relawan, selected: filters.relawan, onChange: (val) => setFilters(f => ({ ...f, relawan: val })) },
+                    { key: 'status', title: 'Status', options: filterOptions.status, selected: filters.status, onChange: (val) => setFilters(f => ({ ...f, status: val })) }
+                  ]}
                 />
 
                 {/* Clear all filters */}
@@ -774,26 +757,26 @@ export default function IntervensiListPage() {
                 />
               </div>
             </div>
-            
-            {groupBys.length > 0 && (
-              <div className="flex flex-wrap gap-1 items-center mt-3 pt-3 border-t border-slate-100 w-full">
-                {groupBys.map((g, idx) => (
-                  <div key={g} className="flex items-center gap-1">
-                    <div className="bg-slate-200 text-slate-700 text-[10px] uppercase font-bold px-2 py-1 rounded flex items-center gap-1">
-                      {g} 
-                      <button onClick={() => {
-                          setGroupBys(prev => prev.filter(v => v !== g));
-                          setExpandedTableGroups({});
-                      }} className="hover:bg-slate-300 p-0.5 rounded-full transition-colors">
-                        <X className="w-3 h-3 hover:text-rose-600"/>
-                      </button>
-                    </div>
-                    {idx < groupBys.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
+            
+          {groupBys.length > 0 && (
+            <div className="flex flex-wrap gap-1 items-center pt-2 border-t border-slate-100 w-full">
+              {groupBys.map((g, idx) => (
+                <div key={g} className="flex items-center gap-1">
+                  <div className="bg-slate-200 text-slate-700 text-[10px] uppercase font-bold px-2 py-1 rounded flex items-center gap-1">
+                    {g} 
+                    <button onClick={() => {
+                        setGroupBys(prev => prev.filter(v => v !== g));
+                        setExpandedTableGroups({});
+                    }} className="hover:bg-slate-300 p-0.5 rounded-full transition-colors">
+                      <X className="w-3 h-3 hover:text-rose-600"/>
+                    </button>
+                  </div>
+                  {idx < groupBys.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
+                </div>
+              ))}
+            </div>
+          )}
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">

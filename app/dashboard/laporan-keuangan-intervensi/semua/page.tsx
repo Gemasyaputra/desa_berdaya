@@ -26,7 +26,7 @@ import {
   ChevronRight,
   Layers
 } from 'lucide-react'
-import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { MultiSelectGroup } from '@/components/ui/multi-select-group'
 import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
@@ -339,40 +339,15 @@ export default function SemuaLaporanKeuanganPage() {
       </div>
 
       <div className="flex flex-wrap gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <MultiSelectFilter 
-          label="Desa" 
-          options={filterOptions.desa} 
-          selected={filters.desa}
-          onSelect={(val) => toggleFilter('desa', val)}
-          onClear={() => { setFilters(f => ({ ...f, desa: [] })); setCurrentPage(1) }}
-        />
-        <MultiSelectFilter 
-          label="Program" 
-          options={filterOptions.program} 
-          selected={filters.program}
-          onSelect={(val) => toggleFilter('program', val)}
-          onClear={() => { setFilters(f => ({ ...f, program: [] })); setCurrentPage(1) }}
-        />
-        <MultiSelectFilter 
-          label="Relawan" 
-          options={filterOptions.relawan} 
-          selected={filters.relawan}
-          onSelect={(val) => toggleFilter('relawan', val)}
-          onClear={() => { setFilters(f => ({ ...f, relawan: [] })); setCurrentPage(1) }}
-        />
-        <MultiSelectFilter 
-          label="Sumber Dana" 
-          options={filterOptions.sumber_dana} 
-          selected={filters.sumber_dana}
-          onSelect={(val) => toggleFilter('sumber_dana', val)}
-          onClear={() => { setFilters(f => ({ ...f, sumber_dana: [] })); setCurrentPage(1) }}
-        />
-        <MultiSelectFilter 
-          label="Tahun" 
-          options={filterOptions.tahun} 
-          selected={filters.tahun}
-          onSelect={(val) => toggleFilter('tahun', val)}
-          onClear={() => { setFilters(f => ({ ...f, tahun: [] })); setCurrentPage(1) }}
+        <MultiSelectGroup 
+          title="Filter Data"
+          groups={[
+            { key: 'desa', title: 'Desa', options: filterOptions.desa, selected: filters.desa, onChange: (val) => { setFilters(f => ({ ...f, desa: val })); setCurrentPage(1) } },
+            { key: 'program', title: 'Program', options: filterOptions.program, selected: filters.program, onChange: (val) => { setFilters(f => ({ ...f, program: val })); setCurrentPage(1) } },
+            { key: 'relawan', title: 'Relawan', options: filterOptions.relawan, selected: filters.relawan, onChange: (val) => { setFilters(f => ({ ...f, relawan: val })); setCurrentPage(1) } },
+            { key: 'sumber_dana', title: 'Sumber Dana', options: filterOptions.sumber_dana, selected: filters.sumber_dana, onChange: (val) => { setFilters(f => ({ ...f, sumber_dana: val })); setCurrentPage(1) } },
+            { key: 'tahun', title: 'Tahun', options: filterOptions.tahun, selected: filters.tahun, onChange: (val) => { setFilters(f => ({ ...f, tahun: val })); setCurrentPage(1) } }
+          ]}
         />
         
         {hasAnyFilter && (

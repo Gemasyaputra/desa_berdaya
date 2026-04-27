@@ -391,22 +391,12 @@ export default function RekapPenyaluranPage() {
           </div>
           <div className="flex flex-wrap gap-3 flex-1">
             <MultiSelectGroup 
-              title="Filter Waktu"
+              title="Filter Data"
               groups={[
                 { key: 'tahun', title: 'Tahun', options: filterOptions.tahun, selected: filterTahun, onChange: setFilterTahun },
-                { key: 'bulan', title: 'Bulan', options: filterOptions.bulan, selected: filterBulan, onChange: setFilterBulan }
-              ]}
-            />
-            <MultiSelectGroup 
-              title="Filter Desa & Relawan"
-              groups={[
+                { key: 'bulan', title: 'Bulan', options: filterOptions.bulan, selected: filterBulan, onChange: setFilterBulan },
                 { key: 'desa', title: 'Desa', options: filterOptions.desa, selected: filterDesa, onChange: setFilterDesa },
-                { key: 'relawan', title: 'Relawan', options: filterOptions.relawan, selected: filterRelawan, onChange: setFilterRelawan }
-              ]}
-            />
-            <MultiSelectGroup 
-              title="Filter Sumber Dana & Kategori"
-              groups={[
+                { key: 'relawan', title: 'Relawan', options: filterOptions.relawan, selected: filterRelawan, onChange: setFilterRelawan },
                 { key: 'kategori', title: 'Kategori', options: filterOptions.kategori, selected: filterKategori, onChange: setFilterKategori },
                 { key: 'sumberDana', title: 'Sumber Dana', options: filterOptions.sumberDana, selected: filterSumberDana, onChange: setFilterSumberDana }
               ]}
@@ -423,14 +413,14 @@ export default function RekapPenyaluranPage() {
               </SelectContent>
             </Select>
 
-            <div className="flex flex-col gap-2 w-full lg:w-auto">
+            <div className="flex flex-col sm:flex-row items-center gap-2 w-full lg:w-auto ml-auto">
               <Select value="none" onValueChange={(val) => { 
                 if (val !== 'none' && !groupBys.includes(val)) {
                   setGroupBys(prev => [...prev, val]);
                   setExpandedGroups({}); 
                 }
               }}>
-                <SelectTrigger className="w-full lg:w-[220px] bg-slate-50 border-slate-200 rounded-xl h-[42px] font-bold text-slate-600">
+                <SelectTrigger className="w-full sm:w-[220px] bg-slate-50 border-slate-200 rounded-xl h-[42px] font-bold text-slate-600">
                   <div className="flex items-center gap-2">
                     <Layers className="w-4 h-4 text-slate-400" />
                     <SelectValue placeholder="Tambah Group By..." />
@@ -442,7 +432,7 @@ export default function RekapPenyaluranPage() {
                   <SelectItem value="desa">Berdasarkan Desa</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="w-full lg:w-[220px]">
+              <div className="w-full sm:w-[220px]">
                 <FavoriteGroupSelector 
                   moduleName="rekap_penyaluran" 
                   currentGroupBys={groupBys} 

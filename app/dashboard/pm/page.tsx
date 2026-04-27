@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getPenerimaManfaatList, getDesaBerdayaOptions, importPemerimaManfaatExcel } from './actions'
 import { useSession } from 'next-auth/react'
 import * as xlsx from 'xlsx'
-import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { MultiSelectGroup } from '@/components/ui/multi-select-group'
 import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
 import { X } from 'lucide-react'
 
@@ -310,20 +310,12 @@ export default function PenerimaManfaatPage() {
             </SelectContent>
           </Select>
 
-          <MultiSelectFilter 
-            label="Desa" 
-            options={filterOptions.desa} 
-            selected={filters.desa}
-            onSelect={(val) => toggleFilter('desa', val)}
-            onClear={() => setFilters(f => ({ ...f, desa: [] }))}
-          />
-
-          <MultiSelectFilter 
-            label="Kategori" 
-            options={filterOptions.kategori} 
-            selected={filters.kategori}
-            onSelect={(val) => toggleFilter('kategori', val)}
-            onClear={() => setFilters(f => ({ ...f, kategori: [] }))}
+          <MultiSelectGroup 
+            title="Filter Data"
+            groups={[
+              { key: 'desa', title: 'Desa', options: filterOptions.desa, selected: filters.desa, onChange: (val) => setFilters(f => ({ ...f, desa: val })) },
+              { key: 'kategori', title: 'Kategori', options: filterOptions.kategori, selected: filters.kategori, onChange: (val) => setFilters(f => ({ ...f, kategori: val })) }
+            ]}
           />
 
           {hasAnyFilter && (

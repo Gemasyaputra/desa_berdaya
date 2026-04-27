@@ -27,7 +27,7 @@ import { getKesehatanUpdates, deleteKesehatanUpdate } from './actions'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
-import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { MultiSelectGroup } from '@/components/ui/multi-select-group'
 import { X, Layers } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
@@ -346,33 +346,14 @@ export default function KesehatanPage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <MultiSelectFilter 
-                label="Kelompok" 
-                options={filterOptions.kelompok} 
-                selected={filters.kelompok}
-                onSelect={(val) => toggleFilter('kelompok', val)}
-                onClear={() => setFilters(f => ({ ...f, kelompok: [] }))}
-              />
-              <MultiSelectFilter 
-                label="Bulan" 
-                options={filterOptions.bulan} 
-                selected={filters.bulan}
-                onSelect={(val) => toggleFilter('bulan', val)}
-                onClear={() => setFilters(f => ({ ...f, bulan: [] }))}
-              />
-              <MultiSelectFilter 
-                label="Program Kesehatan" 
-                options={filterOptions.program} 
-                selected={filters.program}
-                onSelect={(val) => toggleFilter('program', val)}
-                onClear={() => setFilters(f => ({ ...f, program: [] }))}
-              />
-              <MultiSelectFilter 
-                label="Relawan" 
-                options={filterOptions.relawan} 
-                selected={filters.relawan}
-                onSelect={(val) => toggleFilter('relawan', val)}
-                onClear={() => setFilters(f => ({ ...f, relawan: [] }))}
+              <MultiSelectGroup 
+                title="Filter Data"
+                groups={[
+                  { key: 'kelompok', title: 'Kelompok', options: filterOptions.kelompok, selected: filters.kelompok, onChange: (val) => setFilters(f => ({ ...f, kelompok: val })) },
+                  { key: 'bulan', title: 'Bulan', options: filterOptions.bulan, selected: filters.bulan, onChange: (val) => setFilters(f => ({ ...f, bulan: val })) },
+                  { key: 'program', title: 'Program Kesehatan', options: filterOptions.program, selected: filters.program, onChange: (val) => setFilters(f => ({ ...f, program: val })) },
+                  { key: 'relawan', title: 'Relawan', options: filterOptions.relawan, selected: filters.relawan, onChange: (val) => setFilters(f => ({ ...f, relawan: val })) }
+                ]}
               />
               
               {hasAnyFilter && (

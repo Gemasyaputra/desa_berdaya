@@ -22,7 +22,7 @@ import {
   createKelompok, updateKelompok, deleteKelompok 
 } from '@/lib/actions/kelompok'
 import { getPenerimaManfaatByDesaId } from '@/app/dashboard/pm/actions'
-import { MultiSelectFilter } from '@/components/multi-select-filter'
+import { MultiSelectGroup } from '@/components/ui/multi-select-group'
 import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
 
 export default function ClientKelompokMainPanel({ 
@@ -430,40 +430,15 @@ export default function ClientKelompokMainPanel({
 
         {/* Filter chips — horizontal scroll on mobile */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <MultiSelectFilter 
-            label="Desa Binaan" 
-            options={filterOptions.desa} 
-            selected={kelompokFilters.desa}
-            onSelect={(val) => toggleFilter('desa', val)}
-            onClear={() => setKelompokFilters(f => ({ ...f, desa: [] }))}
-          />
-          <MultiSelectFilter 
-            label="Program" 
-            options={filterOptions.program} 
-            selected={kelompokFilters.program}
-            onSelect={(val) => toggleFilter('program', val)}
-            onClear={() => setKelompokFilters(f => ({ ...f, program: [] }))}
-          />
-          <MultiSelectFilter 
-            label="Tahun" 
-            options={filterOptions.tahun} 
-            selected={kelompokFilters.tahun}
-            onSelect={(val) => toggleFilter('tahun', val)}
-            onClear={() => setKelompokFilters(f => ({ ...f, tahun: [] }))}
-          />
-          <MultiSelectFilter 
-            label="Korwil" 
-            options={filterOptions.pembina} 
-            selected={kelompokFilters.pembina}
-            onSelect={(val) => toggleFilter('pembina', val)}
-            onClear={() => setKelompokFilters(f => ({ ...f, pembina: [] }))}
-          />
-          <MultiSelectFilter 
-            label="Relawan" 
-            options={filterOptions.relawan} 
-            selected={kelompokFilters.relawan}
-            onSelect={(val) => toggleFilter('relawan', val)}
-            onClear={() => setKelompokFilters(f => ({ ...f, relawan: [] }))}
+          <MultiSelectGroup 
+            title="Filter Data"
+            groups={[
+              { key: 'desa', title: 'Desa Binaan', options: filterOptions.desa, selected: kelompokFilters.desa, onChange: (val) => setKelompokFilters(f => ({ ...f, desa: val })) },
+              { key: 'program', title: 'Program', options: filterOptions.program, selected: kelompokFilters.program, onChange: (val) => setKelompokFilters(f => ({ ...f, program: val })) },
+              { key: 'tahun', title: 'Tahun', options: filterOptions.tahun, selected: kelompokFilters.tahun, onChange: (val) => setKelompokFilters(f => ({ ...f, tahun: val })) },
+              { key: 'pembina', title: 'Korwil', options: filterOptions.pembina, selected: kelompokFilters.pembina, onChange: (val) => setKelompokFilters(f => ({ ...f, pembina: val })) },
+              { key: 'relawan', title: 'Relawan', options: filterOptions.relawan, selected: kelompokFilters.relawan, onChange: (val) => setKelompokFilters(f => ({ ...f, relawan: val })) }
+            ]}
           />
 
           {hasAnyFilter && (

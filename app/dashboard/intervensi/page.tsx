@@ -801,9 +801,11 @@ export default function IntervensiListPage() {
                       )}
                     </div>
                   </th>
-                  <th className="px-8 py-4 min-w-[200px]">Desa Binaan & Program</th>
+                  <th className="px-8 py-4 min-w-[150px]">Desa Binaan</th>
+                  <th className="px-8 py-4 min-w-[150px]">Program</th>
                   <th className="px-8 py-4">Relawan</th>
-                  <th className="px-8 py-4">Sumber Dana / Fundraiser</th>
+                  <th className="px-8 py-4">Sumber Dana</th>
+                  <th className="px-8 py-4">Fundraiser</th>
                   <th className="px-8 py-4 whitespace-nowrap">Tanggal Dibuat</th>
                   <th className="px-8 py-4 whitespace-nowrap text-center">Status</th>
                   <th className="px-8 py-4 text-center">Aksi</th>
@@ -812,11 +814,11 @@ export default function IntervensiListPage() {
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-8 py-12 text-center text-slate-400 font-medium whitespace-nowrap">Memuat data...</td>
+                    <td colSpan={9} className="px-8 py-12 text-center text-slate-400 font-medium whitespace-nowrap">Memuat data...</td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-8 py-14 text-center">
+                    <td colSpan={9} className="px-8 py-14 text-center">
                       <div className="flex flex-col items-center gap-3 text-slate-400">
                         <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center">
                           <Search className="w-6 h-6 opacity-30" />
@@ -862,7 +864,9 @@ export default function IntervensiListPage() {
                         </div>
                       </td>
                       <td className="px-8 py-5">
-                        <div className="font-bold text-slate-800 mb-1 group-hover:text-[#7a1200] transition-colors">{row.nama_desa || '-'}</div>
+                        <div className="font-bold text-slate-800 group-hover:text-[#7a1200] transition-colors">{row.nama_desa || '-'}</div>
+                      </td>
+                      <td className="px-8 py-5">
                         <div className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#7a1200]"></span>
                           {row.nama_program || '-'}
@@ -873,6 +877,8 @@ export default function IntervensiListPage() {
                       </td>
                       <td className="px-8 py-5">
                         <div className="font-semibold text-slate-700">{row.sumber_dana || '-'}</div>
+                      </td>
+                      <td className="px-8 py-5">
                         <div className="text-[11px] font-medium text-slate-400">{row.fundraiser || '-'}</div>
                       </td>
                       <td className="px-8 py-5 text-slate-500 font-medium">
@@ -925,7 +931,7 @@ export default function IntervensiListPage() {
                           className="bg-slate-50/50 hover:bg-slate-100 cursor-pointer transition-colors border-b border-slate-200"
                           onClick={() => toggleTableGroup(node.path)}
                         >
-                          <td colSpan={7} className="px-5 py-3 sticky left-0 z-20 bg-slate-50/90 shadow-[2px_0_0_0_#cbd5e1]">
+                          <td colSpan={9} className="px-5 py-3 sticky left-0 z-20 bg-slate-50/90 shadow-[2px_0_0_0_#cbd5e1]">
                             <div className="flex items-center gap-2 font-black text-slate-800" style={{ paddingLeft: `${node.depth * 1.5}rem` }}>
                               {expandedTableGroups[node.path] ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
                               <span className="uppercase tracking-tight">{node.groupName}</span>

@@ -914,7 +914,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 bg-slate-50/50 min-h-screen">
+    <div className="p-8 w-full mx-auto space-y-8 bg-slate-50/50 min-h-screen">
       <div className="flex flex-col gap-6">
         <Button 
           variant="ghost" 

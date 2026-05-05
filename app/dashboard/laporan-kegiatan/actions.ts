@@ -221,7 +221,10 @@ export async function createLaporanKegiatan(data: any) {
       program_id,
       form_category_id,
       kelompok_ids,
-      penerima_manfaat_ids
+      penerima_manfaat_ids,
+      action_plan_id,
+      action_plan_activity_id,
+      nominal_aktual
     ) VALUES (
       ${data.desa_berdaya_id},
       ${data.jenis_kegiatan},
@@ -243,7 +246,10 @@ export async function createLaporanKegiatan(data: any) {
       ${data.program_id},
       ${data.form_category_id || null},
       ${data.kelompok_ids || []},
-      ${data.penerima_manfaat_ids || []}
+      ${data.penerima_manfaat_ids || []},
+      ${data.action_plan_id || null},
+      ${data.action_plan_activity_id || null},
+      ${data.nominal_aktual || null}
     ) RETURNING id
   `
   return { success: true, id: (result as any[])[0].id }
@@ -275,7 +281,10 @@ export async function updateLaporanKegiatan(id: number, data: any) {
       program_id = ${data.program_id},
       form_category_id = ${data.form_category_id || null},
       kelompok_ids = ${data.kelompok_ids || []},
-      penerima_manfaat_ids = ${data.penerima_manfaat_ids || []}
+      penerima_manfaat_ids = ${data.penerima_manfaat_ids || []},
+      action_plan_id = ${data.action_plan_id || null},
+      action_plan_activity_id = ${data.action_plan_activity_id || null},
+      nominal_aktual = ${data.nominal_aktual || null}
     WHERE id = ${id} RETURNING id
   `
   return { success: true, id: (result as any[])[0].id }

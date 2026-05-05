@@ -13,7 +13,8 @@ import {
   getDesaBerdayaOptions,
   getProgramOptions,
   getKategoriProgramOptions,
-  importIntervensiProgramUniversal
+  importIntervensiProgramUniversal,
+  getApprovedAjuanRi
 } from '@/app/dashboard/intervensi/actions'
 import { cn } from '@/lib/utils'
 
@@ -38,6 +39,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
 
   // Options data
   const [desaOptions, setDesaOptions] = useState<any[]>([])
@@ -111,27 +113,39 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
   const handleDownloadTemplate = async () => {
     if (!selectedProgram || !selectedKategori || targetBulanIds.size === 0 || !selectedTahun) return
 
-    const XLSX = await import('xlsx')
-    const tahun = Number(selectedTahun)
-    let wsData: any[][] = []
+    setIsDownloading(true)
+    try {
+      const tahun = Number(selectedTahun)
+      const desaIds = activeTargetDesas.map(d => d.id)
+      
+      // Ambil nilai ajuan_ri dari Action Plan yang sudah APPROVED
+      const approvedAjuan = await getApprovedAjuanRi(tahun, desaIds, selectedProgram.nama_program)
 
-    wsData = [
-      ['⚠ JANGAN UBAH BARIS 1-2. Isi data mulai baris 3 ke bawah.'],
-      [
-        'kategori_program_id', 'program_id', 'desa_berdaya_id', 'relawan_id',
-        'nama_program', 'nama_desa', 'nama_relawan',
-        'tahun', 'bulan', 'sumber_dana', 'fundraiser', 'deskripsi',
-        'ajuan_ri', 'anggaran_disetujui', 'anggaran_dicairkan', 'status_pencairan',
-        'id_stp', 'catatan', 'is_dbf', 'is_rz'
-      ],
-      ...activeTargetDesas.flatMap(d => Array.from(targetBulanIds).map(b => [
-        Number(selectedKategoriId), selectedProgram?.id, d.id, d.relawan_id,
-        selectedProgram?.nama_program, d.nama, d.relawan_nama || '',
-        tahun, b, '', '', '',
-        0, 0, 0, 'Dialokasikan',
-        '', '', 'FALSE', 'FALSE'
-      ]))
-    ]
+      const XLSX = await import('xlsx')
+      let wsData: any[][] = []
+
+      wsData = [
+        ['⚠ JANGAN UBAH BARIS 1-2. Isi data mulai baris 3 ke bawah.'],
+        [
+          'kategori_program_id', 'program_id', 'desa_berdaya_id', 'relawan_id',
+          'nama_program', 'nama_desa', 'nama_relawan',
+          'tahun', 'bulan', 'sumber_dana', 'fundraiser', 'deskripsi',
+          'ajuan_ri', 'anggaran_disetujui', 'anggaran_dicairkan', 'status_pencairan',
+          'id_stp', 'catatan', 'is_dbf', 'is_rz'
+        ],
+        ...activeTargetDesas.flatMap(d => Array.from(targetBulanIds).map(b => {
+          // Default ajuan RI adalah 0, kecuali ada data dari Action Plan yang diapprove
+          const ajuan_ri = approvedAjuan[d.id]?.[b] || 0;
+          
+          return [
+            Number(selectedKategoriId), selectedProgram?.id, d.id, d.relawan_id,
+            selectedProgram?.nama_program, d.nama, d.relawan_nama || '',
+            tahun, b, '', '', '',
+            ajuan_ri, 0, 0, 'Dialokasikan',
+            '', '', 'FALSE', 'FALSE'
+          ]
+        }))
+      ]
 
     const ws = XLSX.utils.aoa_to_sheet(wsData)
 
@@ -150,6 +164,12 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
     const safeName = `BanyakDesa_${selectedProgram?.nama_program}_${Array.from(targetBulanIds).join('-')}`.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 40)
     
     XLSX.writeFile(wb, `template_intervensi_${safeName}.xlsx`)
+    } catch (err) {
+      console.error(err)
+      alert("Gagal mendownload template.")
+    } finally {
+      setIsDownloading(false)
+    }
   }
 
   // ── FILE PARSING ───────────────────────────────────────────────────
@@ -554,11 +574,12 @@ export default function ImportExcelModal({ isOpen, onClose, onImported }: Import
                   <div className="ml-9">
                     <Button
                       onClick={handleDownloadTemplate}
+                      disabled={isDownloading}
                       variant="outline"
                       className="border-[#7a1200]/40 text-[#7a1200] hover:bg-[#7a1200]/5 font-bold rounded-xl gap-2"
                     >
-                      <Download className="w-4 h-4" />
-                      Download Template .xlsx
+                      {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                      {isDownloading ? 'Menyiapkan Template...' : 'Download Template .xlsx'}
                     </Button>
                   </div>
                 </div>

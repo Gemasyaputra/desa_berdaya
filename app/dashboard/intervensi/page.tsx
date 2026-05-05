@@ -38,6 +38,8 @@ export default function IntervensiListPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [groupBys, setGroupBys] = useState<string[]>([])
   const [expandedTableGroups, setExpandedTableGroups] = useState<Record<string, boolean>>({})
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 25
 
   // Duplicate states
   const [duplicateTarget, setDuplicateTarget] = useState<any>(null)
@@ -163,6 +165,15 @@ export default function IntervensiListPage() {
       return matchesSearch && matchesDesa && matchesProgram && matchesRelawan && matchesStatus
     })
   }, [data, search, filters])
+
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return filtered.slice(start, start + ITEMS_PER_PAGE)
+  }, [filtered, currentPage])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, filters, groupBys])
 
   const toggleFilter = (type: keyof typeof filters, value: string) => {
     setFilters(prev => ({
@@ -957,7 +968,7 @@ export default function IntervensiListPage() {
                   if (groupedData) {
                     return renderGroupNodes(groupedData);
                   } else {
-                    return filtered.map(renderDataRow);
+                    return paginatedData.map(renderDataRow);
                   }
                 })()}
               </tbody>
@@ -965,6 +976,38 @@ export default function IntervensiListPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Pagination Controls */}
+      {groupBys.length === 0 && filtered.length > ITEMS_PER_PAGE && (
+        <div className="flex items-center justify-between mt-6 px-4">
+          <div className="text-sm font-medium text-slate-500">
+            Menampilkan {((currentPage - 1) * ITEMS_PER_PAGE) + 1} hingga {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} dari {filtered.length} data
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => prev - 1)}
+              className="h-9 px-4 rounded-xl border-slate-200 text-slate-600 hover:text-[#7a1200] hover:bg-[#7a1200]/5 transition-colors"
+            >
+              Sebelumnya
+            </Button>
+            <div className="text-sm font-bold text-slate-700 px-2">
+              Halaman {currentPage} dari {Math.ceil(filtered.length / ITEMS_PER_PAGE)}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE)}
+              onClick={() => setCurrentPage(prev => prev + 1)}
+              className="h-9 px-4 rounded-xl border-slate-200 text-slate-600 hover:text-[#7a1200] hover:bg-[#7a1200]/5 transition-colors"
+            >
+              Selanjutnya
+            </Button>
+          </div>
+        </div>
+      )}
 
       <ImportExcelModal
         isOpen={isImportOpen}

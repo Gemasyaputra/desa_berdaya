@@ -12,6 +12,7 @@
     "migrate:nik": "tsx scripts/add-nik-to-patients-and-transactions.ts",
     "migrate:fix-fk": "tsx scripts/fix-master-target-categories-fk.ts",
     "migrate:app-settings": "tsx scripts/add-app-settings-table.ts",
+    "migrate:action-plan": "tsx scripts/migrate-action-plan.ts",
     "migrate:input-type": "tsx scripts/add-input-type-to-transactions.ts",
     "seed": "tsx scripts/seed.ts",
     "start": "next start"

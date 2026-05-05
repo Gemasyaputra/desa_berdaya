@@ -43,6 +43,37 @@ export async function getKategoriProgramOptions() {
   return Array.isArray(rawData) ? rawData : []
 }
 
+export async function getApprovedAjuanRi(
+  tahun: number,
+  desaIds: number[],
+  programName: string
+) {
+  await checkAdmin();
+  if (desaIds.length === 0 || !programName) return {};
+
+  const rawData = await sql`
+    SELECT 
+      ap.desa_berdaya_id as desa_id,
+      apa.bulan_implementasi as bulan,
+      SUM(apa.nominal_rencana) as total_ajuan
+    FROM action_plans ap
+    JOIN action_plan_activities apa ON apa.action_plan_id = ap.id
+    WHERE ap.status = 'APPROVED'
+      AND ap.tahun_aktivasi = ${tahun}
+      AND ap.pilihan_program = ${programName}
+      AND ap.desa_berdaya_id = ANY(${desaIds})
+    GROUP BY ap.desa_berdaya_id, apa.bulan_implementasi
+  `
+  
+  const result: Record<number, Record<string, number>> = {};
+  for (const row of (rawData as any[])) {
+    if (!result[row.desa_id]) result[row.desa_id] = {};
+    result[row.desa_id][row.bulan] = Number(row.total_ajuan);
+  }
+
+  return result;
+}
+
 // HEADER: INTERVENSI PROGRAM
 export async function getIntervensiPrograms() {
   await checkAdmin();

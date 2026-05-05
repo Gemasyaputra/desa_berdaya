@@ -26,6 +26,7 @@ import {
   getKelompokByDesaAndProgram,
   getKelompokMembers
 } from '../actions'
+import { getApprovedActionPlans, getAvailableActivities } from '@/lib/actions/action-plan'
 import { getFormCategories, getFormCategoryById } from '@/lib/actions/form-builder'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -58,6 +59,14 @@ export default function TambahLaporanPage() {
   const [selectedKelompokIds, setSelectedKelompokIds] = useState<number[]>([])
   const [groupMembers, setGroupMembers] = useState<any[]>([])
   const [excludedMemberIds, setExcludedMemberIds] = useState<number[]>([])
+
+  // Action Plan states
+  const [actionPlanOptions, setActionPlanOptions] = useState<any[]>([])
+  const [selectedActionPlanId, setSelectedActionPlanId] = useState<number>(0)
+  const [activityOptions, setActivityOptions] = useState<any[]>([])
+  const [selectedActivityId, setSelectedActivityId] = useState<number>(0)
+  const [batasAnggaran, setBatasAnggaran] = useState<number>(0)
+  const [nominalAktual, setNominalAktual] = useState<number | ''>('')
   
   const [formData, setFormData] = useState({
     desa_berdaya_id: 0,
@@ -112,12 +121,71 @@ export default function TambahLaporanPage() {
     }
   }
 
-  const handleDesaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleDesaChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = Number(e.target.value)
     setFormData(prev => ({ ...prev, desa_berdaya_id: id, kelompok_ids: [] }))
     setKelompokOptions([])
     setGroupMembers([])
+    setSelectedActionPlanId(0)
+    setActivityOptions([])
+    setSelectedActivityId(0)
+    setBatasAnggaran(0)
+    setNominalAktual('')
+    
     fetchHierarchy(id)
+    
+    // Fetch Action Plans untuk desa ini
+    if (id > 0) {
+      const plans = await getApprovedActionPlans(id)
+      setActionPlanOptions(plans)
+    } else {
+      setActionPlanOptions([])
+    }
+  }
+
+  const handleActionPlanChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = Number(e.target.value)
+    setSelectedActionPlanId(id)
+    setSelectedActivityId(0)
+    setBatasAnggaran(0)
+    setNominalAktual('')
+
+    if (id > 0) {
+      const plan = actionPlanOptions.find(p => p.id === id)
+      if (plan) {
+        // Auto-fill Kategori
+        const cat = kategoriOptions.find(k => k.nama_kategori === plan.kategori_program)
+        if (cat) {
+          handleKategoriChange({ target: { value: cat.id } } as any)
+        }
+      }
+
+      const activities = await getAvailableActivities(id)
+      // Filter hanya yg masih ada sisa saldo
+      const availableActs = activities.filter(a => Number(a.nominal_rencana) - Number(a.sudah_terpakai) > 0)
+      setActivityOptions(availableActs)
+    } else {
+      setActivityOptions([])
+    }
+  }
+
+  const handleActivityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = Number(e.target.value)
+    setSelectedActivityId(id)
+    if (id > 0) {
+      const act = activityOptions.find(a => a.id === id)
+      if (act) {
+        const sisa = Number(act.nominal_rencana) - Number(act.sudah_terpakai)
+        setBatasAnggaran(sisa)
+        setNominalAktual(sisa) // Default isi full sisa budget
+        
+        // Auto-fill Judul Kegiatan dari RAB
+        setFormData(prev => ({ ...prev, judul_kegiatan: act.uraian_kebutuhan }))
+      }
+    } else {
+      setBatasAnggaran(0)
+      setNominalAktual('')
+    }
   }
 
   const handleKategoriChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -342,12 +410,32 @@ export default function TambahLaporanPage() {
     //   return
     // }
 
+    if (selectedActionPlanId > 0 && selectedActivityId === 0) {
+      toast.error('Silakan pilih Aktivitas RAB yang akan direalisasikan.')
+      return
+    }
+
+    if (selectedActivityId > 0) {
+      const nom = Number(nominalAktual)
+      if (!nom || nom <= 0) {
+        toast.error('Nominal Aktual (Realisasi) harus lebih dari 0.')
+        return
+      }
+      if (nom > batasAnggaran) {
+        toast.error(`Overbudget! Nominal aktual (Rp ${nom.toLocaleString('id-ID')}) melebihi batas sisa anggaran (Rp ${batasAnggaran.toLocaleString('id-ID')}).`)
+        return
+      }
+    }
+
     setLoading(true)
     startTransition(async () => {
       try {
         await createLaporanKegiatan({ 
           ...formData, 
-          total_realisasi: 0,
+          total_realisasi: Number(nominalAktual) || 0,
+          action_plan_id: selectedActionPlanId || null,
+          action_plan_activity_id: selectedActivityId || null,
+          nominal_aktual: Number(nominalAktual) || null,
           jumlah_pm_laki: pmCounts?.laki || 0,
           jumlah_pm_perempuan: pmCounts?.perempuan || 0,
           jumlah_pm_total: pmCounts?.total || 0,
@@ -481,6 +569,64 @@ export default function TambahLaporanPage() {
                       <option key={prog.id} value={prog.id}>{prog.nama_program}</option>
                     ))}
                   </select>
+                </div>
+
+                {/* Dropdown Action Plan (Optional, tp disarankan) */}
+                <div className="space-y-2 md:col-span-2 p-4 bg-amber-50 border border-amber-100 rounded-xl">
+                  <Label className="text-xs font-semibold text-amber-700 uppercase">Rujukan Action Plan (Opsional)</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <select
+                      value={selectedActionPlanId}
+                      onChange={handleActionPlanChange}
+                      className="w-full h-12 px-4 rounded-xl border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white font-bold text-sm"
+                      disabled={!formData.desa_berdaya_id || actionPlanOptions.length === 0}
+                    >
+                      <option value={0}>{actionPlanOptions.length > 0 ? "Pilih Action Plan Approved..." : "Tidak Ada Action Plan Approved di Desa Ini"}</option>
+                      {actionPlanOptions.map(plan => (
+                        <option key={plan.id} value={plan.id}>{plan.kategori_program} - {plan.pilihan_program || 'Umum'} (Sisa Saldo/RAB tersedia)</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={selectedActivityId}
+                      onChange={handleActivityChange}
+                      className="w-full h-12 px-4 rounded-xl border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white font-bold text-sm"
+                      disabled={!selectedActionPlanId}
+                    >
+                      <option value={0}>Pilih Aktivitas RAB...</option>
+                      {activityOptions.map(act => (
+                        <option key={act.id} value={act.id}>
+                          {act.uraian_kebutuhan} (Batas: Rp {(Number(act.nominal_rencana) - Number(act.sudah_terpakai)).toLocaleString('id-ID')})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {selectedActivityId > 0 && (
+                    <div className="mt-4 flex items-center gap-4">
+                      <div className="flex-1">
+                        <Label className="text-xs font-semibold text-amber-700 uppercase">Nominal Aktual (Realisasi/CA) *</Label>
+                        <div className="relative">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">Rp</span>
+                          <Input
+                            type="number"
+                            value={nominalAktual}
+                            onChange={(e) => setNominalAktual(e.target.value === '' ? '' : Number(e.target.value))}
+                            className="pl-10 h-12 rounded-xl border-amber-200 bg-white font-bold text-amber-900 text-lg"
+                            placeholder="0"
+                            required
+                            max={batasAnggaran}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs font-semibold text-slate-500 uppercase">Batas Maksimal</Label>
+                        <div className="h-12 flex items-center px-4 bg-amber-100 rounded-xl font-bold text-amber-800">
+                          Rp {batasAnggaran.toLocaleString('id-ID')}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-3 md:col-span-2">

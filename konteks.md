@@ -1,46 +1,41 @@
-# Konteks Proyek
+# 🚀 Rencana Fitur Baru
 
-Silakan tulis di sini mengenai apa saja yang ingin Anda lakukan atau ubah dalam proyek ini.
-Anda bisa menjelaskan:
+## 1. Nama Fitur / Modul
+Modul Action Plan & Integrasi Intervensi Program (SIDB)
 
-Konteks Perombakan Proyek: Dari CSF Panel ke Desa Berdaya V2
-Status Saat Ini: Codebase eksisting merupakan dashboard monitoring klinik yang sangat bergantung pada proses scraping otomatis (Playwright) via local worker, cron jobs, dan sinkronisasi data Zains.
-Target Baru: Mengubah codebase ini menjadi sistem manajemen operasional lapangan (Desa Berdaya V2) untuk Relawan Rumah Zakat dengan arsitektur murni Serverless (Next.js 15 App Router + Neon Postgres). Fitur scraping akan dihapus sepenuhnya.
+## 2. Deskripsi Singkat
+Fitur untuk mendigitalisasi proses perencanaan (Action Plan) dari format *spreadsheet* ke dalam sistem SIDB. Fitur ini memungkinkan Relawan Inspirasi (RI) mengajukan Rencana Anggaran Biaya (RAB) dan target Penerima Manfaat (PM) secara dinamis sesuai kategori program (Ekonomi, Kesehatan, Lingkungan, Pendidikan). Setelah disetujui (Approved) oleh Monev Pusat, data Action Plan ini akan terhubung langsung sebagai rujukan wajib saat RI menginput laporan realisasi penyaluran dana (Intervensi).
 
-Berikut adalah panduan utama pengembangannya:
+## 3. Kebutuhan Pengguna (User Story) / Flow
+- **Role:** Relawan Inspirasi (RI)
+- **Alur (Action Plan):** RI mengakses menu Tambah Action Plan -> Memilih Program -> Mengisi field spesifik (Kapasitas, Jenis Sampah, Keterangan SE, dll) -> Menginput baris detail RAB (Bulan, Uraian, Nominal) -> Memilih target PM dari database (khusus Ekonomi) -> Submit ajuan (berstatus *Waiting Approval*).
+- **Alur (Intervensi):** RI mengakses menu Tambah Intervensi -> Memilih Action Plan yang sudah *Approved* -> Memilih spesifik Aktivitas RAB yang akan direalisasikan -> Mengisi nominal aktual, tanggal, dan upload bukti CA -> Submit laporan intervensi.
 
-1. Tujuan Utama Proyek
-Peralihan Fungsi Utilitas: Mengubah fungsi aplikasi dari alat penarik data pasif (scraper) menjadi aplikasi manajemen operasional aktif (CRUD) untuk mengelola program pembinaan desa.
+- **Role:** Monev Pusat
+- **Alur:** Mengakses daftar ajuan Action Plan dari berbagai RI -> Mereview detail RAB dan target PM -> Memberikan keputusan berupa *Approve* (disetujui) atau *Revision* (dikembalikan ke RI beserta catatan perbaikan).
 
-Performa "Lightning Fast": Mencapai page load time < 1 detik untuk memfasilitasi Relawan yang sering bekerja di area susah sinyal.
+## 4. Kebutuhan Database (Opsional)
+- **Tabel Baru:**
+  - `action_plans`: Tabel induk perencanaan (berisi `ri_id`, `desa_id`, `program_id`, `tahun_aktivasi`, `status`, `total_ajuan`, serta kolom opsional seperti `keterangan_se`, `jenis_sampah`, `kapasitas_pengelolaan`, `jumlah_pengajar`).
+  - `action_plan_activities`: Tabel rincian RAB (berisi `action_plan_id`, `bulan_implementasi`, `uraian_kebutuhan`, `nominal_rencana`, serta kolom khusus ekonomi: `jumlah_unit`, `frekuensi`, `harga_satuan`).
+  - `action_plan_beneficiaries`: Tabel penghubung target PM khusus program Ekonomi (berisi `action_plan_id`, `pm_id`, `penghasilan_awal`).
+- **Tabel Lama (Modifikasi):**
+  - `intervensi`: Penambahan *Foreign Key* `action_plan_id` dan `action_plan_activity_id` untuk mengunci relasi dengan perencanaan, serta penambahan kolom `nominal_aktual`.
 
-Akurasi Keuangan (Anti-Fraud): Membangun sistem pelaporan kegiatan dan pencatatan keuangan (double-entry alokasi vs realisasi) yang 100% akurat tanpa selisih, menggantikan modul transaksi klinik lama.
+## 5. Rencana Tampilan (UI/UX)
+- **Halaman Daftar Action Plan (`/dashboard/action-plan/page.tsx`):** Menampilkan *Data Table* daftar ajuan dengan fitur filter berdasarkan status, desa, dan program.
+- **Halaman Tambah/Edit Action Plan (`/dashboard/action-plan/tambah/page.tsx`):** Form input dinamis. Menggunakan komponen *Dynamic Field Array* (tambah/hapus baris) untuk pengisian RAB, dan komponen *Data Table* dengan fitur *Checkbox* untuk memilih target Penerima Manfaat (PM). Field input utama akan berubah menyesuaikan jenis program yang dipilih.
+- **Halaman Review Action Plan (`/dashboard/action-plan/[id]/page.tsx`):** Tampilan *read-only* berisi ringkasan lengkap untuk Monev, dilengkapi tombol aksi "Setujui" dan "Revisi" (yang akan memunculkan modal untuk mengisi catatan).
+- **Halaman Tambah Intervensi (Pembaruan):** Modifikasi form intervensi saat ini dengan menambahkan *Cascading Dropdown* di awal form (Pilih Action Plan -> Pilih Aktivitas). Pilihan ini akan men-*trigger auto-fill* untuk Kategori Program dan menampilkan info target Nominal Rencana.
 
-Pembersihan Kode (Clean Up): Membuang direktori terkait scraping (app/api/scrap, app/api/cron untuk antrean, file konfigurasi Playwright, dan skrip scrap.js) karena beban server akan dialihkan sepenuhnya ke Vercel tanpa butuh local worker.
+## 6. Aturan Bisnis (Business Logic / Validasi)
+- **Validasi Status:** Form Intervensi hanya boleh memuat dan mengeksekusi Action Plan yang memiliki status `APPROVED`.
+- **Validasi Keterisian (Dynamic Required):** Field *Keterangan SE* wajib diisi jika program adalah Kesehatan atau Lingkungan. Field *Jenis Sampah* wajib jika program Lingkungan.
+- **Validasi Anggaran Terkunci:** Dropdown pemilihan aktivitas pada form Intervensi idealnya memfilter/menyembunyikan item RAB yang nominalnya sudah direalisasikan sepenuhnya, guna mencegah duplikasi klaim.
+- **Peringatan *Overbudget*:** Jika RI menginput `Nominal Aktual` pada form Intervensi yang jumlahnya melebihi `Nominal Rencana` di Action Plan, sistem akan memunculkan peringatan (*Warning Alert*) sebelum data dapat di-*submit*.
+- **Persetujuan Berjenjang:** Perubahan status menjadi `APPROVED` hanya bisa dilakukan oleh *role* Monev Pusat (atau role yang lebih tinggi sesuai kewenangan).
 
-2. Fitur-Fitur Tambahan yang Ingin Dibuat
-Modul AI KTP Scanner (OCR): Menggantikan cara input manual pasien klinik dengan sistem pemindai KTP pintar menggunakan Vercel AI SDK (Vision). Saat Relawan menambah Penerima Manfaat (PM) baru, sistem akan otomatis mengekstrak NIK, Nama, dan Alamat dari foto KTP.
-
-Formulir Monitoring Dinamis (JSONB): Pembuatan form laporan bulanan yang bentuknya berubah otomatis sesuai tipe PM (Kesehatan Lansia, Ibu Hamil, Balita/Stunting, dan Ekonomi), memanfaatkan fleksibilitas kolom JSONB di PostgreSQL.
-
-Sistem Penyimpanan Bukti (Vercel Blob): Mengintegrasikan sistem upload foto untuk bukti kwitansi pengeluaran dan foto kegiatan Relawan secara langsung, menggantikan unggahan mutasi bank (batch upload) pada sistem lama.
-
-Client-Side Report Generation: Pembuatan PDF laporan kegiatan dan ekspor rekapan Excel yang di- generate langsung di sisi browser pengguna untuk menghemat pemakaian resource server.
-
-3. Penyesuaian UI/UX atau Dashboard yang Diperlukan
-Navigasi Baru: Merombak sidebar dan menu. Menu lama seperti pasien, klinik, dan transaksi diganti menjadi Desa Binaan, Penerima Manfaat, Kegiatan & Keuangan, dan Monitoring Bulanan.
-
-Pendekatan Mobile-First: Karena target pengguna utama adalah Relawan dan Korwil di lapangan, seluruh komponen UI (menggunakan Tailwind & Shadcn UI yang sudah ada) harus diprioritaskan tampil sempurna dan mudah diklik dari layar smartphone.
-
-UX Cepat Terhadap Kendala Jaringan: Mengoptimalkan Skeleton Loading (pengganti spinner yang menghalangi layar) saat memuat data dari database, dan memberikan balasan visual cepat (Toast / Sonner) setiap kali Relawan selesai menyimpan data.
-
-Dashboard Visual (Recharts): Merombak halaman summary-dashboard dan summary-se menjadi grafik serapan anggaran, tren pertumbuhan omzet binaan, dan status gizi balita yang ditujukan untuk role Monev dan Program Head.
-
-4. Aturan Bisnis (Business Logic) Spesifik Lainnya
-Hierarki Self-Referencing User: Modifikasi tabel autentikasi dan otorisasi. Role tidak lagi statis. Korwil pada dasarnya adalah pengguna dengan role RELAWAN namun memiliki status is_korwil = true. Hal ini memberinya akses ganda: bisa membina desa (sebagai Relawan) sekaligus memvalidasi laporan dari Relawan lain di bawah pengawasannya (sebagai Korwil). Keduanya diawasi oleh akun MONEV.
-
-Constraint Wilayah & Penugasan: Setiap entitas PM (Penerima Manfaat) tidak berdiri sendiri, melainkan wajib terikat secara ketat pada sebuah wilayah (Provinsi -> Kota -> Kecamatan -> Desa) dan diawasi oleh spesifik ID Relawan/Korwil yang ditugaskan di desa_berdaya tersebut.
-
-Logika Keuangan Mutlak: Relawan tidak bisa menginput laporan kegiatan (pengeluaran) jika nominalnya melebihi Sisa Dana (Alokasi). Jika ada sisa saldo di akhir bulan (End of Month Closing), sistem wajib mewajibkan Relawan untuk mengunggah bukti pengembalian dana (Refund).
-
-Integrasi ZAINS (Masa Depan): Logika sinkronisasi Zains API yang lama (lib/services/zains-sync.ts dan app/api/sync-transactions-to-zains) jangan dihapus total, namun disimpan dan diadaptasi. Fungsinya akan diubah dari sinkronisasi "transaksi klinik" menjadi sinkronisasi "laporan pencairan dana & refund" dari Desa Berdaya ke sistem ZAINS FINS pusat.
+## 7. Catatan Tambahan
+- Referensi rancangan database dan form mengacu langsung pada 4 format *spreadsheet* Action Plan (Ekonomi, Kesehatan, Lingkungan, Pendidikan).
+- Fitur ini akan sangat bergantung pada data Penerima Manfaat (PM) yang sudah ada di SIDB, sehingga diperlukan integrasi *query* ke modul `/app/dashboard/pm/`.
+- Pengembangan fitur akan memanfaatkan Prisma Schema untuk manajemen database dan *Server Actions* Next.js untuk pemrosesan data.

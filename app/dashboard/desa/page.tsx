@@ -29,6 +29,8 @@ export default function DesaBinaanPage() {
   })
   const [groupBys, setGroupBys] = useState<string[]>([])
   const [expandedTableGroups, setExpandedTableGroups] = useState<Record<string, boolean>>({})
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 25
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -103,6 +105,15 @@ export default function DesaBinaanPage() {
       })
     )
   }, [search, filters, desaList])
+
+  const paginatedData = React.useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return filtered.slice(start, start + ITEMS_PER_PAGE)
+  }, [filtered, currentPage])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, filters, groupBys])
 
   const toggleFilter = (type: keyof typeof filters, value: string) => {
     setFilters(prev => ({
@@ -300,7 +311,13 @@ export default function DesaBinaanPage() {
             </div>
           )}
 
-          {!loading && filtered.map((desa) => (
+          {!loading && groupBys.length > 0 && (
+            <div className="bg-amber-50 rounded-xl p-4 text-sm text-amber-700 text-center border border-amber-200">
+              Mode Grouping tidak disupport di tampilan mobile. Silakan akses lewat Desktop/Laptop.
+            </div>
+          )}
+
+          {!loading && groupBys.length === 0 && paginatedData.map((desa) => (
             <div key={desa.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
               {/* Card body */}
               <div className="px-4 pt-4 pb-3">
@@ -462,13 +479,45 @@ export default function DesaBinaanPage() {
                   if (groupedData) {
                     return renderGroupNodes(groupedData);
                   } else {
-                    return filtered.map(renderDataRow);
+                    return paginatedData.map(renderDataRow);
                   }
                 })()}
               </tbody>
             </table>
           </div>
         </div>
+
+        {/* Pagination Controls */}
+        {groupBys.length === 0 && filtered.length > ITEMS_PER_PAGE && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+            <div className="text-sm font-medium text-slate-500">
+              Menampilkan {((currentPage - 1) * ITEMS_PER_PAGE) + 1} hingga {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} dari {filtered.length} data
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+                className="h-9 px-4 rounded-xl border-slate-200 text-slate-600 hover:text-[#7a1200] hover:bg-[#7a1200]/5 transition-colors"
+              >
+                Sebelumnya
+              </Button>
+              <div className="text-sm font-bold text-slate-700 px-2">
+                Halaman {currentPage} dari {Math.ceil(filtered.length / ITEMS_PER_PAGE)}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE)}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                className="h-9 px-4 rounded-xl border-slate-200 text-slate-600 hover:text-[#7a1200] hover:bg-[#7a1200]/5 transition-colors"
+              >
+                Selanjutnya
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

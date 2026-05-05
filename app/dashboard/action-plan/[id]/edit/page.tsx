@@ -18,7 +18,7 @@ import { updateActionPlan, getPenerimaManfaatByDesa, getActionPlanById } from '@
 export default function EditActionPlanPage() {
   const router = useRouter()
   const params = useParams()
-  const id = Number(params.id)
+  const id = Number(params?.id)
 
   const [loading, setLoading] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
@@ -58,10 +58,9 @@ export default function EditActionPlanPage() {
     getKategoriPrograms().then(opts => setKategoriOptions(opts))
   }, [])
 
-  // Fetch Action Plan Data
   useEffect(() => {
     if (id) {
-      getActionPlanById(id).then(data => {
+      getActionPlanById(id).then((data: any) => {
         if (data) {
           setDesaId(data.desa_berdaya_id)
           setKategoriProgram(data.kategori_program)

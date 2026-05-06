@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { PlusCircle, Trash2, Save, ArrowLeft, Users } from 'lucide-react'
+import { PlusCircle, Trash2, Save, ArrowLeft, Users, Search } from 'lucide-react'
 import { getDesaBerdayaOptions } from '@/app/dashboard/laporan-kegiatan/actions'
 import {
   Dialog,
@@ -39,15 +39,92 @@ export default function TambahActionPlanPage() {
   const [sasaranProgram, setSasaranProgram] = useState('')
   const [legalitas, setLegalitas] = useState('')
 
-  // RAB (Activities)
+  // RAB (Activities) Standar
   const [activities, setActivities] = useState<any[]>([
     { id: Date.now(), bulan_implementasi: '', uraian_kebutuhan: '', nominal_rencana: '', jumlah_unit: '', frekuensi: '', harga_satuan: '' }
   ])
+
+  // Timeline Distributions (Khusus Ekonomi) mapping activity.id -> { month: nominal }
+  const [timelineDistributions, setTimelineDistributions] = useState<Record<string, Record<number, string>>>({})
 
   // PM Khusus Ekonomi
   const [pmList, setPmList] = useState<any[]>([]) // Daftar PM dari server
   const [selectedPms, setSelectedPms] = useState<any[]>([]) // Yang di-check user
   const [isPmModalOpen, setIsPmModalOpen] = useState(false)
+
+  // Filter PM
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterUmur, setFilterUmur] = useState<string[]>([])
+  const [filterJk, setFilterJk] = useState<string[]>([])
+
+  // Helper Umur
+  const getUmur = (tglLahir: string | Date | null) => {
+    if (!tglLahir) return null;
+    const today = new Date();
+    const birthDate = new Date(tglLahir);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age;
+  };
+
+  const getKategoriUmur = (umur: number | null) => {
+    if (umur === null) return 'tidak_diketahui';
+    if (umur >= 0 && umur <= 11) return 'anak';
+    if (umur >= 12 && umur <= 17) return 'remaja';
+    if (umur >= 18 && umur <= 59) return 'dewasa';
+    if (umur >= 60) return 'lansia';
+    return 'tidak_diketahui';
+  };
+
+  const filteredPmList = pmList.filter((pm) => {
+    let passUmur = true;
+    let passJk = true;
+    let passSearch = true;
+
+    if (searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase();
+      passSearch = (pm.nama?.toLowerCase() || '').includes(q) || (pm.nik || '').includes(q);
+    }
+
+    if (filterUmur.length > 0) {
+      const pmUmurKategori = getKategoriUmur(getUmur(pm.tanggal_lahir));
+      passUmur = filterUmur.includes(pmUmurKategori);
+    }
+
+    if (filterJk.length > 0) {
+      const jkVal = pm.jenis_kelamin?.toLowerCase() || '';
+      passJk = filterJk.some(f => jkVal.includes(f));
+    }
+
+    return passUmur && passJk && passSearch;
+  });
+
+  const handleToggleFilterUmur = (kategori: string) => {
+    setFilterUmur(prev => prev.includes(kategori) ? prev.filter(k => k !== kategori) : [...prev, kategori]);
+  }
+
+  const handleToggleFilterJk = (jk: string) => {
+    setFilterJk(prev => prev.includes(jk) ? prev.filter(k => k !== jk) : [...prev, jk]);
+  }
+
+  const handleSelectAllFilteredPms = () => {
+    const allFilteredSelected = filteredPmList.every(fpm => selectedPms.some(sp => sp.pm_id === fpm.id));
+    if (allFilteredSelected) {
+      const filteredIds = filteredPmList.map(f => f.id);
+      setSelectedPms(selectedPms.filter(sp => !filteredIds.includes(sp.pm_id)));
+    } else {
+      const newSelections = [...selectedPms];
+      filteredPmList.forEach(fpm => {
+        if (!newSelections.some(sp => sp.pm_id === fpm.id)) {
+          newSelections.push({ pm_id: fpm.id, nama: fpm.nama, penghasilan_awal: '', tanggungan: '', status_gk: '', status_hk: '', selisih_gk: '', nib_halal: '' });
+        }
+      });
+      setSelectedPms(newSelections);
+    }
+  }
 
   useEffect(() => {
     getDesaBerdayaOptions().then(opts => setDesaOptions(opts))
@@ -99,6 +176,37 @@ export default function TambahActionPlanPage() {
       }
     })
     return total
+  }
+
+  // --- Handlers Timeline (Ekonomi) ---
+  const handleTimelineChange = (activityId: number, month: number, value: string) => {
+    const act = activities.find(a => a.id === activityId);
+    if (!act) return;
+
+    const totalRAB = (Number(act.jumlah_unit)||0) * (Number(act.frekuensi)||0) * (Number(act.harga_satuan)||0);
+
+    setTimelineDistributions(prev => {
+      const dist = prev[activityId] || {};
+      let currentSumOtherMonths = 0;
+      for (let i = 1; i <= 12; i++) {
+        if (i !== month) currentSumOtherMonths += Number(dist[i] || 0);
+      }
+      
+      const maxAllowed = totalRAB - currentSumOtherMonths;
+      let numericValue = Number(value || 0);
+      
+      if (numericValue > maxAllowed) {
+        numericValue = maxAllowed > 0 ? maxAllowed : 0;
+      }
+
+      return {
+        ...prev,
+        [activityId]: {
+          ...dist,
+          [month]: numericValue > 0 ? numericValue.toString() : ''
+        }
+      }
+    })
   }
 
   const handleAddActivity = () => {
@@ -177,6 +285,25 @@ export default function TambahActionPlanPage() {
       return
     }
 
+    if (kategoriProgram === 'EKONOMI') {
+      // Validasi: Pastikan total timeline sesuai dengan RAB per baris
+      for (const act of activities) {
+        if (!act.uraian_kebutuhan) continue;
+        const totalRAB = (Number(act.jumlah_unit)||0) * (Number(act.frekuensi)||0) * (Number(act.harga_satuan)||0)
+        
+        let totalTimeline = 0
+        const dist = timelineDistributions[act.id] || {}
+        for (let i = 1; i <= 12; i++) {
+          totalTimeline += Number(dist[i] || 0)
+        }
+
+        if (totalTimeline !== totalRAB) {
+          alert(`Total Timeline untuk "${act.uraian_kebutuhan}" (Rp ${totalTimeline.toLocaleString('id-ID')}) tidak sesuai dengan Total RAB (Rp ${totalRAB.toLocaleString('id-ID')}). Harap distribusikan dengan pas.`)
+          return
+        }
+      }
+    }
+
     setLoading(true)
 
     const payloadInduk = {
@@ -196,14 +323,40 @@ export default function TambahActionPlanPage() {
       legalitas: legalitas
     }
 
-    const payloadActivities = activities.map(a => ({
-      bulan_implementasi: String(a.bulan_implementasi),
-      uraian_kebutuhan: String(a.uraian_kebutuhan),
-      nominal_rencana: Number(a.nominal_rencana),
-      jumlah_unit: a.jumlah_unit ? Number(a.jumlah_unit) : undefined,
-      frekuensi: a.frekuensi ? Number(a.frekuensi) : undefined,
-      harga_satuan: a.harga_satuan ? Number(a.harga_satuan) : undefined
-    }))
+    let payloadActivities: any[] = []
+
+    if (kategoriProgram === 'EKONOMI') {
+      activities.forEach(act => {
+        if (!act.uraian_kebutuhan) return;
+        
+        const dist = timelineDistributions[act.id] || {}
+        let isFirst = true;
+
+        for (let i = 1; i <= 12; i++) {
+          const val = Number(dist[i] || 0)
+          if (val > 0) {
+            payloadActivities.push({
+              bulan_implementasi: i.toString(),
+              uraian_kebutuhan: String(act.uraian_kebutuhan),
+              nominal_rencana: val,
+              jumlah_unit: isFirst ? Number(act.jumlah_unit) : undefined,
+              frekuensi: isFirst ? Number(act.frekuensi) : undefined,
+              harga_satuan: isFirst ? Number(act.harga_satuan) : undefined
+            })
+            isFirst = false;
+          }
+        }
+      })
+    } else {
+      payloadActivities = activities.map(a => ({
+        bulan_implementasi: String(a.bulan_implementasi),
+        uraian_kebutuhan: String(a.uraian_kebutuhan),
+        nominal_rencana: Number(a.nominal_rencana),
+        jumlah_unit: a.jumlah_unit ? Number(a.jumlah_unit) : undefined,
+        frekuensi: a.frekuensi ? Number(a.frekuensi) : undefined,
+        harga_satuan: a.harga_satuan ? Number(a.harga_satuan) : undefined
+      }))
+    }
 
     const payloadBeneficiaries = selectedPms.map(p => ({
       pm_id: p.pm_id,
@@ -227,6 +380,23 @@ export default function TambahActionPlanPage() {
 
   return (
     <div className="p-4 lg:p-6 max-w-screen-xl mx-auto space-y-6">
+      {/* Datalist untuk Satuan */}
+      <datalist id="satuan-jumlah-list">
+        <option value="Orang" />
+        <option value="Paket" />
+        <option value="Unit" />
+        <option value="Buah" />
+        <option value="Pcs" />
+        <option value="Kegiatan" />
+      </datalist>
+      <datalist id="satuan-frekuensi-list">
+        <option value="Bulan" />
+        <option value="Kali" />
+        <option value="Tahun" />
+        <option value="Hari" />
+        <option value="Minggu" />
+      </datalist>
+
       <div className="flex items-center gap-4 mb-6">
         <Button variant="outline" size="icon" onClick={() => router.back()} className="rounded-xl">
           <ArrowLeft className="w-4 h-4" />
@@ -397,21 +567,74 @@ export default function TambahActionPlanPage() {
                   <DialogHeader>
                     <div className="flex flex-wrap items-center justify-between gap-2 pr-4">
                       <DialogTitle>Pilih Penerima Manfaat Desa</DialogTitle>
-                      {pmList.length > 0 && (
-                        <Button type="button" variant="outline" size="sm" onClick={handleSelectAllPms} className="text-teal-700 border-teal-200 hover:bg-teal-50">
-                          {selectedPms.length === pmList.length ? 'Batal Pilih Semua' : 'Pilih Semua'}
+                      {filteredPmList.length > 0 && (
+                        <Button type="button" variant="outline" size="sm" onClick={handleSelectAllFilteredPms} className="text-teal-700 border-teal-200 hover:bg-teal-50">
+                          {filteredPmList.every(fpm => selectedPms.some(sp => sp.pm_id === fpm.id)) ? 'Batal Pilih Semua (Filter)' : 'Pilih Semua (Filter)'}
                         </Button>
                       )}
                     </div>
                   </DialogHeader>
                   <div className="space-y-4">
+                    
+                    {/* FILTER PM */}
+                    {pmList.length > 0 && (
+                      <div className="space-y-4 mb-4">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                          <input 
+                            type="text" 
+                            placeholder="Cari nama atau NIK..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-9 p-2 border border-slate-200 rounded-lg bg-white"
+                          />
+                        </div>
+                        <div className="p-4 border border-slate-200 rounded-lg bg-slate-50 space-y-4">
+                        <h4 className="font-semibold text-slate-700 text-sm">Filter Anggota PM</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <h5 className="text-xs font-bold text-slate-500 mb-2 uppercase">Umur</h5>
+                            <div className="space-y-2">
+                              {[
+                                { id: 'anak', label: 'Anak-anak', desc: '(0-11 thn)' },
+                                { id: 'remaja', label: 'Remaja', desc: '(12-17 thn)' },
+                                { id: 'dewasa', label: 'Dewasa', desc: '(18-59 thn)' },
+                                { id: 'lansia', label: 'Lanjut Usia', desc: '(>60 thn)' },
+                              ].map(k => (
+                                <label key={k.id} className="flex items-center gap-2 cursor-pointer">
+                                  <input type="checkbox" className="w-4 h-4 text-teal-600 rounded border-slate-300" checked={filterUmur.includes(k.id)} onChange={() => handleToggleFilterUmur(k.id)} />
+                                  <span className="text-sm font-medium text-slate-700">{k.label} <span className="text-slate-400 font-normal">{k.desc}</span></span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <h5 className="text-xs font-bold text-slate-500 mb-2 uppercase">Jenis Kelamin</h5>
+                            <div className="space-y-2">
+                              {[
+                                { id: 'laki-laki', label: 'Laki-laki' },
+                                { id: 'perempuan', label: 'Perempuan' },
+                              ].map(k => (
+                                <label key={k.id} className="flex items-center gap-2 cursor-pointer">
+                                  <input type="checkbox" className="w-4 h-4 text-teal-600 rounded border-slate-300" checked={filterJk.includes(k.id)} onChange={() => handleToggleFilterJk(k.id)} />
+                                  <span className="text-sm font-medium text-slate-700">{k.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    )}
                     {!desaId ? (
                       <p className="text-slate-500 text-center py-4">Silakan pilih Desa Binaan terlebih dahulu di atas.</p>
                     ) : pmList.length === 0 ? (
                       <p className="text-slate-500 text-center py-4">Tidak ada data PM di desa ini.</p>
+                    ) : filteredPmList.length === 0 ? (
+                      <p className="text-slate-500 text-center py-4 bg-slate-50 rounded-lg border border-slate-200 border-dashed">Tidak ada PM yang cocok dengan filter yang dipilih.</p>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                        {pmList.map(pm => {
+                        {filteredPmList.map(pm => {
                           const isSelected = selectedPms.some(p => p.pm_id === pm.id)
                           return (
                             <label key={pm.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'border-teal-500 bg-teal-50/50' : 'border-slate-200 hover:bg-slate-50'}`}>
@@ -495,8 +718,9 @@ export default function TambahActionPlanPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          {/* --- DESKTOP VIEW (TABLE) --- */}
+          <div className="hidden md:block overflow-x-auto pb-4">
+            <table className="w-full text-sm min-w-[800px]">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
                 <tr>
                   <th className="p-3 font-semibold text-left">Bulan Implementasi</th>
@@ -521,11 +745,12 @@ export default function TambahActionPlanPage() {
                     <td className="p-2 align-top">
                       <input 
                         type="text" 
-                        placeholder="Cth: Februari" 
-                        required
-                        value={act.bulan_implementasi}
+                        placeholder={kategoriProgram === 'EKONOMI' ? "Auto Timeline" : "Cth: Februari"} 
+                        required={kategoriProgram !== 'EKONOMI'}
+                        disabled={kategoriProgram === 'EKONOMI'}
+                        value={kategoriProgram === 'EKONOMI' ? 'Sesuai Timeline' : act.bulan_implementasi}
                         onChange={(e) => handleActivityChange(act.id, 'bulan_implementasi', e.target.value)}
-                        className="w-full p-2 border border-slate-200 rounded bg-slate-50 focus:bg-white"
+                        className="w-full p-2 border border-slate-200 rounded bg-slate-50 focus:bg-white disabled:opacity-50"
                       />
                     </td>
                     <td className="p-2 align-top">
@@ -542,25 +767,37 @@ export default function TambahActionPlanPage() {
                     {kategoriProgram === 'EKONOMI' ? (
                       <>
                         <td className="p-2 align-top">
-                          <input type="number" required value={act.jumlah_unit} onChange={(e) => handleActivityChange(act.id, 'jumlah_unit', e.target.value)} className="w-full p-2 border border-slate-200 rounded bg-slate-50" />
+                          <div className="flex flex-col gap-1">
+                            <input type="number" required placeholder="0" value={act.jumlah_unit} onChange={(e) => handleActivityChange(act.id, 'jumlah_unit', e.target.value)} className="w-full p-2 border border-slate-200 rounded bg-slate-50" />
+                            <input type="text" list="satuan-jumlah-list" placeholder="Pilih/isi satuan" value={act.satuan_jumlah || ''} onChange={(e) => handleActivityChange(act.id, 'satuan_jumlah', e.target.value)} className="w-full p-2 border border-slate-200 rounded bg-white text-xs" />
+                          </div>
                         </td>
                         <td className="p-2 align-top">
-                          <input type="number" required value={act.frekuensi} onChange={(e) => handleActivityChange(act.id, 'frekuensi', e.target.value)} className="w-full p-2 border border-slate-200 rounded bg-slate-50" />
+                          <div className="flex flex-col gap-1">
+                            <input type="number" required placeholder="0" value={act.frekuensi} onChange={(e) => handleActivityChange(act.id, 'frekuensi', e.target.value)} className="w-full p-2 border border-slate-200 rounded bg-slate-50" />
+                            <input type="text" list="satuan-frekuensi-list" placeholder="Pilih/isi satuan" value={act.satuan_frekuensi || ''} onChange={(e) => handleActivityChange(act.id, 'satuan_frekuensi', e.target.value)} className="w-full p-2 border border-slate-200 rounded bg-white text-xs" />
+                          </div>
                         </td>
                         <td className="p-2 align-top">
-                          <input type="number" required value={act.harga_satuan} onChange={(e) => handleActivityChange(act.id, 'harga_satuan', e.target.value)} className="w-full p-2 border border-slate-200 rounded bg-slate-50" />
+                          <input 
+                            type="text" 
+                            required 
+                            value={act.harga_satuan ? Number(act.harga_satuan).toLocaleString('id-ID') : ''} 
+                            onChange={(e) => handleActivityChange(act.id, 'harga_satuan', e.target.value.replace(/\D/g, ''))} 
+                            className="w-full p-2 border border-slate-200 rounded bg-slate-50" 
+                          />
                         </td>
                         <td className="p-2 align-top">
-                          <input type="number" readOnly value={act.nominal_rencana} className="w-full p-2 border border-transparent bg-slate-100 font-bold text-slate-700 rounded outline-none" />
+                          <input type="text" readOnly value={act.nominal_rencana ? Number(act.nominal_rencana).toLocaleString('id-ID') : ''} className="w-full p-2 border border-transparent bg-slate-100 font-bold text-slate-700 rounded outline-none" />
                         </td>
                       </>
                     ) : (
                       <td className="p-2 align-top">
                         <input 
-                          type="number" 
+                          type="text" 
                           required
-                          value={act.nominal_rencana}
-                          onChange={(e) => handleActivityChange(act.id, 'nominal_rencana', e.target.value)}
+                          value={act.nominal_rencana ? Number(act.nominal_rencana).toLocaleString('id-ID') : ''}
+                          onChange={(e) => handleActivityChange(act.id, 'nominal_rencana', e.target.value.replace(/\D/g, ''))}
                           className="w-full p-2 border border-slate-200 rounded bg-slate-50 focus:bg-white"
                         />
                       </td>
@@ -582,9 +819,197 @@ export default function TambahActionPlanPage() {
             </table>
           </div>
 
+          {/* --- MOBILE VIEW (CARDS) --- */}
+          <div className="block md:hidden space-y-4 pb-4">
+            {activities.map((act, index) => (
+              <div key={act.id} className="border border-slate-200 rounded p-4 bg-slate-50">
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="font-bold text-slate-700">Baris RAB #{index + 1}</h4>
+                  <button 
+                    type="button" 
+                    onClick={() => handleRemoveActivity(act.id)}
+                    disabled={activities.length === 1}
+                    className="text-rose-400 hover:text-rose-600 disabled:opacity-50 bg-rose-50 p-1.5 rounded"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 mb-1 block">Bulan Implementasi</label>
+                    <input 
+                      type="text" 
+                      placeholder={kategoriProgram === 'EKONOMI' ? "Auto Timeline" : "Cth: Februari"} 
+                      required={kategoriProgram !== 'EKONOMI'}
+                      disabled={kategoriProgram === 'EKONOMI'}
+                      value={kategoriProgram === 'EKONOMI' ? 'Sesuai Timeline' : act.bulan_implementasi}
+                      onChange={(e) => handleActivityChange(act.id, 'bulan_implementasi', e.target.value)}
+                      className="w-full p-2 border border-slate-200 rounded bg-white disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 mb-1 block">Uraian Kebutuhan</label>
+                    <textarea 
+                      rows={2}
+                      placeholder="Deskripsi kebutuhan..." 
+                      required
+                      value={act.uraian_kebutuhan}
+                      onChange={(e) => handleActivityChange(act.id, 'uraian_kebutuhan', e.target.value)}
+                      className="w-full p-2 border border-slate-200 rounded bg-white resize-none"
+                    />
+                  </div>
+
+                  {kategoriProgram === 'EKONOMI' ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-500 mb-1 block">Jumlah</label>
+                          <div className="flex flex-col gap-1">
+                            <input type="number" required placeholder="0" value={act.jumlah_unit} onChange={(e) => handleActivityChange(act.id, 'jumlah_unit', e.target.value)} className="w-full p-2 border border-slate-200 rounded bg-white" />
+                            <input type="text" list="satuan-jumlah-list" placeholder="Pilih/isi satuan" value={act.satuan_jumlah || ''} onChange={(e) => handleActivityChange(act.id, 'satuan_jumlah', e.target.value)} className="w-full p-2 border border-slate-200 rounded bg-white text-xs" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-500 mb-1 block">Frekuensi</label>
+                          <div className="flex flex-col gap-1">
+                            <input type="number" required placeholder="0" value={act.frekuensi} onChange={(e) => handleActivityChange(act.id, 'frekuensi', e.target.value)} className="w-full p-2 border border-slate-200 rounded bg-white" />
+                            <input type="text" list="satuan-frekuensi-list" placeholder="Pilih/isi satuan" value={act.satuan_frekuensi || ''} onChange={(e) => handleActivityChange(act.id, 'satuan_frekuensi', e.target.value)} className="w-full p-2 border border-slate-200 rounded bg-white text-xs" />
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-500 mb-1 block">Harga Satuan</label>
+                        <input 
+                          type="text" 
+                          required 
+                          value={act.harga_satuan ? Number(act.harga_satuan).toLocaleString('id-ID') : ''} 
+                          onChange={(e) => handleActivityChange(act.id, 'harga_satuan', e.target.value.replace(/\D/g, ''))} 
+                          className="w-full p-2 border border-slate-200 rounded bg-white" 
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-500 mb-1 block">Nominal (Total)</label>
+                        <input type="text" readOnly value={act.nominal_rencana ? Number(act.nominal_rencana).toLocaleString('id-ID') : ''} className="w-full p-2 border border-transparent bg-slate-200 font-bold text-slate-700 rounded outline-none" />
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 mb-1 block">Nominal Rencana</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={act.nominal_rencana ? Number(act.nominal_rencana).toLocaleString('id-ID') : ''}
+                        onChange={(e) => handleActivityChange(act.id, 'nominal_rencana', e.target.value.replace(/\D/g, ''))}
+                        className="w-full p-2 border border-slate-200 rounded bg-white"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
           <Button type="button" variant="outline" onClick={handleAddActivity} className="w-full border-dashed border-2 text-slate-500 hover:bg-slate-50 hover:text-slate-700 gap-2">
             <PlusCircle className="w-4 h-4" /> Tambah Baris RAB
           </Button>
+
+          {kategoriProgram === 'EKONOMI' && (
+            <div className="mt-8 pt-6 border-t border-slate-200">
+              <h3 className="text-lg font-bold text-slate-800 mb-4">Distribusi Timeline Bulan (Ekonomi)</h3>
+              <p className="text-sm text-slate-500 mb-4">Pastikan Total Timeline untuk setiap baris RAB sama dengan Nominal Rencana RAB tersebut.</p>
+              
+              {/* --- DESKTOP VIEW TIMELINE --- */}
+              <div className="hidden md:block overflow-x-auto pb-4">
+                <table className="w-full text-sm border-collapse min-w-[1000px]">
+                  <thead className="bg-slate-900 text-white">
+                    <tr>
+                      <th className="p-2 border border-slate-700 text-left w-64" rowSpan={2}>Uraian Kebutuhan</th>
+                      <th className="p-2 border border-slate-700 text-center" colSpan={12}>Bulan (Nominal Rp)</th>
+                      <th className="p-2 border border-slate-700 text-right w-40" rowSpan={2}>Total Timeline</th>
+                    </tr>
+                    <tr>
+                      {['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'].map((month, i) => (
+                        <th key={i} className="p-2 border border-slate-700 text-center w-24">{month}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {activities.map((act) => {
+                      if (!act.uraian_kebutuhan) return null;
+                      
+                      const dist = timelineDistributions[act.id] || {};
+                      let rowTotal = 0;
+                      for (let i = 1; i <= 12; i++) rowTotal += Number(dist[i] || 0);
+                      
+                      const isValid = rowTotal === Number(act.nominal_rencana || 0);
+
+                      return (
+                        <tr key={`tl-${act.id}`} className="hover:bg-slate-50">
+                          <td className="p-2 border border-slate-200 font-medium text-slate-700 bg-slate-50">
+                            {act.uraian_kebutuhan}
+                          </td>
+                          {Array.from({ length: 12 }).map((_, i) => (
+                            <td key={i} className="p-1 border border-slate-200">
+                              <input 
+                                type="text" 
+                                value={dist[i+1] ? Number(dist[i+1]).toLocaleString('id-ID') : ''}
+                                onChange={(e) => handleTimelineChange(act.id, i+1, e.target.value.replace(/\D/g, ''))}
+                                className="w-full p-2 border-none bg-transparent focus:ring-1 focus:ring-teal-500 rounded text-xs text-right"
+                                placeholder="-"
+                              />
+                            </td>
+                          ))}
+                          <td className={`p-2 border border-slate-200 text-right font-bold ${isValid ? 'text-teal-600 bg-teal-50' : 'text-rose-600 bg-rose-50'}`}>
+                            {rowTotal.toLocaleString('id-ID')}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* --- MOBILE VIEW TIMELINE --- */}
+              <div className="block md:hidden space-y-4 pb-4">
+                {activities.map((act) => {
+                  if (!act.uraian_kebutuhan) return null;
+                  
+                  const dist = timelineDistributions[act.id] || {};
+                  let rowTotal = 0;
+                  for (let i = 1; i <= 12; i++) rowTotal += Number(dist[i] || 0);
+                  
+                  const isValid = rowTotal === Number(act.nominal_rencana || 0);
+
+                  return (
+                    <div key={`tl-mob-${act.id}`} className="border border-slate-200 rounded p-4 bg-slate-50">
+                      <div className="font-bold text-slate-700 mb-3 border-b border-slate-200 pb-2">
+                        {act.uraian_kebutuhan}
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        {['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'].map((month, i) => (
+                          <div key={i}>
+                            <label className="text-xs font-semibold text-slate-500 mb-1 block text-center">{month}</label>
+                            <input 
+                              type="text" 
+                              value={dist[i+1] ? Number(dist[i+1]).toLocaleString('id-ID') : ''}
+                              onChange={(e) => handleTimelineChange(act.id, i+1, e.target.value.replace(/\D/g, ''))}
+                              className="w-full p-2 border border-slate-200 bg-white focus:ring-1 focus:ring-teal-500 rounded text-xs text-center"
+                              placeholder="-"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className={`mt-4 pt-3 border-t border-slate-200 flex justify-between items-center font-bold ${isValid ? 'text-teal-600' : 'text-rose-600'}`}>
+                        <span>Total Timeline:</span>
+                        <span>Rp {rowTotal.toLocaleString('id-ID')}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Form Actions */}

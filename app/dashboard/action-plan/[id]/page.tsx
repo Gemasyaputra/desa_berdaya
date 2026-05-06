@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { ArrowLeft, CheckCircle, AlertCircle, Clock, Save, FileText, Check, X, MessageSquareWarning } from 'lucide-react'
+import { ArrowLeft, CheckCircle, AlertCircle, Clock, Save, FileText, Check, X, MessageSquareWarning, ChevronDown, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getActionPlanById, updateActionPlanStatus } from '@/lib/actions/action-plan'
 import { useSession } from 'next-auth/react'
@@ -10,10 +10,211 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 
+
+const NAMA_BULAN: Record<number, string> = {
+  1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
+  5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
+  9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+}
+
+const getNamaBulan = (val: any): string => {
+  const num = Number(val)
+  return NAMA_BULAN[num] || String(val)
+}
+
+function RabTable({ activities, kategoriProgram, formatRupiah }: { activities: any[], kategoriProgram: string, formatRupiah: (n: number) => string }) {
+  const [expandedGroups, setExpandedGroups] = React.useState<Record<string, boolean>>(() => {
+    // Default semua grup terbuka
+    const initial: Record<string, boolean> = {}
+    const seen = new Set<string>()
+    activities.forEach(a => {
+      if (!seen.has(a.uraian_kebutuhan)) {
+        initial[a.uraian_kebutuhan] = true
+        seen.add(a.uraian_kebutuhan)
+      }
+    })
+    return initial
+  })
+
+  // Group aktivitas berdasarkan uraian_kebutuhan — urutan pertama = induk (punya jumlah_unit & harga_satuan)
+  const groups: { uraian: string; induk: any; distribusi: any[] }[] = []
+  const seenUraian: Record<string, number> = {}
+
+  activities.forEach(act => {
+    const key = act.uraian_kebutuhan
+    if (seenUraian[key] === undefined) {
+      seenUraian[key] = groups.length
+      groups.push({ uraian: key, induk: act, distribusi: [] })
+    } else {
+      groups[seenUraian[key]].distribusi.push(act)
+    }
+  })
+
+  const toggleGroup = (uraian: string) => {
+    setExpandedGroups(prev => ({ ...prev, [uraian]: !prev[uraian] }))
+  }
+
+  const isEkonomi = kategoriProgram === 'EKONOMI'
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+        <h2 className="font-bold text-slate-800">Rencana Anggaran Biaya (RAB)</h2>
+      </div>
+
+      {/* Desktop Table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 text-left">
+            <tr>
+              <th className="p-4 font-semibold w-8"></th>
+              <th className="p-4 font-semibold">Uraian Kebutuhan</th>
+              {isEkonomi && (
+                <>
+                  <th className="p-4 font-semibold whitespace-nowrap">Vol (Jml × Frek)</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">Harga Satuan</th>
+                </>
+              )}
+              <th className="p-4 font-semibold text-right whitespace-nowrap">Total Nominal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map(group => (
+              <React.Fragment key={group.uraian}>
+                {/* Baris Induk RAB */}
+                <tr
+                  className={`border-b border-slate-100 ${
+                    group.distribusi.length > 0 ? 'bg-teal-50/60 hover:bg-teal-50 cursor-pointer' : 'hover:bg-slate-50/50'
+                  }`}
+                  onClick={() => group.distribusi.length > 0 && toggleGroup(group.uraian)}
+                >
+                  <td className="p-3 text-center">
+                    {group.distribusi.length > 0 ? (
+                      expandedGroups[group.uraian]
+                        ? <ChevronDown className="w-4 h-4 text-teal-600 mx-auto" />
+                        : <ChevronRight className="w-4 h-4 text-teal-600 mx-auto" />
+                    ) : null}
+                  </td>
+                  <td className="p-4">
+                    <div className="font-semibold text-slate-800">{group.uraian}</div>
+                    {group.distribusi.length > 0 && (
+                      <div className="text-xs text-teal-600 mt-0.5">
+                        Didistribusikan ke {group.distribusi.length + 1} bulan — klik untuk {expandedGroups[group.uraian] ? 'sembunyikan' : 'tampilkan'} detail
+                      </div>
+                    )}
+                  </td>
+                  {isEkonomi && (
+                    <>
+                      <td className="p-4 text-slate-700 font-medium">
+                        {group.induk.jumlah_unit} {group.induk.satuan_jumlah ? <span className="text-slate-500 text-xs">({group.induk.satuan_jumlah})</span> : ''} × {group.induk.frekuensi} {group.induk.satuan_frekuensi ? <span className="text-slate-500 text-xs">({group.induk.satuan_frekuensi})</span> : ''}
+                      </td>
+                      <td className="p-4 text-slate-700">{formatRupiah(Number(group.induk.harga_satuan))}</td>
+                    </>
+                  )}
+                  <td className="p-4 text-right font-bold text-slate-800">
+                    {formatRupiah(
+                      group.distribusi.length > 0
+                        // Tampilkan total semua distribusi
+                        ? [group.induk, ...group.distribusi].reduce((sum, a) => sum + Number(a.nominal_rencana || 0), 0)
+                        : Number(group.induk.nominal_rencana)
+                    )}
+                  </td>
+                </tr>
+
+                {/* Sub-baris Distribusi Bulan */}
+                {group.distribusi.length > 0 && expandedGroups[group.uraian] && (
+                  <>
+                    {/* Baris induk (bulan pertama) */}
+                    <tr className="border-b border-slate-100 bg-white hover:bg-slate-50/50">
+                      <td className="p-2"></td>
+                      <td className="py-2 pl-8 pr-4">
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className="bg-slate-50 text-slate-600 text-[11px] font-medium border-slate-200">{getNamaBulan(group.induk.bulan_implementasi)}</Badge>
+                          <span className="text-[11px] text-slate-400 italic font-medium">alokasi dana</span>
+                        </div>
+                      </td>
+                      {isEkonomi && <td className="p-2" colSpan={2}></td>}
+                      <td className="py-2 px-4 text-right text-sm font-medium text-teal-700">{formatRupiah(Number(group.induk.nominal_rencana))}</td>
+                    </tr>
+                    {/* Baris distribusi bulan lainnya */}
+                    {group.distribusi.map((dist: any) => (
+                      <tr key={dist.id} className="border-b border-slate-100 bg-white hover:bg-slate-50/50">
+                        <td className="p-2"></td>
+                        <td className="py-2 pl-8 pr-4">
+                          <div className="flex items-center gap-3">
+                            <Badge variant="outline" className="bg-slate-50 text-slate-600 text-[11px] font-medium border-slate-200">{getNamaBulan(dist.bulan_implementasi)}</Badge>
+                            <span className="text-[11px] text-slate-400 italic font-medium">alokasi dana</span>
+                          </div>
+                        </td>
+                        {isEkonomi && <td className="p-2" colSpan={2}></td>}
+                        <td className="py-2 px-4 text-right text-sm font-medium text-teal-700">{formatRupiah(Number(dist.nominal_rencana))}</td>
+                      </tr>
+                    ))}
+                  </>
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="md:hidden divide-y divide-slate-100">
+        {groups.map(group => (
+          <div key={group.uraian} className="p-4 space-y-2">
+            <div
+              className={`flex justify-between items-start gap-2 ${
+                group.distribusi.length > 0 ? 'cursor-pointer' : ''
+              }`}
+              onClick={() => group.distribusi.length > 0 && toggleGroup(group.uraian)}
+            >
+              <div className="flex-1">
+                <div className="font-semibold text-slate-800 text-sm">{group.uraian}</div>
+                {group.distribusi.length > 0 && (
+                  <div className="text-xs text-teal-600 mt-0.5 flex items-center gap-1">
+                    {expandedGroups[group.uraian] ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                    {group.distribusi.length + 1} bulan distribusi
+                  </div>
+                )}
+              </div>
+              <span className="font-bold text-slate-800 text-sm">
+                {formatRupiah(
+                  group.distribusi.length > 0
+                    ? [group.induk, ...group.distribusi].reduce((sum, a) => sum + Number(a.nominal_rencana || 0), 0)
+                    : Number(group.induk.nominal_rencana)
+                )}
+              </span>
+            </div>
+
+            {isEkonomi && (
+              <div className="flex justify-between text-xs text-slate-500 bg-slate-50 p-2 rounded-lg">
+                <span>Vol: {group.induk.jumlah_unit}{group.induk.satuan_jumlah ? ` ${group.induk.satuan_jumlah}` : ''} × {group.induk.frekuensi}{group.induk.satuan_frekuensi ? ` ${group.induk.satuan_frekuensi}` : ''}</span>
+                <span>Harga: {formatRupiah(Number(group.induk.harga_satuan))}</span>
+              </div>
+            )}
+
+            {/* Detail distribusi bulan - mobile */}
+            {group.distribusi.length > 0 && expandedGroups[group.uraian] && (
+              <div className="mt-2 space-y-1 border-l-2 border-teal-200 pl-3">
+                {[group.induk, ...group.distribusi].map((dist: any) => (
+                  <div key={dist.id} className="flex justify-between items-center text-xs">
+                    <Badge variant="outline" className="bg-white text-slate-500 border-slate-200">{getNamaBulan(dist.bulan_implementasi)}</Badge>
+                    <span className="font-medium text-teal-700">{formatRupiah(Number(dist.nominal_rencana))}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function DetailActionPlanPage() {
   const router = useRouter()
   const params = useParams()
-  const id = Number(params.id)
+  const id = Number(params?.id)
   
   const { data: session } = useSession()
   const [data, setData] = useState<any>(null)
@@ -248,64 +449,7 @@ export default function DetailActionPlanPage() {
             </div>
           )}
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50">
-              <h2 className="font-bold text-slate-800">Rencana Anggaran Biaya (RAB)</h2>
-            </div>
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 text-left">
-                  <tr>
-                    <th className="p-4 font-semibold whitespace-nowrap">Bulan</th>
-                    <th className="p-4 font-semibold">Uraian Kebutuhan</th>
-                    {data.kategori_program === 'EKONOMI' && (
-                      <>
-                        <th className="p-4 font-semibold">Vol</th>
-                        <th className="p-4 font-semibold">Harga Satuan</th>
-                      </>
-                    )}
-                    <th className="p-4 font-semibold text-right">Total Nominal</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {data.activities.map((act: any) => (
-                    <tr key={act.id} className="hover:bg-slate-50/50">
-                      <td className="p-4 whitespace-nowrap"><Badge variant="outline" className="bg-slate-50 text-slate-600">{act.bulan_implementasi}</Badge></td>
-                      <td className="p-4 text-slate-700">{act.uraian_kebutuhan}</td>
-                      {data.kategori_program === 'EKONOMI' && (
-                        <>
-                          <td className="p-4 text-slate-600">{act.jumlah_unit} x {act.frekuensi}</td>
-                          <td className="p-4 text-slate-600">{formatRupiah(Number(act.harga_satuan))}</td>
-                        </>
-                      )}
-                      <td className="p-4 text-right font-semibold text-slate-800">
-                        {formatRupiah(Number(act.nominal_rencana))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Tampilan Mobile RAB */}
-            <div className="md:hidden divide-y divide-slate-100">
-              {data.activities.map((act: any) => (
-                <div key={act.id} className="p-4 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <Badge variant="outline" className="bg-slate-50 text-slate-600">{act.bulan_implementasi}</Badge>
-                    <span className="font-bold text-slate-800">{formatRupiah(Number(act.nominal_rencana))}</span>
-                  </div>
-                  <div className="text-slate-700 text-sm font-medium">{act.uraian_kebutuhan}</div>
-                  {data.kategori_program === 'EKONOMI' && (
-                    <div className="flex justify-between text-xs text-slate-500 bg-slate-50 p-2 rounded-lg">
-                      <span>Vol: {act.jumlah_unit} x {act.frekuensi}</span>
-                      <span>Harga Satuan: {formatRupiah(Number(act.harga_satuan))}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+          <RabTable activities={data.activities} kategoriProgram={data.kategori_program} formatRupiah={formatRupiah} />
 
           {/* PM Khusus Ekonomi */}
           {data.kategori_program === 'EKONOMI' && (

@@ -72,10 +72,11 @@ export async function createActionPlan(
         await sql`
           INSERT INTO action_plan_activities (
             action_plan_id, bulan_implementasi, uraian_kebutuhan, nominal_rencana,
-            jumlah_unit, frekuensi, harga_satuan
+            jumlah_unit, frekuensi, harga_satuan, satuan_jumlah, satuan_frekuensi
           ) VALUES (
             ${actionPlanId}, ${activity.bulan_implementasi}, ${activity.uraian_kebutuhan}, ${activity.nominal_rencana},
-            ${activity.jumlah_unit || null}, ${activity.frekuensi || null}, ${activity.harga_satuan || null}
+            ${activity.jumlah_unit || null}, ${activity.frekuensi || null}, ${activity.harga_satuan || null},
+            ${activity.satuan_jumlah || null}, ${activity.satuan_frekuensi || null}
           )
         `
       }
@@ -145,10 +146,11 @@ export async function updateActionPlan(
         await sql`
           INSERT INTO action_plan_activities (
             action_plan_id, bulan_implementasi, uraian_kebutuhan, nominal_rencana,
-            jumlah_unit, frekuensi, harga_satuan
+            jumlah_unit, frekuensi, harga_satuan, satuan_jumlah, satuan_frekuensi
           ) VALUES (
             ${id}, ${activity.bulan_implementasi}, ${activity.uraian_kebutuhan}, ${activity.nominal_rencana},
-            ${activity.jumlah_unit || null}, ${activity.frekuensi || null}, ${activity.harga_satuan || null}
+            ${activity.jumlah_unit || null}, ${activity.frekuensi || null}, ${activity.harga_satuan || null},
+            ${activity.satuan_jumlah || null}, ${activity.satuan_frekuensi || null}
           )
         `
       }
@@ -355,7 +357,7 @@ export async function getAvailableActivities(actionPlanId: number) {
 export async function getPenerimaManfaatByDesa(desaBerdayaId: number) {
   try {
     const pmList = await sql`
-      SELECT id, nama, nik, jenis_kelamin, status_perkawinan 
+      SELECT id, nama, nik, jenis_kelamin, status_perkawinan, tanggal_lahir 
       FROM penerima_manfaat 
       WHERE desa_berdaya_id = ${desaBerdayaId}
       ORDER BY nama ASC

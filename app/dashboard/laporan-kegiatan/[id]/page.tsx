@@ -112,7 +112,7 @@ Alhamdulillah, melalui kolaborasi yang baik, program ini diharapkan dapat terus 
               {laporan.jenis_kegiatan}
             </Badge>
           </div>
-          <p className="text-slate-500 text-sm font-medium">Laporan Realisasi Program Desa Berdaya</p>
+          <p className="text-slate-500 text-sm font-medium mt-1">Laporan Realisasi Program Desa Berdaya</p>
         </div>
       </div>
 

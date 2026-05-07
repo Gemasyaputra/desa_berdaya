@@ -9,6 +9,7 @@ import { useSession } from 'next-auth/react'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
+import { getIntervensiByActionPlanId } from '@/app/dashboard/intervensi/actions'
 
 
 const NAMA_BULAN: Record<number, string> = {
@@ -222,6 +223,7 @@ export default function DetailActionPlanPage() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false)
   const [catatanRevisi, setCatatanRevisi] = useState('')
+  const [laporanTerkait, setLaporanTerkait] = useState<any[]>([])
 
   const role = (session?.user as any)?.role
   // Hanya MONEV / ADMIN yang bisa approval
@@ -236,8 +238,14 @@ export default function DetailActionPlanPage() {
         console.error(err)
         setLoading(false)
       })
+
+      if (['ADMIN', 'MONEV', 'PROG_HEAD', 'FINANCE'].includes(role)) {
+        getIntervensiByActionPlanId(id).then(reports => {
+          setLaporanTerkait(reports)
+        }).catch(console.error)
+      }
     }
-  }, [id])
+  }, [id, role])
 
   const formatRupiah = (number: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(number || 0)
@@ -320,6 +328,15 @@ export default function DetailActionPlanPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {canApprove && laporanTerkait.length > 0 && data?.status === 'APPROVED' && (
+            <Button 
+              onClick={() => router.push(`/dashboard/intervensi/${laporanTerkait[0].id}`)} 
+              variant="outline" 
+              className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 rounded-xl bg-white shadow-sm"
+            >
+              <FileText className="w-4 h-4 mr-2" /> Lihat Intervensi {laporanTerkait.length > 1 ? `(${laporanTerkait.length})` : ''}
+            </Button>
+          )}
           {(role === 'RELAWAN' || role === 'PROG_HEAD') && (data.status === 'REVISION' || data.status === 'WAITING_APPROVAL') && (
             <Button onClick={() => router.push(`/dashboard/action-plan/${id}/edit`)} variant="outline" className="text-teal-600 border-teal-200 hover:bg-teal-50 rounded-xl">
               Edit Action Plan
@@ -462,21 +479,29 @@ export default function DetailActionPlanPage() {
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 text-left">
                     <tr>
                       <th className="p-4 font-semibold">Nama PM</th>
-                      <th className="p-4 font-semibold">NIK</th>
-                      <th className="p-4 font-semibold">Penghasilan Awal</th>
+                      <th className="p-4 font-semibold">Tanggungan</th>
+                      <th className="p-4 font-semibold">Penghasilan (Rp)</th>
+                      <th className="p-4 font-semibold">Status GK</th>
+                      <th className="p-4 font-semibold">Status HK</th>
+                      <th className="p-4 font-semibold">Selisih GK (Rp)</th>
+                      <th className="p-4 font-semibold">NIB/Halal</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {data.beneficiaries.map((b: any) => (
                       <tr key={b.id} className="hover:bg-slate-50/50">
                         <td className="p-4 font-medium text-slate-800">{b.pm_name}</td>
-                        <td className="p-4 text-slate-500">{b.pm_nik}</td>
+                        <td className="p-4 text-slate-500">{b.tanggungan ? `${b.tanggungan} Orang` : '-'}</td>
                         <td className="p-4 text-slate-700">{b.penghasilan_awal ? formatRupiah(Number(b.penghasilan_awal)) : '-'}</td>
+                        <td className="p-4 text-slate-500">{b.status_gk || '-'}</td>
+                        <td className="p-4 text-slate-500">{b.status_hk || '-'}</td>
+                        <td className="p-4 text-slate-500">{b.selisih_gk ? formatRupiah(Number(b.selisih_gk)) : '-'}</td>
+                        <td className="p-4 text-slate-500">{b.nib_halal || '-'}</td>
                       </tr>
                     ))}
                     {data.beneficiaries.length === 0 && (
                       <tr>
-                        <td colSpan={3} className="p-6 text-center text-slate-500">Tidak ada target PM yang dipilih.</td>
+                        <td colSpan={7} className="p-6 text-center text-slate-500">Tidak ada target PM yang dipilih.</td>
                       </tr>
                     )}
                   </tbody>
@@ -486,12 +511,40 @@ export default function DetailActionPlanPage() {
               {/* Tampilan Mobile Target PM */}
               <div className="md:hidden divide-y divide-slate-100">
                 {data.beneficiaries.map((b: any) => (
-                  <div key={b.id} className="p-4 flex flex-col gap-1 text-sm">
+                  <div key={b.id} className="p-4 flex flex-col gap-2 text-sm">
                     <div className="font-bold text-slate-800">{b.pm_name}</div>
-                    <div className="text-xs text-slate-500">NIK: {b.pm_nik}</div>
-                    <div className="font-medium text-slate-700 mt-1 flex justify-between bg-slate-50 p-2 rounded-lg">
-                      <span className="text-slate-500 text-xs">Penghasilan Awal:</span>
-                      <span>{b.penghasilan_awal ? formatRupiah(Number(b.penghasilan_awal)) : '-'}</span>
+                    
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      <div className="bg-slate-50 p-2 rounded-lg flex flex-col">
+                        <span className="text-slate-400 text-[10px] uppercase font-bold">Tanggungan</span>
+                        <span className="font-medium text-slate-700">{b.tanggungan ? `${b.tanggungan} Orang` : '-'}</span>
+                      </div>
+                      <div className="bg-slate-50 p-2 rounded-lg flex flex-col">
+                        <span className="text-slate-400 text-[10px] uppercase font-bold">Penghasilan</span>
+                        <span className="font-medium text-slate-700">{b.penghasilan_awal ? formatRupiah(Number(b.penghasilan_awal)) : '-'}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-slate-50 p-2 rounded-lg flex flex-col">
+                        <span className="text-slate-400 text-[10px] uppercase font-bold">Status GK</span>
+                        <span className="font-medium text-slate-700">{b.status_gk || '-'}</span>
+                      </div>
+                      <div className="bg-slate-50 p-2 rounded-lg flex flex-col">
+                        <span className="text-slate-400 text-[10px] uppercase font-bold">Status HK</span>
+                        <span className="font-medium text-slate-700">{b.status_hk || '-'}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-slate-50 p-2 rounded-lg flex flex-col">
+                        <span className="text-slate-400 text-[10px] uppercase font-bold">Selisih GK</span>
+                        <span className="font-medium text-slate-700">{b.selisih_gk ? formatRupiah(Number(b.selisih_gk)) : '-'}</span>
+                      </div>
+                      <div className="bg-slate-50 p-2 rounded-lg flex flex-col">
+                        <span className="text-slate-400 text-[10px] uppercase font-bold">NIB/Halal</span>
+                        <span className="font-medium text-slate-700">{b.nib_halal || '-'}</span>
+                      </div>
                     </div>
                   </div>
                 ))}

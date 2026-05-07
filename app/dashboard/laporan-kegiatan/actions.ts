@@ -305,3 +305,17 @@ export async function uploadBukti(formData: FormData) {
   const blob = await put(file.name, file, { access: 'public' })
   return blob.url
 }
+
+export async function getLaporanByActionPlanId(actionPlanId: number) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return []
+
+  const result = await sql`
+    SELECT id, judul_kegiatan, tanggal_kegiatan
+    FROM laporan_kegiatan
+    WHERE action_plan_id = ${actionPlanId}
+    ORDER BY tanggal_kegiatan DESC
+  `
+  return result as any[]
+}
+

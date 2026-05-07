@@ -8,7 +8,10 @@ import { revalidatePath } from 'next/cache'
 async function checkAdmin() {
   const session = await getServerSession(authOptions)
   if (!session?.user) throw new Error('Unauthorized')
-  if (session.user.role !== 'ADMIN') throw new Error('Forbidden: Only ADMIN can access')
+  const role = session.user.role
+  if (role !== 'ADMIN' && role !== 'MONEV' && role !== 'PROG_HEAD' && role !== 'FINANCE') {
+    throw new Error('Forbidden: Insufficient privileges')
+  }
   return session
 }
 
@@ -110,6 +113,7 @@ export async function getIntervensiProgramById(id: number) {
       ip.fundraiser,
       ip.relawan_id,
       ip.status,
+      ip.action_plan_id,
       ip.created_at,
       ip.updated_at,
       COALESCE(ip.relawan_id, db.relawan_id) as relawan_id,
@@ -601,6 +605,17 @@ export async function importIntervensiProgramUniversal(rows: Array<{
 
   revalidatePath('/dashboard/intervensi')
   return { success: true, inserted }
+}
+
+export async function getIntervensiByActionPlanId(actionPlanId: number) {
+  await checkAdmin()
+  const result = await sql`
+    SELECT id, deskripsi, created_at
+    FROM intervensi_program
+    WHERE action_plan_id = ${actionPlanId}
+    ORDER BY created_at DESC
+  `
+  return result as any[]
 }
 
 export async function duplicateIntervensiProgram(originalId: number, data: {

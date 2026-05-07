@@ -156,6 +156,7 @@ export default function DashboardLayout({
           { href: '/dashboard/laporan-kegiatan', label: 'Laporan Kegiatan', icon: FileText },
           { href: '/dashboard/laporan-keuangan-intervensi', label: 'Laporan Keuangan', icon: Receipt },
           { href: '/dashboard/rekap-penyaluran', label: 'Rekap Penyaluran', icon: Wallet },
+          { href: '/dashboard/intervensi', label: 'Intervensi Program', icon: Target },
           { href: '/dashboard/manajemen-tim', label: 'Manajemen Tim', icon: UsersRound },
           { href: '/dashboard/office', label: 'Office', icon: Building2 },
           { href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch },
@@ -163,11 +164,6 @@ export default function DashboardLayout({
           ...(isAdminRole
             ? [
                 { href: '/dashboard/master-program', label: 'Master Program', icon: BookOpen },
-                {
-                  href: '/dashboard/intervensi',
-                  label: 'Intervensi Program',
-                  icon: Target,
-                },
                 {
                   href: '/dashboard/konfigurasi/form-builder',
                   label: 'Form Builder',

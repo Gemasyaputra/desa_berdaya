@@ -12,6 +12,17 @@ async function checkAuth() {
   return session.user
 }
 
+async function addLog(anggaranId: number, actionType: string, user: any, notes: string = '') {
+  try {
+    await sql`
+      INSERT INTO laporan_keuangan_logs (anggaran_id, action_type, actor_id, actor_name, actor_role, notes)
+      VALUES (${anggaranId}, ${actionType}, ${user.id || null}, ${user.name || '-'}, ${(user as any).role || '-'}, ${notes})
+    `
+  } catch (e) {
+    console.error('Failed to add log', e)
+  }
+}
+
 export async function getLaporanKeuanganIntervensi() {
   const user = await checkAuth()
   const role = (user as any).role
@@ -124,7 +135,7 @@ export async function getLaporanKegiatanForIntervensi(intervensiId: number) {
 }
 
 export async function uploadBuktiCA(anggaranId: number, deskripsi: string, nominal: number, formData: FormData, kegiatanIds?: number[], kegiatanJuduls?: string[]) {
-  await checkAuth()
+  const user = await checkAuth()
   const files = formData.getAll('files') as File[]
   if (!files || files.length === 0) throw new Error('File tidak ditemukan')
 
@@ -170,6 +181,8 @@ export async function uploadBuktiCA(anggaranId: number, deskripsi: string, nomin
       tgl_upload_ca = NOW()
     WHERE id = ${anggaranId}
   `
+
+  await addLog(anggaranId, 'UPLOAD_CA', user, deskripsi ? `Deskripsi: ${deskripsi}` : '')
 
   revalidatePath('/dashboard/laporan-keuangan-intervensi')
   return { success: true, url: finalStr }
@@ -252,6 +265,8 @@ export async function verifyCA(anggaranId: number, status: 'DIVERIFIKASI' | 'UPL
     WHERE id = ${anggaranId}
   `
 
+  await addLog(anggaranId, status === 'DIVERIFIKASI' ? 'VERIFIKASI_CA' : 'BATAL_VERIFIKASI_CA', user, catatan)
+
   revalidatePath('/dashboard/laporan-keuangan-intervensi')
   return { success: true }
 }
@@ -300,12 +315,14 @@ export async function tolakBuktiCA(anggaranId: number, entryId: string, alasan: 
     WHERE id = ${anggaranId}
   `
   
+  await addLog(anggaranId, 'TOLAK_CA', user, `Alasan: ${alasan}`)
+
   revalidatePath('/dashboard/laporan-keuangan-intervensi')
   return { success: true }
 }
 
 export async function uploadBuktiPengembalian(anggaranId: number, deskripsi: string, nominal: number, formData: FormData, kegiatanIds?: number[], kegiatanJuduls?: string[]) {
-  await checkAuth()
+  const user = await checkAuth()
   const files = formData.getAll('files') as File[]
   if (!files || files.length === 0) throw new Error('File tidak ditemukan')
 
@@ -347,6 +364,8 @@ export async function uploadBuktiPengembalian(anggaranId: number, deskripsi: str
       tgl_upload_pengembalian = NOW()
     WHERE id = ${anggaranId}
   `
+
+  await addLog(anggaranId, 'UPLOAD_PENGEMBALIAN', user, deskripsi ? `Deskripsi: ${deskripsi}` : '')
 
   revalidatePath('/dashboard/laporan-keuangan-intervensi')
   return { success: true, url: finalStr }
@@ -425,6 +444,8 @@ export async function verifyPengembalian(anggaranId: number, status: 'DIVERIFIKA
     WHERE id = ${anggaranId}
   `
 
+  await addLog(anggaranId, status === 'DIVERIFIKASI' ? 'VERIFIKASI_PENGEMBALIAN' : 'BATAL_VERIFIKASI_PENGEMBALIAN', user, catatan)
+
   revalidatePath('/dashboard/laporan-keuangan-intervensi')
   return { success: true }
 }
@@ -463,6 +484,8 @@ export async function tolakBuktiPengembalian(anggaranId: number, entryId: string
     WHERE id = ${anggaranId}
   `
   
+  await addLog(anggaranId, 'TOLAK_PENGEMBALIAN', user, `Alasan: ${alasan}`)
+
   revalidatePath('/dashboard/laporan-keuangan-intervensi')
   return { success: true }
 }
@@ -504,4 +527,14 @@ export async function getAllLaporanKeuanganEntries() {
   const res = await client(queryText, values)
 
   return Array.isArray(res) ? res : []
+}
+
+export async function getLaporanKeuanganLogs(anggaranId: number) {
+  await checkAuth()
+  const logs = await sql`
+    SELECT * FROM laporan_keuangan_logs 
+    WHERE anggaran_id = ${anggaranId} 
+    ORDER BY created_at DESC
+  `
+  return Array.isArray(logs) ? logs : []
 }

@@ -61,6 +61,8 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
   const [caViewModes, setCaViewModes] = useState<Record<string, 'grid' | 'table'>>({})
   const [pengViewModes, setPengViewModes] = useState<Record<string, 'grid' | 'table'>>({})
   const [isEditingTautan, setIsEditingTautan] = useState(false)
+  const [logsDialog, setLogsDialog] = useState<{ open: boolean, anggaranId: number | null, logs: any[] }>({ open: false, anggaranId: null, logs: [] })
+  const [verifyConfirmDialog, setVerifyConfirmDialog] = useState<{ open: boolean, type: 'CA' | 'BATAL_CA' | 'PENGEMBALIAN' | 'BATAL_PENGEMBALIAN', anggaranId: number | null, bulan: string, tahun: string }>({ open: false, type: 'CA', anggaranId: null, bulan: '', tahun: '' })
 
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(12)
@@ -1117,6 +1119,16 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                       ) : (
                         <Badge className="bg-slate-100 text-slate-500 text-[9px]">BELUM</Badge>
                       )}
+                      <Button variant="ghost" size="sm" onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          const logs = await import('../actions').then(m => m.getLaporanKeuanganLogs(a.id));
+                          setLogsDialog({ open: true, anggaranId: a.id, logs });
+                        } catch(err) { toast.error('Gagal memuat riwayat') }
+                      }} className="h-6 px-1.5 text-slate-400 hover:text-[#7a1200] hover:bg-[#7a1200]/10 rounded-md">
+                        <Clock className="w-3 h-3 mr-1" />
+                        <span className="text-[9px]">Log</span>
+                      </Button>
                     </div>
                   </div>
 
@@ -1231,6 +1243,7 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                   <th className="px-4 py-3 text-center">Lap. Kegiatan</th>
                   <th className="px-4 py-3 text-center">Bukti CA</th>
                   <th className="px-4 py-3 text-center">Pengembalian</th>
+                  <th className="px-4 py-3 text-center">Riwayat</th>
                   <th className="px-4 py-3 text-center">Status</th>
                   <th className="px-4 py-3">Catatan/Feedback</th>
                   {isAdminOrFinance && (
@@ -1306,6 +1319,18 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
                     </td>
                     <td className="px-4 py-3 text-center align-middle">
                       <BuktiPengembalianUploader a={a} compact={true} />
+                    </td>
+                    <td className="px-4 py-3 text-center align-middle">
+                      <Button variant="ghost" size="sm" onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          const logs = await import('../actions').then(m => m.getLaporanKeuanganLogs(a.id));
+                          setLogsDialog({ open: true, anggaranId: a.id, logs });
+                        } catch(err) { toast.error('Gagal memuat riwayat') }
+                      }} className="h-8 px-2 text-slate-400 hover:text-[#7a1200] hover:bg-[#7a1200]/10 rounded-lg">
+                        <Clock className="w-4 h-4 mr-1" />
+                        Log
+                      </Button>
                     </td>
                     <td className="px-4 py-3 align-middle">
                       <div className="flex flex-col items-center gap-1">
@@ -1750,8 +1775,48 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
               </div>
             )}
 
-            <div className="flex justify-end pt-4">
-               <Button variant="outline" onClick={() => setDetailAnggaran(null)} className="rounded-xl font-bold border-slate-200">
+            <div className="flex flex-wrap flex-col-reverse sm:flex-row justify-between items-center pt-4 mt-4 border-t border-slate-100 gap-4 sm:gap-0">
+               <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                 {isAdminOrFinance && detailAnggaran?.status_ca === 'UPLOADED' && (
+                   <Button 
+                     onClick={() => setVerifyConfirmDialog({ open: true, type: 'CA', anggaranId: detailAnggaran.id, bulan: detailAnggaran.bulan, tahun: detailAnggaran.tahun })}
+                     className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 w-full sm:w-auto shadow-sm"
+                   >
+                     <CheckCircle2 className="w-4 h-4" />
+                     Approve CA
+                   </Button>
+                 )}
+                 {isAdminOrFinance && detailAnggaran?.status_ca === 'DIVERIFIKASI' && (
+                   <Button 
+                     variant="outline"
+                     onClick={() => setVerifyConfirmDialog({ open: true, type: 'BATAL_CA', anggaranId: detailAnggaran.id, bulan: detailAnggaran.bulan, tahun: detailAnggaran.tahun })}
+                     className="text-rose-500 border-rose-200 hover:bg-rose-50 rounded-xl font-bold flex items-center justify-center gap-2 w-full sm:w-auto"
+                   >
+                     <X className="w-4 h-4" />
+                     Batal Verif CA
+                   </Button>
+                 )}
+                 {isAdminOrFinance && detailAnggaran?.bukti_pengembalian_url && detailAnggaran?.status_pengembalian === 'UPLOADED' && (
+                   <Button 
+                     onClick={() => setVerifyConfirmDialog({ open: true, type: 'PENGEMBALIAN', anggaranId: detailAnggaran.id, bulan: detailAnggaran.bulan, tahun: detailAnggaran.tahun })}
+                     className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 w-full sm:w-auto shadow-sm"
+                   >
+                     <CheckCircle2 className="w-4 h-4" />
+                     Approve Refund
+                   </Button>
+                 )}
+                 {isAdminOrFinance && detailAnggaran?.bukti_pengembalian_url && detailAnggaran?.status_pengembalian === 'DIVERIFIKASI' && (
+                   <Button 
+                     variant="outline"
+                     onClick={() => setVerifyConfirmDialog({ open: true, type: 'BATAL_PENGEMBALIAN', anggaranId: detailAnggaran.id, bulan: detailAnggaran.bulan, tahun: detailAnggaran.tahun })}
+                     className="text-rose-500 border-rose-200 hover:bg-rose-50 rounded-xl font-bold flex items-center justify-center gap-2 w-full sm:w-auto"
+                   >
+                     <X className="w-4 h-4" />
+                     Batal Verif Refund
+                   </Button>
+                 )}
+               </div>
+               <Button variant="outline" onClick={() => setDetailAnggaran(null)} className="rounded-xl font-bold border-slate-200 w-full sm:w-auto">
                  Tutup
                </Button>
             </div>
@@ -1918,6 +1983,90 @@ export default function LaporanKeuanganDetailPage({ params }: { params: Promise<
             </div>
             <Button onClick={handleRejectPengembalian} className="w-full bg-rose-500 hover:bg-rose-600 text-white py-6 rounded-xl font-bold shadow-lg shadow-rose-500/20">
               Tolak & Minta Upload Ulang
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* LOGS DIALOG */}
+      <Dialog open={logsDialog.open} onOpenChange={(open) => !open && setLogsDialog({ open: false, anggaranId: null, logs: [] })}>
+        <DialogContent className="max-w-xl p-0 overflow-hidden bg-white md:rounded-3xl rounded-2xl border-0 shadow-2xl">
+          <DialogHeader className="bg-slate-50 border-b border-slate-100 px-6 py-5">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-slate-800">
+              <Clock className="w-5 h-5 text-[#7a1200]" />
+              Riwayat Laporan Keuangan
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-6 max-h-[60vh] overflow-y-auto">
+            {logsDialog.logs.length === 0 ? (
+              <div className="text-center text-slate-400 py-4 font-medium">Belum ada riwayat tercatat.</div>
+            ) : (
+              <div className="space-y-4 relative before:absolute before:inset-0 before:ml-2 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
+                {logsDialog.logs.map((log: any) => (
+                  <div key={log.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                    <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 border-white bg-slate-200 text-slate-500 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
+                      <div className="w-2 h-2 rounded-full bg-[#7a1200]"></div>
+                    </div>
+                    <div className="w-[calc(100%-2.5rem)] md:w-[calc(50%-1.5rem)] bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-[#7a1200] bg-[#7a1200]/10 px-2 py-0.5 rounded-full uppercase tracking-wider">{log.action_type.replace(/_/g, ' ')}</span>
+                        <span className="text-[9px] font-bold text-slate-400">{new Date(log.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                      </div>
+                      <div className="text-sm font-bold text-slate-700">{log.actor_name} <span className="text-xs font-normal text-slate-500">({log.actor_role})</span></div>
+                      {log.notes && (
+                        <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 italic">
+                          {log.notes}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* VERIFY CONFIRM DIALOG */}
+      <Dialog open={verifyConfirmDialog.open} onOpenChange={(open) => !open && setVerifyConfirmDialog({ ...verifyConfirmDialog, open: false })}>
+        <DialogContent className="max-w-sm bg-white md:rounded-3xl rounded-2xl border-0 shadow-2xl p-6 text-center space-y-6">
+          <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center ${verifyConfirmDialog.type.includes('BATAL') ? 'bg-rose-100 text-rose-500' : 'bg-emerald-100 text-emerald-500'}`}>
+            {verifyConfirmDialog.type.includes('BATAL') ? <X className="w-8 h-8" /> : <CheckCircle2 className="w-8 h-8" />}
+          </div>
+          <div>
+            <DialogTitle className="text-xl font-black text-slate-800 mb-2">Konfirmasi Aksi</DialogTitle>
+            <DialogDescription className="text-sm font-medium text-slate-500">
+              {verifyConfirmDialog.type === 'CA' ? `Anda yakin ingin menyetujui Laporan CA bulan ${verifyConfirmDialog.bulan} ${verifyConfirmDialog.tahun}?` :
+               verifyConfirmDialog.type === 'BATAL_CA' ? `Anda yakin ingin MEMBATALKAN verifikasi Laporan CA bulan ${verifyConfirmDialog.bulan} ${verifyConfirmDialog.tahun}?` :
+               verifyConfirmDialog.type === 'PENGEMBALIAN' ? `Anda yakin ingin menyetujui Laporan Pengembalian (Refund) bulan ${verifyConfirmDialog.bulan} ${verifyConfirmDialog.tahun}?` :
+               `Anda yakin ingin MEMBATALKAN verifikasi Laporan Pengembalian bulan ${verifyConfirmDialog.bulan} ${verifyConfirmDialog.tahun}?`
+              }
+            </DialogDescription>
+          </div>
+          <div className="flex justify-center gap-3 w-full">
+            <Button variant="outline" className="flex-1 rounded-xl font-bold" onClick={() => setVerifyConfirmDialog({ ...verifyConfirmDialog, open: false })}>Tidak</Button>
+            <Button 
+              className={`flex-1 rounded-xl font-bold text-white ${verifyConfirmDialog.type.includes('BATAL') ? 'bg-rose-500 hover:bg-rose-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+              disabled={verifyingId === verifyConfirmDialog.anggaranId}
+              onClick={async () => {
+                if (!verifyConfirmDialog.anggaranId) return;
+                try {
+                  if (verifyConfirmDialog.type === 'CA') await handleVerify(verifyConfirmDialog.anggaranId, 'DIVERIFIKASI', '');
+                  else if (verifyConfirmDialog.type === 'BATAL_CA') await handleVerify(verifyConfirmDialog.anggaranId, 'UPLOADED', '');
+                  else if (verifyConfirmDialog.type === 'PENGEMBALIAN') await handleVerifyPengembalian(verifyConfirmDialog.anggaranId, 'DIVERIFIKASI', '');
+                  else if (verifyConfirmDialog.type === 'BATAL_PENGEMBALIAN') await handleVerifyPengembalian(verifyConfirmDialog.anggaranId, 'UPLOADED', '');
+                  
+                  const freshData = await import('../actions').then(m => m.getDetailLaporanKeuangan(parseInt(id)));
+                  setData(freshData);
+                  if (detailAnggaran && detailAnggaran.id === verifyConfirmDialog.anggaranId) {
+                    const freshAnggaran = (freshData as any).anggaran?.find((a: any) => a.id === detailAnggaran.id);
+                    if (freshAnggaran) setDetailAnggaran(freshAnggaran);
+                  }
+                  setVerifyConfirmDialog({ ...verifyConfirmDialog, open: false });
+                } catch(e) {}
+              }}
+            >
+              {verifyingId === verifyConfirmDialog.anggaranId ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Ya, Yakin'}
             </Button>
           </div>
         </DialogContent>

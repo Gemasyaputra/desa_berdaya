@@ -52,7 +52,7 @@ export default function DashboardLayout({
   const { data: session, status } = useSession()
   const [sidebarOpen, setSidebarOpen] = useState(false) // Mobile sidebar
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false) // Desktop sidebar collapse
-  const [clinicsExpanded, setClinicsExpanded] = useState(true)
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({})
   const [userName, setUserName] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userClinicId, setUserClinicId] = useState<number | null>(null)
@@ -130,11 +130,15 @@ export default function DashboardLayout({
   const isRoleReady = isUserReady && !!userRole
   const isAdminOrMonev = isRoleReady && (userRole === 'ADMIN' || userRole === 'MONEV' || userRole === 'PROG_HEAD' || userRole === 'FINANCE')
 
+  const toggleMenu = (label: string) => {
+    setExpandedMenus((prev) => ({ ...prev, [label]: !prev[label] }))
+  }
+
   type MenuItem = {
     href: string;
     label: string;
     icon: React.ElementType;
-    subItems?: { href: string; label: string }[];
+    subItems?: { href: string; label: string; icon: React.ElementType }[];
   }
 
   const isKorwil = !!(session?.user as any)?.is_korwil
@@ -147,43 +151,106 @@ export default function DashboardLayout({
     : isAdminOrMonev
       ? [
           { href: '/dashboard', label: 'Summary Dashboard', icon: LayoutDashboard },
-          { href: '/dashboard/desa', label: 'Desa Binaan', icon: Building2 },
-          { href: '/dashboard/pm', label: 'Penerima Manfaat', icon: Users },
-          { href: '/dashboard/ekonomi', label: 'Update Ekonomi', icon: TrendingUp },
-          { href: '/dashboard/kesehatan', label: 'Update Kesehatan', icon: Heart },
-          { href: '/dashboard/kelompok', label: 'Daftar Kelompok', icon: UsersRound },
-          { href: '/dashboard/action-plan', label: 'Action Plan', icon: ClipboardList },
-          { href: '/dashboard/laporan-kegiatan', label: 'Laporan Kegiatan', icon: FileText },
-          { href: '/dashboard/laporan-keuangan-intervensi', label: 'Laporan Keuangan', icon: Receipt },
-          { href: '/dashboard/rekap-penyaluran', label: 'Rekap Penyaluran', icon: Wallet },
-          { href: '/dashboard/intervensi', label: 'Intervensi Program', icon: Target },
-          { href: '/dashboard/manajemen-tim', label: 'Manajemen Tim', icon: UsersRound },
-          { href: '/dashboard/office', label: 'Office', icon: Building2 },
-          { href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch },
-          { href: '/dashboard/konfigurasi', label: 'Konfigurasi', icon: Settings },
-          ...(isAdminRole
-            ? [
-                { href: '/dashboard/master-program', label: 'Master Program', icon: BookOpen },
-                {
-                  href: '/dashboard/konfigurasi/form-builder',
-                  label: 'Form Builder',
-                  icon: Settings,
-                },
-              ]
-            : []),
+          {
+            href: '#',
+            label: 'Master Data',
+            icon: Building2,
+            subItems: [
+              { href: '/dashboard/desa', label: 'Desa Binaan', icon: Building2 },
+              { href: '/dashboard/pm', label: 'Penerima Manfaat', icon: Users },
+              { href: '/dashboard/kelompok', label: 'Daftar Kelompok', icon: UsersRound },
+            ],
+          },
+          {
+            href: '#',
+            label: 'Update Bulanan',
+            icon: TrendingUp,
+            subItems: [
+              { href: '/dashboard/ekonomi', label: 'Update Ekonomi', icon: TrendingUp },
+              { href: '/dashboard/kesehatan', label: 'Update Kesehatan', icon: Heart },
+            ],
+          },
+          {
+            href: '#',
+            label: 'Program & Laporan',
+            icon: ClipboardList,
+            subItems: [
+              { href: '/dashboard/action-plan', label: 'Action Plan', icon: ClipboardList },
+              { href: '/dashboard/laporan-kegiatan', label: 'Laporan Kegiatan', icon: FileText },
+              { href: '/dashboard/laporan-keuangan-intervensi', label: 'Laporan Keuangan', icon: Receipt },
+              { href: '/dashboard/rekap-penyaluran', label: 'Rekap Penyaluran', icon: Wallet },
+              { href: '/dashboard/intervensi', label: 'Intervensi Program', icon: Target },
+            ],
+          },
+          {
+            href: '#',
+            label: 'Manajemen Tim',
+            icon: UsersRound,
+            subItems: [
+              { href: '/dashboard/manajemen-tim', label: 'Manajemen Tim', icon: UsersRound },
+              { href: '/dashboard/office', label: 'Office', icon: Building2 },
+              { href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch },
+            ],
+          },
+          {
+            href: '#',
+            label: 'Pengaturan',
+            icon: Settings,
+            subItems: [
+              { href: '/dashboard/konfigurasi', label: 'Konfigurasi', icon: Settings },
+              ...(isAdminRole
+                ? [
+                    { href: '/dashboard/master-program', label: 'Master Program', icon: BookOpen },
+                    {
+                      href: '/dashboard/konfigurasi/form-builder',
+                      label: 'Form Builder',
+                      icon: Settings,
+                    },
+                  ]
+                : []),
+            ],
+          },
         ]
       : [
           { href: '/dashboard', label: 'Beranda', icon: LayoutDashboard },
-          { href: '/dashboard/desa', label: 'Desa Binaan', icon: Building2 },
-          { href: '/dashboard/pm', label: 'Penerima Manfaat', icon: Users },
-          { href: '/dashboard/ekonomi', label: 'Update Ekonomi', icon: TrendingUp },
-          { href: '/dashboard/kesehatan', label: 'Update Kesehatan', icon: Heart },
-          { href: '/dashboard/kelompok', label: 'Daftar Kelompok', icon: UsersRound },
-          { href: '/dashboard/action-plan', label: 'Action Plan', icon: ClipboardList },
-          { href: '/dashboard/laporan-kegiatan', label: 'Laporan Kegiatan', icon: FileText },
-          { href: '/dashboard/laporan-keuangan-intervensi', label: 'Laporan Keuangan', icon: Receipt },
-          ...(isKorwil ? [{ href: '/dashboard/manajemen-tim', label: 'Manajemen Tim', icon: UsersRound }] : []),
-          ...(isKorwil ? [{ href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch }] : []),
+          {
+            href: '#',
+            label: 'Master Data',
+            icon: Building2,
+            subItems: [
+              { href: '/dashboard/desa', label: 'Desa Binaan', icon: Building2 },
+              { href: '/dashboard/pm', label: 'Penerima Manfaat', icon: Users },
+              { href: '/dashboard/kelompok', label: 'Daftar Kelompok', icon: UsersRound },
+            ],
+          },
+          {
+            href: '#',
+            label: 'Update Bulanan',
+            icon: TrendingUp,
+            subItems: [
+              { href: '/dashboard/ekonomi', label: 'Update Ekonomi', icon: TrendingUp },
+              { href: '/dashboard/kesehatan', label: 'Update Kesehatan', icon: Heart },
+            ],
+          },
+          {
+            href: '#',
+            label: 'Program & Laporan',
+            icon: ClipboardList,
+            subItems: [
+              { href: '/dashboard/action-plan', label: 'Action Plan', icon: ClipboardList },
+              { href: '/dashboard/laporan-kegiatan', label: 'Laporan Kegiatan', icon: FileText },
+              { href: '/dashboard/laporan-keuangan-intervensi', label: 'Laporan Keuangan', icon: Receipt },
+            ],
+          },
+          ...(isKorwil ? [{
+            href: '#',
+            label: 'Manajemen Tim',
+            icon: UsersRound,
+            subItems: [
+              { href: '/dashboard/manajemen-tim', label: 'Manajemen Tim', icon: UsersRound },
+              { href: '/dashboard/struktur-tim', label: 'Struktur Tim', icon: GitBranch },
+            ]
+          }] : []),
           ...(isRelawan ? [{ href: '/dashboard/profil', label: 'Profil Saya', icon: UserCircle }] : []),
         ]
 
@@ -257,38 +324,43 @@ export default function DashboardLayout({
           {/* Navigation */}
           <nav className={`flex-1 py-4 overflow-y-auto transition-opacity duration-300 ${sidebarCollapsed ? 'lg:opacity-0 lg:pointer-events-none' : 'lg:opacity-100'}`}>
             <ul className="space-y-1 px-2">
-              {menuItems.map((item) => (
-                <li key={item.href}>
+              {menuItems.map((item, idx) => {
+                const isGroupActive = item.subItems?.some(sub => isActive(sub.href))
+                return (
+                <li key={`${item.href}-${idx}`}>
                   {item.subItems ? (
                     <>
                       <button
-                        onClick={() => setClinicsExpanded(!clinicsExpanded)}
-                        style={pathname?.startsWith(item.href) ? { backgroundColor: 'rgba(255,255,255,0.2)' } : undefined}
-                        className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
-                          pathname?.startsWith(item.href) ? 'border-l-3 border-white' : 'hover:opacity-80'
+                        onClick={() => toggleMenu(item.label)}
+                        style={isGroupActive ? { backgroundColor: 'rgba(255,255,255,0.1)' } : undefined}
+                        className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-left transition-colors hover:bg-white/10 ${
+                          isGroupActive ? 'border-l-4 border-white font-semibold bg-white/10' : 'opacity-90 hover:opacity-100'
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <item.icon className="w-5 h-5 flex-shrink-0" />
-                          <span className="text-sm font-medium lg:inline hidden">{item.label}</span>
-                          <span className="text-sm font-medium lg:hidden">{item.label}</span>
+                          <item.icon className={`w-5 h-5 flex-shrink-0 ${isGroupActive ? 'text-white' : 'text-white/80'}`} />
+                          <span className="text-sm lg:inline hidden">{item.label}</span>
+                          <span className="text-sm lg:hidden">{item.label}</span>
                         </div>
-                        {clinicsExpanded ? (
+                        {expandedMenus[item.label] || isGroupActive ? (
                           <ChevronDown className="w-4 h-4 lg:inline hidden" />
                         ) : (
                           <ChevronRight className="w-4 h-4 lg:inline hidden" />
                         )}
                       </button>
-                      {clinicsExpanded && (
-                        <ul className="mt-1 ml-8 space-y-1 lg:block hidden">
+                      {(expandedMenus[item.label] || isGroupActive) && (
+                        <ul className="mt-1 ml-4 space-y-1 lg:block hidden border-l border-white/20 pl-2">
                           {item.subItems.map((subItem) => (
                             <li key={subItem.href}>
                               <Link
                                 href={subItem.href}
                                 style={isActive(subItem.href) ? { backgroundColor: 'rgba(255,255,255,0.2)' } : undefined}
-                                className={`block px-3 py-2 rounded-lg text-sm transition-colors ${isActive(subItem.href) ? 'font-medium' : 'hover:opacity-80'}`}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                                  isActive(subItem.href) ? 'font-medium text-white' : 'text-white/80 hover:text-white hover:bg-white/10'
+                                }`}
                               >
-                                📍 {subItem.label}
+                                <subItem.icon className="w-4 h-4 flex-shrink-0" />
+                                {subItem.label}
                               </Link>
                             </li>
                           ))}
@@ -310,7 +382,8 @@ export default function DashboardLayout({
                     </Link>
                   )}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </nav>
 

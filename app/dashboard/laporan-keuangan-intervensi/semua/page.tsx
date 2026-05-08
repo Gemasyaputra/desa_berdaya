@@ -24,7 +24,8 @@ import {
   Link2,
   ChevronDown,
   ChevronRight,
-  Layers
+  Layers,
+  Clock
 } from 'lucide-react'
 import { MultiSelectGroup } from '@/components/ui/multi-select-group'
 import { FavoriteGroupSelector } from '@/components/favorite-group-selector'
@@ -325,7 +326,15 @@ export default function SemuaLaporanKeuanganPage() {
           </div>
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto mt-4 md:mt-0">
+          <Button 
+            onClick={() => router.push('/dashboard/laporan-keuangan-intervensi/riwayat')}
+            variant="outline"
+            className="text-slate-600 font-bold rounded-xl h-10 px-4 shadow-sm flex items-center gap-2 border-slate-200 hover:text-[#7a1200] bg-white"
+          >
+            <Clock className="w-4 h-4 text-[#7a1200]" />
+            Log Global
+          </Button>
           <div className="relative w-full md:w-64 group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#7a1200] transition-colors" />
             <Input

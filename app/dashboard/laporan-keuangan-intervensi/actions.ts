@@ -538,3 +538,42 @@ export async function getLaporanKeuanganLogs(anggaranId: number) {
   `
   return Array.isArray(logs) ? logs : []
 }
+
+export async function getAllLaporanKeuanganLogs() {
+  const user = await checkAuth()
+  const role = (user as any).role
+  const operatorId = (user as any).operator_id
+  const isKorwil = (user as any).is_korwil
+
+  const values: any[] = []
+  let queryText = `
+    SELECT 
+      lkl.*,
+      ia.bulan,
+      ia.tahun,
+      dc.nama_desa,
+      p.nama_program
+    FROM laporan_keuangan_logs lkl
+    JOIN intervensi_anggaran ia ON lkl.anggaran_id = ia.id
+    JOIN intervensi_program ip ON ia.intervensi_program_id = ip.id
+    JOIN desa_berdaya db ON ip.desa_berdaya_id = db.id
+    JOIN desa_config dc ON db.desa_id = dc.id
+    JOIN program p ON ip.program_id = p.id
+    JOIN relawan r ON ip.relawan_id = r.id
+  `
+
+  if (role === 'RELAWAN' || role === 'USER') {
+    values.push(operatorId)
+    queryText += ` WHERE ip.relawan_id = $${values.length}`
+  } else if (isKorwil && operatorId) {
+    values.push(operatorId)
+    queryText += ` WHERE r.korwil_id = $${values.length}`
+  }
+
+  queryText += ` ORDER BY lkl.created_at DESC`
+
+  const client = getSqlClient()
+  const res = await client(queryText, values)
+
+  return Array.isArray(res) ? res : []
+}

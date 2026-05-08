@@ -11,8 +11,8 @@ export function DevRoleSwitcher() {
 
   const originalRole = (session?.user as any)?.original_role
 
-  // Hanya tampil di mode development dan jika akun aslinya (saat login Google) adalah ADMIN
-  if (process.env.NODE_ENV !== 'development' || originalRole !== 'ADMIN') return null
+  // Ditampilkan di semua mode (termasuk production/Vercel) selama akun aslinya adalah ADMIN
+  if (originalRole !== 'ADMIN') return null
 
   const roles = [
     { id: 'ADMIN', label: 'Admin', icon: Shield },

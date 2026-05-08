@@ -120,7 +120,7 @@ export const authOptions: NextAuthOptions = {
       }
 
       // DEV MODE IMPERSONATION
-      if (process.env.NODE_ENV === 'development' && trigger === 'update' && session?.mockRole) {
+      if (trigger === 'update' && session?.mockRole) {
         try {
           let users: any;
           

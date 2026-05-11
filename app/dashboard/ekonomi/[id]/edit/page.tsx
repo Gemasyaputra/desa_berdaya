@@ -131,13 +131,14 @@ export default function EditEkonomiPage() {
       const totalCost = (formData.modal || 0) + (formData.pengeluaran_operasional || 0)
       let ntp = 0
       if (totalCost > 0) {
-        ntp = (formData.omzet / totalCost) * 100
+        ntp = ((formData.pendapatan || 0) / totalCost) * 100
       }
       
       // Calculate Status GK
       const totalIncome = (formData.pendapatan || 0) + (formData.pendapatan_lainnya || 0)
-      const perCapitaIncome = totalIncome / ((formData.jumlah_tanggungan || 0) + 1)
-      const statusGk = perCapitaIncome < 600000 ? 'Di Bawah GK' : 'Di Atas GK'
+      const tanggungan = formData.jumlah_tanggungan > 0 ? formData.jumlah_tanggungan : 1
+      const perCapitaIncome = totalIncome / tanggungan
+      const statusGk = perCapitaIncome <= 472525 ? 'Dibawah GK' : 'Diatas GK'
 
       setFormData(prev => ({
         ...prev,

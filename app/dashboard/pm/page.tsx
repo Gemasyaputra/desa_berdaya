@@ -44,7 +44,7 @@ export default function PenerimaManfaatPage() {
   }, [])
 
   const role = (session?.user as any)?.role
-  const canAdd = role === 'RELAWAN' || role === 'PROG_HEAD'
+  const canAdd = role === 'RELAWAN' || role === 'PROG_HEAD' || role === 'ADMIN'
   const canMod = role === 'RELAWAN' || role === 'PROG_HEAD' || role === 'ADMIN' || role === 'KORWIL'
 
   const fetchData = async () => {
@@ -179,16 +179,24 @@ export default function PenerimaManfaatPage() {
     setExpandedTableGroups(prev => ({ ...prev, [path]: !prev[path] }))
   }
 
-  const handleDownloadTemplate = (desa: any) => {
+  const handleDownloadTemplate = () => {
     const wsData = [
       ['desa_berdaya_id', 'nama_desa', 'nik', 'nama', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'golongan_darah', 'alamat', 'rt_rw', 'kel_desa', 'kecamatan', 'agama', 'status_perkawinan', 'pekerjaan', 'kewarganegaraan', 'kategori_pm'],
-      [desa.id, desa.nama_desa, '1234567890123456', 'Contoh Nama', 'Jakarta', '1990-01-01', 'Laki-Laki', 'O', 'Jl. Contoh No. 123', '01/02', 'Desa Contoh', 'Kec Contoh', 'Islam', 'Belum Kawin', 'Petani', 'WNI', 'Umum'],
+      [desaOptions[0]?.id || 1, desaOptions[0]?.nama_desa || 'Desa Contoh', '1234567890123456', 'Contoh Nama', 'Jakarta', '1990-01-01', 'Laki-Laki', 'O', 'Jl. Contoh No. 123', '01/02', 'Desa Contoh', 'Kec Contoh', 'Islam', 'Belum Kawin', 'Petani', 'WNI', 'Umum'],
     ]
 
-    const ws = xlsx.utils.aoa_to_sheet(wsData)
+    const ws1 = xlsx.utils.aoa_to_sheet(wsData)
+    
+    const ws2Data = [['ID Desa', 'Nama Desa']]
+    desaOptions.forEach(d => {
+      ws2Data.push([d.id, d.nama_desa])
+    })
+    const ws2 = xlsx.utils.aoa_to_sheet(ws2Data)
+
     const wb = xlsx.utils.book_new()
-    xlsx.utils.book_append_sheet(wb, ws, 'TemplatePM')
-    xlsx.writeFile(wb, `Template_Import_PM_${desa.nama_desa.replace(/\s+/g, '_')}.xlsx`)
+    xlsx.utils.book_append_sheet(wb, ws1, 'TemplatePM')
+    xlsx.utils.book_append_sheet(wb, ws2, 'Daftar_ID_Desa')
+    xlsx.writeFile(wb, `Template_Import_PM.xlsx`)
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -258,6 +266,10 @@ export default function PenerimaManfaatPage() {
       }
     }
     reader.readAsBinaryString(selectedFile)
+  }
+
+  if (!mounted) {
+    return <div className="min-h-screen bg-slate-50" />
   }
 
   return (
@@ -614,24 +626,21 @@ export default function PenerimaManfaatPage() {
                 Download Template
               </Label>
               <p className="text-sm text-slate-500 pl-7">
-                Pilih desa di bawah ini untuk mengunduh template Excel yang sudah diisi dengan ID Desa yang sesuai.
+                Unduh template Excel untuk mengisi data. <strong className="text-[#7a1200]">Hint:</strong> Referensi ID Desa dapat dilihat pada <strong>Sheet ke-2</strong> di dalam file Excel.
               </p>
               <div className="pl-7 space-y-2">
                 {desaOptions.length === 0 ? (
                   <p className="text-xs text-red-500">Anda tidak memiliki akses ke desa binaan manapun.</p>
                 ) : (
-                  desaOptions.map((desa) => (
-                    <Button 
-                      key={desa.id} 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleDownloadTemplate(desa)} 
-                      className="w-full justify-start text-slate-600"
-                    >
-                      <Download className="w-4 h-4 mr-2 text-blue-500" />
-                      Template untuk Desa {desa.nama_desa}
-                    </Button>
-                  ))
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleDownloadTemplate} 
+                    className="w-full justify-center text-slate-600 font-bold bg-blue-50 hover:bg-blue-100 border-blue-200"
+                  >
+                    <Download className="w-4 h-4 mr-2 text-blue-600" />
+                    Download Template Excel
+                  </Button>
                 )}
               </div>
             </div>

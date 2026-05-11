@@ -255,7 +255,7 @@ export default function DashboardLayout({
         ]
 
   const isActive = (href: string) => {
-    if (href === '/dashboard') {
+    if (href === '/dashboard' || href === '/dashboard/konfigurasi') {
       return pathname === href
     }
     return pathname === href || pathname?.startsWith(`${href}/`)
